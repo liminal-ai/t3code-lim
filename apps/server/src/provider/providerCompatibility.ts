@@ -1,4 +1,6 @@
 import {
+  CLAUDE_DRIVER_KIND,
+  CLAUDE_LHC_DRIVER_KIND,
   TrimmedNonEmptyString,
   ServerProviderCompatibilityStatus,
   type ProviderDriverKind,
@@ -62,8 +64,11 @@ export function resolveProviderCompatibility(
   version: string | null,
   t3CodeVersion = packageJson.version,
 ): ServerProviderCompatibilityAdvisory | undefined {
+  // Claude LHC runs the same Claude Code binary, so it follows Claude's policy.
+  const policyDriver = driver === CLAUDE_LHC_DRIVER_KIND ? CLAUDE_DRIVER_KIND : driver;
   const policy = policies?.find(
-    (entry) => entry.driver === driver && satisfiesSemverRange(t3CodeVersion, entry.t3CodeRange),
+    (entry) =>
+      entry.driver === policyDriver && satisfiesSemverRange(t3CodeVersion, entry.t3CodeRange),
   );
   if (!policy) return undefined;
   const unprefixed = version?.replace(/^v/, "");
