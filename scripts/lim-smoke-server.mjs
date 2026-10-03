@@ -48,7 +48,9 @@ try {
   for (let i = 0; i < 90; i++) {
     if (child.exitCode !== null) throw new Error(log);
     try {
-      const response = await fetch(`http://127.0.0.1:${port}/`);
+      const response = await fetch(`http://127.0.0.1:${port}/`, {
+        signal: AbortSignal.timeout(3000),
+      });
       if (response.ok && (await response.text()).includes("<html")) {
         ready = true;
         break;
@@ -60,8 +62,11 @@ try {
   console.log(`PASS extracted ${meta.platform}/${meta.arch}: ${meta.version}, web HTTP 200`);
 } finally {
   if (child && child.exitCode === null) {
+    const exited = new Promise((resolve) => child.once("exit", resolve));
     child.kill();
-    await new Promise((resolve) => child.once("exit", resolve));
+    const force = setTimeout(() => child.kill("SIGKILL"), 5000);
+    await exited;
+    clearTimeout(force);
   }
   await rm(temp, { recursive: true, force: true });
 }

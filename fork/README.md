@@ -24,7 +24,7 @@ Upstream workflows remain in source to reduce merge churn, but are disabled in t
 
 ## Releases
 
-Tag format: `<upstream-tag>-lim.<revision>`, initially `v0.0.46-nightly.20261003.2632-lim.1`. The tag is immutable; fixes get a new revision. upstream.json records the corresponding tag, commit and patch revision. Package versions are aligned during the build.
+Tag format: `<upstream-tag>-lim.<revision>`, for example `v0.0.46-nightly.20261003.2632-lim.2`. The tag is immutable; fixes get a new revision. upstream.json records the corresponding tag, commit and patch revision. Package versions are aligned during the build.
 
 The Liminal release workflow builds on native GitHub-hosted runners:
 
