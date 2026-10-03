@@ -1,9 +1,9 @@
-# LHC patch on T3 V2 (v0.0.46-nightly.20261003.2610)
+# LHC patch on T3 V2 (v0.0.46-nightly.20261003.2632)
 
-Branch `lhc-provider-v2` on the pin `8ed276c2`. One addition: the `claude-lhc` provider driver, which
+Branch `lhc-provider-v2` on the pin `f391794a` (re-pinned from `8ed276c2`: `validation/v2-port/repin-2632/`). One addition: the `claude-lhc` provider driver, which
 runs the stock Claude runtime through the npm `claude-lhc` sidecar (long-horizon context). Ported
 from `lhc-provider` on v0.0.44 (`/srv/agents/hazel/t3code-v044`, its own `LHC-PATCH.md`). Review with
-`git diff 8ed276c2 lhc-provider-v2`. Evidence: `validation/v2-port/` (each step's failing tests
+`git diff v0.0.46-nightly.20261003.2632 lhc-provider-v2`. Evidence: `validation/v2-port/` (each step's failing tests
 first) and `validation/v2-port/live/` (the LHC lane on 13977).
 
 ## Files changed
@@ -76,6 +76,10 @@ Sidecar (`lhc/`)
   runner, so the child starts from that native transcript (the first generation, before LHC's
   compactions), not the LHC view. An odd transcript, not data loss or a security issue. Forking
   without switching is refused ("Claude LHC threads can't be forked…").
+- The pinned sidecar (claude-lhc 0.1.1) compacts only at a safe boundary after a tool batch settles.
+  A large parallel batch near the trigger can overflow the model's window first (seen: 88k + five
+  ~24k reads on a 200k model, "Prompt is too long"); the thread recovers with a manual `/compact`.
+  The fix belongs in the sidecar (checking before a batch is sent), not in T3.
 - Two upstream tests fail on lim-builder with or without this patch (environment): an ACP test that
   expects `node` in `/usr/bin`, and a GitManager cross-repo PR test that times out.
 
@@ -83,4 +87,4 @@ Sidecar (`lhc/`)
 
 Existing upstream files: 267 edited lines (+232/-35) in 18 files; the rest is new files (the
 sidecar seam, the LHC driver, the kind module, tests, `lhc/`). Measured with
-`git diff --numstat --diff-filter=M 8ed276c2 -- apps packages ':!*.test.ts'`.
+`git diff --numstat --diff-filter=M v0.0.46-nightly.20261003.2632 -- apps packages ':!*.test.ts'`.

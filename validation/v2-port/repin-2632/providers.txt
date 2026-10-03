@@ -1,0 +1,3 @@
+{"instanceId":"codex","driver":"codex","status":"ready","installed":true,"version":"0.160.0","models":["gpt-6.1-sol","gpt-6-astra","gpt-6-sol"]}
+{"instanceId":"claudeAgent","driver":"claudeAgent","status":"ready","installed":true,"version":"2.1.288","models":["claude-opus-5-5","claude-sonnet-5-5","claude-fable-5-1
+{"instanceId":"claude-lhc","driver":"claude-lhc","status":"ready","installed":true,"version":"2.1.288","models":["claude-opus-5-5","claude-sonnet-5-5","claude-fable-5-1"]

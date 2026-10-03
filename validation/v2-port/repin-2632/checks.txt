@@ -1,0 +1,17 @@
+src/claudeLhcSettings.test.ts(7,10): suggestion TS377112: This input is already assignable to the schema's Encoded type. Use `decodeResult` to preserve compile-time type checking instead of discarding the input type through `decodeUnknownResult`. effect(preferTypedSchemaDecoder)
+src/claudeLhcSettings.test.ts(12,27): suggestion TS377112: This input is already assignable to the schema's Encoded type. Use `decodeSync` to preserve compile-time type checking instead of discarding the input type through `decodeUnknownSync`. effect(preferTypedSchemaDecoder)
+CONTRACTS_TSC=0
+[2m Test Files [22m [1m[32m38 passed[39m[22m[90m (38)[39m
+[2m      Tests [22m [1m[32m500 passed[39m[22m[90m (500)[39m
+SERVER_TSC=0
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+[41m[1m FAIL [22m[49m src/provider/acp/AcpSessionRuntime.processTree.test.ts[2m > [22mterminatePosixOwnedProcessTree[2m > [22mpreserves exact argv and strips wrapper-only environment before exec
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m104 passed[39m[22m[2m | [22m[33m3 skipped[39m[90m (108)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m1560 passed[39m[22m[2m | [22m[33m6 skipped[39m[90m (1567)[39m
+WEB_TSC=0
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 1 completed subagents with 'Tests should be isolated.', grouping only multiple agents
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 completed subagents with 'Tests should be isolated.', grouping only multiple agents
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 completed subagents with 'Tests should be isolated.', grouping only multiple agents
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 completed subagents with 'Tests should be isolated.', grouping only multiple agents
+[2m Test Files [22m [1m[32m429 passed[39m[22m[90m (429)[39m
+[2m      Tests [22m [1m[32m5670 passed[39m[22m[90m (5670)[39m

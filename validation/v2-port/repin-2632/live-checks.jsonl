@@ -1,0 +1,12 @@
+{"at":"2026-10-03T14:58:09.845Z","step":"plant","threadId":"447792c3-95f8-491f-858b-97aff6e1d39a","run":"completed","reply":"cobalt meadow 6194"}
+{"at":"2026-10-03T14:58:42.408Z","step":"fill (automatic compaction)","run":"failed","reply":"Prompt is too long"}
+{"at":"2026-10-03T14:58:43.479Z","step":"manual compaction","run":"completed"}
+{"at":"2026-10-03T14:58:46.622Z","step":"recall after compaction","run":"completed","reply":"cobalt meadow 6194","pass":true}
+{"at":"2026-10-03T14:59:20.721Z","step":"LHC service restarted"}
+{"at":"2026-10-03T14:59:25.983Z","step":"recall after restart","run":"completed","reply":"cobalt meadow 6194","pass":true}
+{"at":"2026-10-03T14:59:31.189Z","step":"sidecar killed while streaming","killed":["1842993"],"run":"failed"}
+{"at":"2026-10-03T14:59:36.387Z","step":"recall after the kill (new sidecar)","run":"completed","reply":"cobalt meadow 6194","pass":true}
+{"at":"2026-10-03T14:59:36.423Z","step":"sidecars now","pids":["1843395"]}
+{"at":"2026-10-03T14:59:36.527Z","step":"interrupt","run":"interrupted"}
+{"at":"2026-10-03T14:59:38.619Z","step":"turn after interrupt","run":"completed","reply":"AFTER INTERRUPT"}
+{"at":"2026-10-03T14:59:40.772Z","step":"fork attempt: the child's first turn","child":"9d8cd900-f391-4a23-b3df-94f98d3f796b","run":"failed"}
