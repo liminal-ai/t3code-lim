@@ -64,6 +64,15 @@ Sidecar (`lhc/`)
 - Add the instance in Settings (or `server.updateSettings`, `providerInstanceMutation: create`,
   driver `claude-lhc`).
 
+## Context window
+
+T3's bundled model manifest gives Sonnet (4.6 and 5/5.5) a 200k context window by default, with 1M as
+an option; Opus 5.5 and Fable default to 1M. A thread's `modelSelection` carries the choice
+(`options: [{ id: "contextWindow", value: "1m" }]`), and the sidecar fits the compaction windows to
+it. Settings can only set the new-thread default (`defaultModelSelection`, one instance, environment
+or per project); threads created over the API must pass the option themselves. On the LHC lane the
+default is Claude LHC, Sonnet 5.5, 1M.
+
 ## Known limits
 
 - New compaction windows apply when a session opens: V2 keeps a thread's query open across turns, so
@@ -76,10 +85,6 @@ Sidecar (`lhc/`)
   runner, so the child starts from that native transcript (the first generation, before LHC's
   compactions), not the LHC view. An odd transcript, not data loss or a security issue. Forking
   without switching is refused ("Claude LHC threads can't be forked…").
-- The pinned sidecar (claude-lhc 0.1.1) compacts only at a safe boundary after a tool batch settles.
-  A large parallel batch near the trigger can overflow the model's window first (seen: 88k + five
-  ~24k reads on a 200k model, "Prompt is too long"); the thread recovers with a manual `/compact`.
-  The fix belongs in the sidecar (checking before a batch is sent), not in T3.
 - Two upstream tests fail on lim-builder with or without this patch (environment): an ACP test that
   expects `node` in `/usr/bin`, and a GitManager cross-repo PR test that times out.
 

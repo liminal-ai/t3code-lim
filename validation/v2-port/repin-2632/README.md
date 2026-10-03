@@ -18,10 +18,15 @@
    - manual `/compact`: pass; interrupt: `interrupted`, next turn answers; fork: the child's first turn
      fails with "Claude LHC threads can't be forked".
    - **Automatic compaction, first attempt failed** with "Prompt is too long": after two compacts the
-     model read five fill files in one parallel batch, about 88k + 5 × 24k ≈ 208k, over Sonnet 4.6's
-     200k window, before the batch settled and the sidecar could compact. That's the pinned sidecar
-     (claude-lhc 0.1.1), which compacts only at a safe boundary after a batch, not the re-pin; earlier
-     runs happened to read one file per batch. The thread recovered (manual compact, recall passed).
+     model read five fill files in one parallel batch, about 88k + 5 × 24k ≈ 208k. The cause was
+     configuration: the test thread asked for `claude-sonnet-4-6` with no context-window option, and
+     T3's model manifest defaults Sonnet to 200k. The thread recovered (manual compact, recall passed).
+   - **The same fill on a 1M thread** (`fill-1m.mjs` → `fill-1m.jsonl`, `sidecar-journal-1m.txt`;
+     parallel reads allowed): the sidecar started `claude-sonnet-4-6[1m]`; five compacts at 112-115k,
+     no overflow; recall passed. (The journal's later `model=claude-sonnet-4-6` line is log-only: the
+     id Claude Code reports back never carries the suffix.) The live checks' helper now asks for 1M.
+   - **Settings:** the LHC lane's new-thread default is now Claude LHC, Sonnet 5.5, 1M
+     (`../live/j-set-1m.mjs`, `../live/j-set-1m.txt`).
    - **Automatic compaction, reads one per batch** (`auto-compact-sequential.mjs` →
      `auto-compact-sequential.jsonl`, `sidecar-journal-seq.txt`): five compacts at 112-115k, each at a
      safe boundary; recall passed.

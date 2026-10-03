@@ -38,11 +38,13 @@ export const send = (threadId, text) =>
     createdBy: "user",
     creationSource: "web",
   });
+// Sonnet's context window defaults to 200k in T3's model manifest; the checks ask for 1M explicitly.
 export async function newThread(
   projectId,
   title,
   instanceId = "claude-lhc",
   model = "claude-sonnet-4-6",
+  options = [{ id: "contextWindow", value: "1m" }],
 ) {
   const threadId = randomUUID();
   await api.rpc("orchestration.dispatchCommand", {
@@ -51,7 +53,7 @@ export async function newThread(
     projectId,
     threadId,
     title,
-    modelSelection: { instanceId, model },
+    modelSelection: { instanceId, model, options },
     runtimeMode: "full-access",
     interactionMode: "default",
     branch: null,
