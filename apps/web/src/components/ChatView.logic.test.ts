@@ -1366,6 +1366,59 @@ describe("resolveComposerProviderSelection", () => {
     ])[0]!;
   }
 
+  it("never falls back from a missing or disabled Claude LHC draft to another kind", () => {
+    const request = {
+      candidateInstanceIds: [ProviderInstanceId.make("claude-lhc")],
+      lockedProvider: null,
+      lockedInstanceId: null,
+    };
+    const disabled = resolveComposerProviderSelection({
+      ...request,
+      entries: [entry("claudeAgent"), entry("claude-lhc", "claude-lhc", { enabled: false })],
+    });
+    expect(disabled.selectedProviderEntry).toBeUndefined();
+    expect(disabled.unavailableProviderInstanceId).toBe("claude-lhc");
+
+    const missing = resolveComposerProviderSelection({
+      ...request,
+      entries: [entry("claudeAgent")],
+    });
+    expect(missing.selectedProviderEntry).toBeUndefined();
+    expect(missing.unavailableProviderInstanceId).toBe("claude-lhc");
+
+    // A custom-named instance that's gone (it may have been Claude LHC) falls back to nothing,
+    // not to native Claude.
+    const vanishedCustom = resolveComposerProviderSelection({
+      ...request,
+      candidateInstanceIds: [
+        ProviderInstanceId.make("lhc-work"),
+        ProviderInstanceId.make("claudeAgent"),
+      ],
+      entries: [entry("claudeAgent")],
+    });
+    expect(vanishedCustom.selectedProviderEntry).toBeUndefined();
+    expect(vanishedCustom.unavailableProviderInstanceId).toBe("lhc-work");
+
+    // A configured custom-named LHC instance that is disabled stays on its kind.
+    const disabledCustom = resolveComposerProviderSelection({
+      ...request,
+      candidateInstanceIds: [ProviderInstanceId.make("lhc-work")],
+      entries: [entry("claudeAgent"), entry("claude-lhc", "lhc-work", { enabled: false })],
+    });
+    expect(disabledCustom.selectedProviderEntry).toBeUndefined();
+
+    // A sidecar that cannot run reports an error snapshot; the explicit request stays on it so
+    // the composer shows the reason.
+    const broken = resolveComposerProviderSelection({
+      ...request,
+      entries: [
+        entry("claudeAgent"),
+        entry("claude-lhc", "claude-lhc", { installed: false, status: "error" }),
+      ],
+    });
+    expect(broken.selectedProviderEntry?.instanceId).toBe("claude-lhc");
+  });
+
   function importedThread(instanceId: ProviderInstanceId) {
     return makeThread({
       modelSelection: { instanceId, model: "default" },

@@ -1,0 +1,241 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90m/srv/work/t3code-v2-lhc/apps/web[39m
+
+ [31m❯[39m [30m[42m unit [49m[39m src/components/settings/providerDriverMeta.lhc.test.ts [2m([22m[2m1 test[22m[2m | [22m[31m1 failed[39m[2m)[22m[32m 6[2mms[22m[39m
+   [31m❯[39m Claude LHC driver option [2m(1)[22m
+[31m     [31m×[31m is offered in Settings with ClaudeLhcSettings[39m[32m 4[2mms[22m[39m
+ [31m❯[39m [30m[42m unit [49m[39m src/components/ChatView.logic.test.ts [2m([22m[2m127 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m126 skipped[39m[2m)[22m[32m 9[2mms[22m[39m
+   [2m[90m↓[39m[22m resolveDraftPromotionNavigationTarget [2m(4)[22m
+     [2m[90m↓[39m[22m stays on the draft until the server owns the send
+     [2m[90m↓[39m[22m promotes a persisted send while its worktree is still preparing
+     [2m[90m↓[39m[22m navigates once the run starts or startup stops
+     [2m[90m↓[39m[22m defers while a background submission is pending
+   [2m[90m↓[39m[22m resolveEffectiveInteractionMode [2m(2)[22m
+     [2m[90m↓[39m[22m forces build mode when legacy plan mode is disabled
+     [2m[90m↓[39m[22m uses the saved mode while legacy plan mode is enabled
+   [2m[90m↓[39m[22m resolveThreadMetadataUpdateForNextTurn [2m(2)[22m
+     [2m[90m↓[39m[22m updates a stale local thread branch to the active checkout
+     [2m[90m↓[39m[22m does not write metadata when the model and branch are unchanged
+   [2m[90m↓[39m[22m deriveComposerSendState [2m(4)[22m
+     [2m[90m↓[39m[22m treats expired terminal pills as non-sendable content
+     [2m[90m↓[39m[22m keeps text sendable while excluding expired terminal pills
+     [2m[90m↓[39m[22m treats element contexts as sendable content (no text, no images, no terminals)
+     [2m[90m↓[39m[22m does NOT treat zero element contexts as sendable
+   [2m[90m↓[39m[22m buildExpiredTerminalContextToastCopy [2m(1)[22m
+     [2m[90m↓[39m[22m formats empty and omission guidance
+   [2m[90m↓[39m[22m getStartedThreadModelChangeBlockReason [2m(3)[22m
+     [2m[90m↓[39m[22m allows model changes before a provider session has started
+     [2m[90m↓[39m[22m allows unchanged model selections for restricted providers
+     [2m[90m↓[39m[22m blocks started-session model changes for providers that require a new thread
+   [2m[90m↓[39m[22m resolveSendEnvMode [2m(1)[22m
+     [2m[90m↓[39m[22m keeps worktree mode only for git repositories
+   [2m[90m↓[39m[22m branchMismatchKey [2m(2)[22m
+     [2m[90m↓[39m[22m builds a key from thread id and both branches
+     [2m[90m↓[39m[22m returns null without a thread or mismatch
+   [2m[90m↓[39m[22m shouldShowBranchMismatchBanner [2m(4)[22m
+     [2m[90m↓[39m[22m stays hidden during passive browsing (even though the composer autofocuses)
+     [2m[90m↓[39m[22m shows once the composer has draft content
+     [2m[90m↓[39m[22m stays mounted after the draft clears once shown for the current mismatch
+     [2m[90m↓[39m[22m never shows when dismissed or without a mismatch
+   [2m[90m↓[39m[22m shouldShowPlanFollowUpPrompt [2m(3)[22m
+     [2m[90m↓[39m[22m shows plan actions for a settled actionable plan without attachments
+     [2m[90m↓[39m[22m hides plan actions while the composer has staged attachments
+     [2m[90m↓[39m[22m preserves the existing plan follow-up gates
+   [2m[90m↓[39m[22m session branch mismatch dismissal [2m(1)[22m
+     [2m[90m↓[39m[22m tracks dismissed keys and treats other keys as active
+   [2m[90m↓[39m[22m reconcileMountedTerminalThreadIds [2m(2)[22m
+     [2m[90m↓[39m[22m keeps open threads and makes the active thread most recent
+     [2m[90m↓[39m[22m drops closed threads and enforces the hidden mounted cap
+   [2m[90m↓[39m[22m shouldWriteThreadErrorToCurrentServerThread [2m(1)[22m
+     [2m[90m↓[39m[22m requires the environment, route thread, and target thread to match
+   [2m[90m↓[39m[22m startNewThreadForProject [2m(2)[22m
+     [2m[90m↓[39m[22m starts a thread through the supplied shared handler for the active project
+     [2m[90m↓[39m[22m does nothing when the active project is unavailable
+   [2m[90m↓[39m[22m hasServerAcknowledgedLocalDispatch [2m(5)[22m
+     [2m[90m↓[39m[22m does not acknowledge unchanged server state
+     [2m[90m↓[39m[22m acknowledges a settled newer background turn
+     [2m[90m↓[39m[22m waits for the matching running turn before acknowledging
+     [2m[90m↓[39m[22m acknowledges a steering message projected onto the current running run
+     [2m[90m↓[39m[22m acknowledges pending user interaction and errors immediately
+   [2m[90m↓[39m[22m deriveCommittedServerUserMessageIds [2m(1)[22m
+     [2m[90m↓[39m[22m tracks only committed user turn items, not assistant rows or projection-only messages
+   [2m[90m↓[39m[22m agent browser close confirmation [2m(2)[22m
+     [2m[90m↓[39m[22m only warns for browsers under active agent control
+     [2m[90m↓[39m[22m counts every agent-controlled browser in a bulk close
+   [2m[90m↓[39m[22m floating browser preview [2m(1)[22m
+     [2m[90m↓[39m[22m only hides the duplicate while the same browser is rendered in the panel
+   [2m[90m↓[39m[22m proactive panels [2m(2)[22m
+     [2m[90m↓[39m[22m opens an existing pull request on entry and follows newly observed links
+     [2m[90m↓[39m[22m opens a completed diff on entry or when the observed running turn settles
+   [2m[90m↓[39m[22m artifact template composer insertion [2m(1)[22m
+     [2m[90m↓[39m[22m does not insert an already-present prompt
+   [2m[90m↓[39m[22m draft hero submission transition [2m(4)[22m
+     [2m[90m↓[39m[22m does not dock the composer before a background submission
+     [2m[90m↓[39m[22m leaves the hero layout while a worktree setup card is on the timeline
+     [2m[90m↓[39m[22m keeps the composer in the hero layout until navigation after server promotion
+     [2m[90m↓[39m[22m does not auto-navigate a background submission after server promotion
+   [2m[90m↓[39m[22m resolveThreadSwitchTimeline [2m(11)[22m
+     [2m[90m↓[39m[22m keeps the previous thread's entries while the next thread is loading
+     [2m[90m↓[39m[22m shows the new thread once its detail is ready
+     [2m[90m↓[39m[22m does not invent a timeline on the first open of a thread
+     [2m[90m↓[39m[22m keeps the held thread workspace cwd with the snapshot
+     [2m[90m↓[39m[22m survives a ChatView remount by remembering the last ready timeline
+     [2m[90m↓[39m[22m paints a remembered destination instead of the last-viewed thread
+     [2m[90m↓[39m[22m prefers live entries over a remembered snapshot
+     [2m[90m↓[39m[22m does not keep a remembered snapshot on a resolved empty thread
+     [2m[90m↓[39m[22m does not hold another environment's timeline across a jump
+     [2m[90m↓[39m[22m treats a foreign held timeline as paint-only
+     [2m[90m↓[39m[22m does not remember a timeline that still has handoff blob previews
+   [2m[90m↓[39m[22m shouldReleaseTimelineAnchorForToolActivity [2m(5)[22m
+     [2m[90m↓[39m[22m releases the send anchor for tool activity in the active turn
+     [2m[90m↓[39m[22m keeps the anchor while the user reads history
+     [2m[90m↓[39m[22m ignores tool activity from earlier turns
+     [2m[90m↓[39m[22m ignores thinking and error rows without tool activity
+     [2m[90m↓[39m[22m does nothing without an anchor or running turn
+   [2m[90m↓[39m[22m environment reconnect warning grace [2m(3)[22m
+     [2m[90m↓[39m[22m shows a persistent reconnect after the grace period
+     [2m[90m↓[39m[22m cancels the warning when the connection recovers during the grace period
+     [2m[90m↓[39m[22m does not reuse elapsed grace from another environment
+   [31m❯[39m resolveComposerProviderSelection [2m(21)[22m
+[31m     [31m×[31m never falls back from a missing or disabled Claude LHC draft to another kind[39m[32m 7[2mms[22m[39m
+     [2m[90m↓[39m[22m keeps imported claudeAgent history selectable through its custom instance
+     [2m[90m↓[39m[22m keeps imported codex history selectable through its custom instance
+     [2m[90m↓[39m[22m keeps imported ollama history selectable through its custom instance
+     [2m[90m↓[39m[22m keeps the session driver authoritative over instance and draft selections
+     [2m[90m↓[39m[22m does not move imported history to another driver when its instance is missing
+     [2m[90m↓[39m[22m does not move imported history to another driver when its instance is disabled
+     [2m[90m↓[39m[22m leaves a new draft free to select a different driver
+     [2m[90m↓[39m[22m uses the custom instance's capability instead of the default instance
+     [2m[90m↓[39m[22m uses the fallback provider's plan capability after the draft's instance is disabled
+     [2m[90m↓[39m[22m keeps a signed-out selection instead of silently switching providers
+     [2m[90m↓[39m[22m blocks sends until the selected Antigravity profile is installed
+     [2m[90m↓[39m[22m lets Antigravity check saved credentials when resuming after a restart
+     [2m[90m↓[39m[22m blocks saved model sends until Antigravity loads its account catalog
+     [2m[90m↓[39m[22m blocks an empty Antigravity selection after the catalog has loaded
+     [2m[90m↓[39m[22m blocks a saved model that a ready catalog no longer lists
+     [2m[90m↓[39m[22m allows a saved native model to retry after a provider error without changing it
+     [2m[90m↓[39m[22m keeps existing send behavior for other providers
+     [2m[90m↓[39m[22m does not continue an existing Antigravity thread in another profile after deletion
+     [2m[90m↓[39m[22m does not treat the empty draft placeholder as a provider setup target
+     [2m[90m↓[39m[22m keeps the session's continuation group when another instance was selected
+   [2m[90m↓[39m[22m resolveComposerInteractionMode [2m(4)[22m
+     [2m[90m↓[39m[22m resets a restored plan draft when the selected instance does not support plan mode
+     [2m[90m↓[39m[22m keeps legacy plan behavior for providers that omit the capability
+     [2m[90m↓[39m[22m resets a restored plan draft when the beta setting is off
+     [2m[90m↓[39m[22m disables plan mode until the selected provider is available
+   [2m[90m↓[39m[22m resolveBackgroundDraftWorkspaceOptions [2m(1)[22m
+     [2m[90m↓[39m[22m keeps New worktree selected without reusing the launched worktree
+   [2m[90m↓[39m[22m proactive completed diff guard [2m(9)[22m
+     [2m[90m↓[39m[22m uses change size for automatic diffs: 0 files, +0/-0
+     [2m[90m↓[39m[22m uses change size for automatic diffs: 1 files, +1/-0
+     [2m[90m↓[39m[22m uses change size for automatic diffs: 2 files, +12/-12
+     [2m[90m↓[39m[22m uses change size for automatic diffs: 1 files, +25/-24
+     [2m[90m↓[39m[22m uses change size for automatic diffs: 1 files, +25/-25
+     [2m[90m↓[39m[22m uses change size for automatic diffs: 1 files, +0/-50
+     [2m[90m↓[39m[22m uses change size for automatic diffs: 3 files, +1/-0
+     [2m[90m↓[39m[22m waits for definitive checkpoint and repository state
+     [2m[90m↓[39m[22m keeps an active pull request above a completed turn diff
+   [2m[90m↓[39m[22m shouldRefocusComposerOnWindowFocus [2m(7)[22m
+     [2m[90m↓[39m[22m refocuses when nothing or the body holds focus
+     [2m[90m↓[39m[22m refocuses away from a plain button, such as a pull request tab
+     [2m[90m↓[39m[22m leaves other text fields alone
+     [2m[90m↓[39m[22m leaves a focused IFRAME preview alone
+     [2m[90m↓[39m[22m leaves a focused WEBVIEW preview alone
+     [2m[90m↓[39m[22m leaves a focused terminal alone in the drawer and the right panel
+     [2m[90m↓[39m[22m leaves focus inside a dialog or popup alone
+   [2m[90m↓[39m[22m checkout Git memory [2m(4)[22m
+     [2m[90m↓[39m[22m answers from the last status seen for the same checkout
+     [2m[90m↓[39m[22m does not answer for a checkout it has not seen
+     [2m[90m↓[39m[22m keeps environments apart
+     [2m[90m↓[39m[22m does not confuse an environment id containing the separator with a path
+   [2m[90m↓[39m[22m threadShellHasStarted [2m(3)[22m
+     [2m[90m↓[39m[22m counts a thread that has a user message but no latest turn
+     [2m[90m↓[39m[22m counts a thread with a live runtime and nothing else
+     [2m[90m↓[39m[22m does not count a thread that never sent anything
+   [2m[90m↓[39m[22m follows a changed server PR link without replacing an unrelated open panel
+   [2m[90m↓[39m[22m worktree setup visibility [2m(8)[22m
+     [2m[90m↓[39m[22m keeps setup presentation continuous until the provider handoff
+     [2m[90m↓[39m[22m uses streamed setup progress immediately without reverting to an older held snapshot
+     [2m[90m↓[39m[22m does not keep failed setup in the preparing state
+     [2m[90m↓[39m[22m does not keep cancelled setup in the preparing state
+     [2m[90m↓[39m[22m reads the settled snapshot back from the thread's activities
+     [2m[90m↓[39m[22m shows a running setup and drops a clean one once the turn started
+     [2m[90m↓[39m[22m keeps a failed script, a failed setup, and a cancelled setup visible
+     [2m[90m↓[39m[22m prefers whichever snapshot is newer by sequence
+   [2m[90m↓[39m[22m waitForRevertedMessage [2m(2)[22m
+     [2m[90m↓[39m[22m rejects with the projected reason when the rollback fails for good
+     [2m[90m↓[39m[22m ignores a failure recorded for an earlier rollback
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 2 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m [30m[42m unit [49m[39m src/components/ChatView.logic.test.ts[2m > [22mresolveComposerProviderSelection[2m > [22mnever falls back from a missing or disabled Claude LHC draft to another kind
+[31m[1mAssertionError[22m: expected { instanceId: 'claudeAgent', …(11) } to be undefined[39m
+
+[32m- Expected:[39m
+undefined
+
+[31m+ Received:[39m
+{
+  "accentColor": undefined,
+  "continuationGroupKey": undefined,
+  "displayName": "Claude",
+  "driverKind": "claudeAgent",
+  "enabled": true,
+  "installed": true,
+  "instanceId": "claudeAgent",
+  "isAvailable": true,
+  "isDefault": true,
+  "models": [],
+  "snapshot": {
+    "auth": {
+      "status": "authenticated",
+    },
+    "checkedAt": "2026-03-29T00:00:00.000Z",
+    "driver": "claudeAgent",
+    "enabled": true,
+    "installed": true,
+    "instanceId": "claudeAgent",
+    "models": [],
+    "skills": [],
+    "slashCommands": [],
+    "status": "ready",
+    "version": null,
+  },
+  "status": "ready",
+}
+
+[36m [2m❯[22m src/components/ChatView.logic.test.ts:[2m1355:44[22m[39m
+    [90m1353|[39m       entries: [entry("claudeAgent"), entry("claude-lhc", "claude-lhc"…
+    [90m1354|[39m     });
+    [90m1355|[39m     expect(disabled.selectedProviderEntry).toBeUndefined();
+    [90m   |[39m                                            [31m^[39m
+    [90m1356|[39m     expect(disabled.unavailableProviderInstanceId).toBe("claude-lhc");
+    [90m1357|[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m [30m[42m unit [49m[39m src/components/settings/providerDriverMeta.lhc.test.ts[2m > [22mClaude LHC driver option[2m > [22mis offered in Settings with ClaudeLhcSettings
+[31m[1mAssertionError[22m: expected undefined to be 'Claude LHC' // Object.is equality[39m
+
+[32m- Expected:[39m
+"Claude LHC"
+
+[31m+ Received:[39m
+undefined
+
+[36m [2m❯[22m src/components/settings/providerDriverMeta.lhc.test.ts:[2m10:27[22m[39m
+    [90m  8|[39m   it("is offered in Settings with ClaudeLhcSettings", () => {
+    [90m  9|[39m     const option = getDriverOption(ProviderDriverKind.make("claude-lhc…
+    [90m 10|[39m     expect(option?.label).toBe("Claude LHC");
+    [90m   |[39m                           [31m^[39m
+    [90m 11|[39m     expect(option?.settingsSchema).toBe(ClaudeLhcSettings);
+    [90m 12|[39m   });
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m2 failed[39m[22m[2m | [22m[33m126 skipped[39m[90m (128)[39m
+[2m   Start at [22m 23:24:00
+[2m   Duration [22m 2.35s[2m (transform 61%, import 34%, setup 4%)[22m
+
