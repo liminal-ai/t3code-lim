@@ -186,7 +186,7 @@ describe("ClaudeLhcSidecar", () => {
           settings: { autoCompactWindow: 380_000, showThinkingSummaries: true } as never,
         },
       });
-      const init = (await runtime[Symbol.asyncIterator]().next()).value as {
+      const init = (await runtime[Symbol.asyncIterator]().next()).value as unknown as {
         settings: Record<string, unknown>;
       };
       const expected = fitLhcCompactionToContextWindow({

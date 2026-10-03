@@ -803,27 +803,6 @@ export const claudeAgentSdkQueryRunnerLiveLayer: Layer.Layer<
   Crypto.Crypto | ProviderEventLoggers.ProviderEventLoggers
 > = Layer.effect(ClaudeAgentSdkQueryRunner, makeClaudeAgentSdkQueryRunner());
 
-/**
- * The claude-lhc sidecar turns off Claude Code's own auto-compact and compacts only when context
- * reaches its trigger, so a trigger at or above the model's window lets the context overflow
- * first (the 380k default on a 200k model). Such a trigger drops to 80% of the window, leaving
- * room for one more tool result, and the rebuilt view to at most half of that.
- */
-export function fitLhcCompactionToContextWindow(input: {
-  readonly autoCompactWindow: number;
-  readonly lhcLowerBound: number;
-  readonly contextWindow: number | undefined;
-}): { readonly autoCompactWindow: number; readonly lhcLowerBound: number } {
-  const { autoCompactWindow, lhcLowerBound, contextWindow } = input;
-  if (contextWindow === undefined) return { autoCompactWindow, lhcLowerBound };
-  const maxTrigger = Math.floor(contextWindow * 0.8);
-  if (autoCompactWindow <= maxTrigger) return { autoCompactWindow, lhcLowerBound };
-  return {
-    autoCompactWindow: maxTrigger,
-    lhcLowerBound: Math.min(lhcLowerBound, Math.floor(maxTrigger / 2)),
-  };
-}
-
 export function makeClaudeQueryOptions(input: {
   readonly modelSelection: ModelSelection;
   readonly nativeThreadId: string;
@@ -837,8 +816,7 @@ export function makeClaudeQueryOptions(input: {
    * state.sqlite stay ungranted.
    */
   readonly attachmentsDir?: string;
-  /** A Claude-LHC instance's settings also carry `lhcLowerBound` (ClaudeLhcSettings). */
-  readonly settings?: ClaudeSettings & { readonly lhcLowerBound?: string };
+  readonly settings?: ClaudeSettings;
   readonly sdkSettings?: string | ClaudeSdkSettings;
   readonly environment?: NodeJS.ProcessEnv;
   readonly mcpServers?: ClaudeQueryOptions["mcpServers"];
@@ -877,24 +855,12 @@ export function makeClaudeQueryOptions(input: {
       : typeof input.sdkSettings === "object" && input.sdkSettings !== null
         ? ({ ...input.sdkSettings, ...selectionSettings } as ClaudeSdkSettings)
         : selectionSettings;
-  // Claude-LHC: the sidecar needs both windows, fitted to the selected model's window.
-  const lhcWindows =
-    input.settings?.autoCompactWindow && input.settings.lhcLowerBound
-      ? fitLhcCompactionToContextWindow({
-          autoCompactWindow: Number(input.settings.autoCompactWindow),
-          lhcLowerBound: Number(input.settings.lhcLowerBound),
-          contextWindow: resolveClaudeCatalogContextWindowTokens(
-            BUNDLED_CLAUDE_MODEL_CATALOG,
-            input.modelSelection,
-          ),
-        })
-      : undefined;
   const effectiveQuerySettings =
     input.settings?.autoCompactWindow === undefined || input.settings.autoCompactWindow.length === 0
       ? querySettings
       : ({
           ...(typeof querySettings === "object" && querySettings !== null ? querySettings : {}),
-          ...(lhcWindows ?? { autoCompactWindow: Number(input.settings.autoCompactWindow) }),
+          autoCompactWindow: Number(input.settings.autoCompactWindow),
         } as ClaudeSdkSettings);
   const options: ClaudeAgentSdkQueryOptions = {
     model: compiledSelection.apiModelId,

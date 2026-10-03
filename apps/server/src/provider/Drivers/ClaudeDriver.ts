@@ -121,6 +121,7 @@ export interface ClaudeDriverSpec<Settings extends ClaudeSettings> {
   readonly createQuery?: (input: {
     readonly environment: NodeJS.ProcessEnv;
     readonly baseDir: string;
+    readonly config: Settings;
   }) => ClaudeCreateQuery;
   /** Set when sessions of this kind can't be forked; a fork fails with it. */
   readonly forkRefusal?: string;
@@ -225,7 +226,7 @@ export const makeClaudeDriver = <Settings extends ClaudeSettings>(
           : yield* makeClaudeAgentSdkQueryRunner({
               ...(spec.createQuery === undefined
                 ? {}
-                : { createQuery: spec.createQuery({ environment: processEnv, baseDir }) }),
+                : { createQuery: spec.createQuery({ environment: processEnv, baseDir, config }) }),
               ...(spec.forkRefusal === undefined ? {} : { forkRefusal: spec.forkRefusal }),
             });
       const adapterWithRunner: typeof adapterEffect =

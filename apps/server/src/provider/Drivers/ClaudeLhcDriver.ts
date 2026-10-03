@@ -28,7 +28,12 @@ export const ClaudeLhcDriver = makeClaudeDriver({
   driverKind: CLAUDE_LHC_DRIVER_KIND,
   displayName: "Claude LHC",
   configSchema: ClaudeLhcSettings,
-  createQuery: makeClaudeLhcCreateQuery,
+  createQuery: ({ environment, baseDir, config }) =>
+    makeClaudeLhcCreateQuery({
+      environment,
+      baseDir,
+      windows: { autoCompactWindow: config.autoCompactWindow, lhcLowerBound: config.lhcLowerBound },
+    }),
   forkRefusal: CLAUDE_LHC_FORK_REFUSAL,
   unavailableReason: claudeLhcSidecarUnavailableReason,
   continuationGroupKey: claudeLhcContinuationGroupKey,

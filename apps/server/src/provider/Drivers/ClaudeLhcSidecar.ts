@@ -41,6 +41,12 @@ import * as NodePath from "node:path";
 import * as NodeReadline from "node:readline";
 
 import sidecarPin from "../../../../../lhc/sidecar.json" with { type: "json" };
+import { ProviderInstanceId } from "@t3tools/contracts";
+
+import {
+  BUNDLED_CLAUDE_MODEL_CATALOG,
+  resolveClaudeCatalogContextWindowTokens,
+} from "../ClaudeModelCatalog.ts";
 
 import type {
   ClaudeCreateQuery as CreateQuery,
@@ -231,6 +237,56 @@ export interface ClaudeLhcSidecarOptions {
   readonly baseDir: string;
   /** Defaults to `lhc/sidecar.json`. */
   readonly pin?: SidecarPin;
+  /** The instance's compaction windows (ClaudeLhcSettings); the sidecar requires both. */
+  readonly windows?: { readonly autoCompactWindow: string; readonly lhcLowerBound: string };
+}
+
+/**
+ * The claude-lhc sidecar turns off Claude Code's own auto-compact and compacts only when context
+ * reaches its trigger, so a trigger at or above the model's window lets the context overflow
+ * first (the 380k default on a 200k model). Such a trigger drops to 80% of the window, leaving
+ * room for one more tool result, and the rebuilt view to at most half of that.
+ */
+export function fitLhcCompactionToContextWindow(input: {
+  readonly autoCompactWindow: number;
+  readonly lhcLowerBound: number;
+  readonly contextWindow: number | undefined;
+}): { readonly autoCompactWindow: number; readonly lhcLowerBound: number } {
+  const { autoCompactWindow, lhcLowerBound, contextWindow } = input;
+  if (contextWindow === undefined) return { autoCompactWindow, lhcLowerBound };
+  const maxTrigger = Math.floor(contextWindow * 0.8);
+  if (autoCompactWindow <= maxTrigger) return { autoCompactWindow, lhcLowerBound };
+  return {
+    autoCompactWindow: maxTrigger,
+    lhcLowerBound: Math.min(lhcLowerBound, Math.floor(maxTrigger / 2)),
+  };
+}
+
+/** The query's settings with the instance's two windows, fitted to the query's model. */
+function withLhcWindows(
+  options: Parameters<CreateQuery>[0]["options"],
+  windows: ClaudeLhcSidecarOptions["windows"],
+): Parameters<CreateQuery>[0]["options"] {
+  if (windows === undefined) return options;
+  // The API model id carries a "[1m]" suffix when the 1M window is selected.
+  const model = typeof options.model === "string" ? options.model : "";
+  const contextWindow = model.endsWith("[1m]")
+    ? 1_000_000
+    : resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {
+        instanceId: ProviderInstanceId.make("claude-lhc"),
+        model,
+      });
+  const fitted = fitLhcCompactionToContextWindow({
+    autoCompactWindow: Number(windows.autoCompactWindow),
+    lhcLowerBound: Number(windows.lhcLowerBound),
+    contextWindow,
+  });
+  const settings =
+    typeof options.settings === "object" && options.settings !== null ? options.settings : {};
+  return {
+    ...options,
+    settings: { ...settings, ...fitted } as NonNullable<typeof options.settings>,
+  };
 }
 
 export function makeClaudeLhcCreateQuery(sidecar: ClaudeLhcSidecarOptions): CreateQuery {
@@ -412,7 +468,7 @@ function startSidecarQuery(
       send({ type: "req", id, method, params });
     });
 
-  send({ type: "start", options: toWireOptions(input.options) });
+  send({ type: "start", options: toWireOptions(withLhcWindows(input.options, sidecar.windows)) });
 
   void (async () => {
     try {
