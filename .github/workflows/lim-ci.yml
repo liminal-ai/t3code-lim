@@ -1,0 +1,28 @@
+name: Liminal checks
+on:
+  pull_request:
+  push:
+    branches: [main, "lim/**"]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "24.18.0"
+          run-install: false
+      - run: vp install --frozen-lockfile --filter=t3... --filter=@t3tools/desktop... --filter=@t3tools/scripts...
+      - run: vp run --filter t3 --filter @t3tools/desktop typecheck
+      - name: Provider and packaging regressions
+        run: vp test run apps/server/src/provider/Drivers/ClaudeLhcSidecar.test.ts apps/server/src/provider/Drivers/ClaudeLhcDriver.test.ts apps/desktop/src/backend/DesktopBackendConfiguration.test.ts scripts/build-desktop-artifact.test.ts

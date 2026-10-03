@@ -1,3 +1,16 @@
+# T3 Code Lim — Liminal fork
+
+This is Liminal's fork of [T3 Code](https://github.com/pingdotgg/t3code), based on **v0.0.46-nightly.20261003.2632**.
+
+- Adds the **Claude-LHC provider** alongside upstream providers.
+- Ships versioned server/web and Electron builds for Linux x64, macOS arm64, Windows arm64 and Windows x64.
+- Keeps comms/control-plane integration outside T3, through its API.
+- Preserves upstream Git history; upstream updates arrive as reviewed merge PRs.
+
+See [fork documentation](fork/README.md) for differences, releases, upstream updates and deployment. Download **this fork** from [Liminal releases](https://github.com/liminal-ai/t3code-lim/releases); the upstream installation instructions below install upstream T3 instead.
+
+---
+
 # T3 Code
 
 T3 Code is an "agent harness control surface". It enables control of the agents on your machine with a best-in-class mobile app ([iOS](https://apps.apple.com/us/app/t3-code-remote-claude-more/id6787819824), [Android](https://play.google.com/store/apps/details?id=com.t3tools.t3code)), [web app](https://app.t3.codes) and [Electron-based desktop app](https://t3.codes).

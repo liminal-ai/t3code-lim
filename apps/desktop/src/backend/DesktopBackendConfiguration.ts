@@ -1,4 +1,5 @@
 import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
 
 import { parsePersistedServerObservabilitySettings } from "@t3tools/shared/serverSettings";
 import * as Context from "effect/Context";
@@ -584,6 +585,18 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
       env: {
         ...backendChildEnvPatch(),
         ELECTRON_RUN_AS_NODE: "1",
+        ...(environment.isPackaged
+          ? {
+              CLAUDE_LHC_SIDECAR: NodePath.join(
+                environment.resourcesPath,
+                "claude-lhc",
+                "node_modules",
+                "claude-lhc",
+                "dist",
+                "sidecar.js",
+              ),
+            }
+          : {}),
       },
       // Primary wants process.env (PATH, dev-runner's T3CODE_HOME, etc.).
       extendEnv: true,

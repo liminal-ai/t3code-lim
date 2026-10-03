@@ -1,0 +1,112 @@
+name: Liminal release
+on:
+  push:
+    tags: ["v*-lim.*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing Liminal release tag
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: lim-release-${{ inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { os: ubuntu-24.04, platform: linux, arch: x64, target: AppImage }
+          - { os: macos-15, platform: mac, arch: arm64, target: dmg }
+          - { os: windows-2025, platform: win, arch: x64, target: nsis }
+          - { os: windows-11-arm, platform: win, arch: arm64, target: nsis }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 90
+    defaults:
+      run:
+        shell: bash
+    env:
+      NODE_OPTIONS: --max-old-space-size=5120
+      T3CODE_DESKTOP_UPDATE_REPOSITORY: liminal-ai/t3code-lim
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+          persist-credentials: false
+          sparse-checkout: |
+            /*
+            !/.repos/
+          sparse-checkout-cone-mode: false
+      - name: Validate release identity
+        env:
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          node --input-type=module -e 'import fs from "node:fs"; const p=JSON.parse(fs.readFileSync("fork/upstream.json")); const expected=p.tag+"-lim."+p.patchRevision; if(process.env.TAG!==expected) throw Error("Expected "+expected); fs.appendFileSync(process.env.GITHUB_ENV,"VERSION="+expected.slice(1)+"\n");'
+      - uses: voidzero-dev/setup-vp@v1
+        with:
+          node-version: "24.18.0"
+          cache: true
+          run-install: false
+      - name: Verify native runner
+        run: node -e 'if(process.arch !== "${{ matrix.arch }}") throw Error("Wrong runner architecture")'
+      - name: Linux build libraries
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libsecret-1-dev pkg-config imagemagick
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Windows Spectre libraries
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $vswhere = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe"
+          $installPath = & $vswhere -products * -latest -property installationPath
+          $setup = "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\setup.exe"
+          $p = Start-Process -FilePath $setup -ArgumentList "modify", "--installPath", "`"$installPath`"", "--add", "Microsoft.VisualStudio.Component.VC.Runtimes.${{ matrix.arch == 'arm64' && 'ARM64' || 'x86.x64' }}.Spectre", "--quiet", "--norestart" -Wait -PassThru
+          if ($p.ExitCode -notin @(0,3010)) { exit $p.ExitCode }
+      - name: Install
+        run: vp install --frozen-lockfile --filter=t3... --filter=@t3tools/web... --filter=@t3tools/desktop... --filter=@t3tools/scripts...
+      - name: Stage pinned LHC runtime
+        run: node scripts/lim-stage-sidecar.mjs
+      - name: Build
+        run: |
+          node scripts/update-release-package-versions.ts "$VERSION"
+          vp run build:desktop
+      - name: Package and smoke-test server plus web
+        run: |
+          node scripts/lim-package-server.ts "$VERSION"
+          node scripts/lim-smoke-server.mjs release-lim/*
+      - name: Package Electron
+        run: vp run dist:desktop:artifact --platform '${{ matrix.platform }}' --arch '${{ matrix.arch }}' --target '${{ matrix.target }}' --build-version "$VERSION" --skip-build --verbose
+      - name: Collect Electron installers
+        run: |
+          node --input-type=module -e 'import fs from "node:fs"; const files=fs.readdirSync("release").filter(x=>/\.(dmg|exe|AppImage|zip|yml|blockmap)$/.test(x)); if(!files.some(x=>/\.(dmg|exe|AppImage)$/.test(x))) throw Error("No installer"); for(const f of files) fs.copyFile("release/"+f,"release-lim/"+f);'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: lim-${{ matrix.platform }}-${{ matrix.arch }}
+          path: release-lim/*
+          if-no-files-found: error
+          retention-days: 14
+  publish:
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: lim-*
+          path: assets
+          merge-multiple: true
+      - name: Publish complete release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ inputs.tag || github.ref_name }}
+        run: |
+          cd assets
+          sha256sum * > SHA256SUMS
+          printf 'Based on upstream **%s**.\n\nIncludes server/web archives with bundled Node and Claude-LHC, and Electron installers for Linux x64, macOS arm64, Windows x64 and Windows arm64.\n\nDesktop installers are unsigned. Windows desktop uses the native backend; no WSL runtime is embedded.\n\nSee fork/README.md for installation and deployment.\n' "${TAG%-lim.*}" > ../notes.md
+          gh release create "$TAG" --verify-tag --title "T3 Code Lim $TAG" --prerelease --notes-file ../notes.md *
