@@ -52,19 +52,23 @@ await fs.writeFile(
   ) + "\n",
 );
 await fs.writeFile(
-  path.join(dest, "t3.mjs"),
-  `import path from 'node:path';\nimport {fileURLToPath, pathToFileURL} from 'node:url';\nconst root = path.dirname(fileURLToPath(import.meta.url));\nprocess.env.CLAUDE_LHC_SIDECAR = path.join(root,'lhc/node_modules/claude-lhc/dist/sidecar.js');\nprocess.argv[1] = path.join(root,'dist/bin.mjs');\nawait import(pathToFileURL(process.argv[1]).href);\n`,
+  path.join(dest, "lhc-env.mjs"),
+  `import path from 'node:path';
+import {fileURLToPath} from 'node:url';
+const root = path.dirname(fileURLToPath(import.meta.url));
+process.env.CLAUDE_LHC_SIDECAR = path.join(root,'lhc/node_modules/claude-lhc/dist/sidecar.js');
+`,
 );
 if (platform === "win") {
   await fs.writeFile(
     path.join(dest, "t3.cmd"),
-    '@echo off\r\n"%~dp0runtime\\node.exe" "%~dp0t3.mjs" %*\r\n',
+    '@echo off\r\n"%~dp0runtime\\node.exe" --import "%~dp0lhc-env.mjs" "%~dp0dist\\bin.mjs" %*\r\n',
   );
 } else {
   await fs.chmod(path.join(dest, "runtime/node"), 0o755);
   await fs.writeFile(
     path.join(dest, "t3"),
-    '#!/bin/sh\nroot=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$root/runtime/node" "$root/t3.mjs" "$@"\n',
+    '#!/bin/sh\nroot=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$root/runtime/node" --import "$root/lhc-env.mjs" "$root/dist/bin.mjs" "$@"\n',
     { mode: 0o755 },
   );
 }

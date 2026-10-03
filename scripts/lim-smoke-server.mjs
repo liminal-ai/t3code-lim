@@ -12,9 +12,13 @@ try {
   const [name] = await readdir(temp);
   const root = path.join(temp, name);
   const node = path.join(root, "runtime", process.platform === "win32" ? "node.exe" : "node");
-  const launcher = path.join(root, "t3.mjs");
+  const launcher = path.join(root, "dist/bin.mjs");
+  const preload = path.join(root, "lhc-env.mjs");
   const meta = JSON.parse(await readFile(path.join(root, "release.json"), "utf8"));
-  const output = execFileSync(node, [launcher, "--version"], { cwd: temp, encoding: "utf8" });
+  const output = execFileSync(node, ["--import", preload, launcher, "--version"], {
+    cwd: temp,
+    encoding: "utf8",
+  });
   if (!output.includes(meta.version)) throw new Error(`Version mismatch: ${output}`);
   const probe = net.createServer();
   await new Promise((resolve) => probe.listen(0, "127.0.0.1", resolve));
@@ -23,6 +27,8 @@ try {
   child = spawn(
     node,
     [
+      "--import",
+      preload,
       launcher,
       "serve",
       "--host",
