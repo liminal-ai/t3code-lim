@@ -1,0 +1,34 @@
+[claude-lhc:492550] [claude-lhc] 03:16:37.944 segment: canonical turn closed at 24358 tokens (threshold 12000) after toolu_01LeJp78e5JEwByZaUNoksui
+[claude-lhc:492550] [claude-lhc] 03:16:41.426 segment: canonical turn closed at 23645 tokens (threshold 12000) after toolu_01Gd8ZFwViRav5SynTFjebwP
+[claude-lhc:492550] [claude-lhc] 03:16:45.563 segment: canonical turn closed at 23617 tokens (threshold 12000) after toolu_012TYuU8qxbMk2bjAe7quJsN
+[claude-lhc:492550] [claude-lhc] 03:16:48.737 segment: canonical turn closed at 23720 tokens (threshold 12000) after toolu_018LC7GcYn27c9cuQhVuuMNs
+[claude-lhc:492550] [claude-lhc] 03:16:51.738 compact (auto) due mid-turn; stopping generation 75060f08-563f-4b27-b84d-f536efed4414 at the safe boundary after PostToolUse Read toolu_017wmHzy6hc6wgG8UeD7wMAH (batch of 1 settled)
+[claude-lhc:492550] [claude-lhc] 03:16:51.760 wire after stop: user
+[claude-lhc:492550] [claude-lhc] 03:16:51.873 wire after stop: result/success terminal=hook_stopped
+[claude-lhc:492550] [claude-lhc] [lhc compact:auto] provider context 162203 tokens; rebuilt view 25194 tokens (target 80000); compact point 17, covered from 1; degraded 0, gaps 0; bands {"brief":{"entries":0,"tokens":0},"detailed":{"entries":0,"tokens":0},"smooth":{"entries":5,"tokens":1489}}; family claude-2025 (model)
+[claude-lhc:492550] [claude-lhc] generation e4a04ba8-9d7e-4c69-a6d4-787dcfc3b860: 4 projected lines from 4 served entries at /home/leemoore/.claude/projects/-srv-work-t3code-v2-baseline-lhc-fixture-lhc-v2-checks/e4a04ba8-9d7e-4c69-a6d4-787dcfc3b860.jsonl
+[claude-lhc:492550] [claude-lhc] 03:16:52.300 mid-turn compact (auto) swapped 75060f08-563f-4b27-b84d-f536efed4414 → e4a04ba8-9d7e-4c69-a6d4-787dcfc3b860; rebuild took 427 ms; continuing the turn there
+[claude-lhc:492550] [claude-lhc] 03:16:52.581 swap complete: first message (system/session_title_changed) of generation e4a04ba8-9d7e-4c69-a6d4-787dcfc3b860 844 ms after the hook stop
+[claude-lhc:492550] [claude-lhc] 03:16:57.852 segment: canonical turn closed at 23996 tokens (threshold 12000) after toolu_01DjGU2EDGqXaPDwstqRfxeF
+[claude-lhc:492550] [claude-lhc] 03:17:01.097 segment: canonical turn closed at 23684 tokens (threshold 12000) after toolu_018pfTjSbksANtdadueVyGoc
+[claude-lhc:492550] [claude-lhc] 03:17:04.284 segment: canonical turn closed at 23691 tokens (threshold 12000) after toolu_011G62XpNtZin98wgLMrBot7
+[claude-lhc:492550] [claude-lhc] 03:17:07.251 compact (auto) due mid-turn; stopping generation e4a04ba8-9d7e-4c69-a6d4-787dcfc3b860 at the safe boundary after PostToolUse Read toolu_01MvL4DTD6c43x7sRAB5sdTC (batch of 1 settled)
+[claude-lhc:492550] [claude-lhc] 03:17:07.258 wire after stop: user
+[claude-lhc:492550] [claude-lhc] 03:17:07.348 wire after stop: result/success terminal=hook_stopped
+[claude-lhc:492550] [claude-lhc] [lhc compact:auto] provider context 163459 tokens; rebuilt view 26367 tokens (target 80000); compact point 32, covered from 1; degraded 0, gaps 0; bands {"brief":{"entries":0,"tokens":0},"detailed":{"entries":0,"tokens":0},"smooth":{"entries":9,"tokens":2725}}; family claude-2025 (model)
+[claude-lhc:492550] [claude-lhc] generation bf15d10d-f08d-4216-bb51-2967a38a4ed8: 4 projected lines from 4 served entries at /home/leemoore/.claude/projects/-srv-work-t3code-v2-baseline-lhc-fixture-lhc-v2-checks/bf15d10d-f08d-4216-bb51-2967a38a4ed8.jsonl
+[claude-lhc:492550] [claude-lhc] 03:17:07.807 mid-turn compact (auto) swapped e4a04ba8-9d7e-4c69-a6d4-787dcfc3b860 → bf15d10d-f08d-4216-bb51-2967a38a4ed8; rebuild took 459 ms; continuing the turn there
+[claude-lhc:492550] [claude-lhc] 03:17:08.133 swap complete: first message (system/session_title_changed) of generation bf15d10d-f08d-4216-bb51-2967a38a4ed8 882 ms after the hook stop
+[claude-lhc:492550] [claude-lhc] 03:17:13.208 segment: canonical turn closed at 23926 tokens (threshold 12000) after toolu_01VpXXy9W8Ti1jv7MQ9VSKAo
+[claude-lhc:492550] [claude-lhc] 03:17:16.390 segment: canonical turn closed at 23606 tokens (threshold 12000) after toolu_01CUqha3Vbdfc78oJuEgr3Mx
+[claude-lhc:492550] [claude-lhc] 03:17:19.443 segment: canonical turn closed at 23707 tokens (threshold 12000) after toolu_01WaD7RnwYkEoMPHnJxpHwFf
+[claude-lhc:492550] [claude-lhc] 03:17:23.071 compact (auto) due mid-turn; stopping generation bf15d10d-f08d-4216-bb51-2967a38a4ed8 at the safe boundary after PostToolUse Read toolu_011mDHc8vTJ7mqWgc3MbQR5A (batch of 1 settled)
+[claude-lhc:492550] [claude-lhc] 03:17:23.099 wire after stop: user
+[claude-lhc:492550] [claude-lhc] 03:17:23.204 wire after stop: result/success terminal=hook_stopped
+[claude-lhc:492550] [claude-lhc] [lhc compact:auto] provider context 164875 tokens; rebuilt view 27708 tokens (target 80000); compact point 47, covered from 1; degraded 0, gaps 0; bands {"brief":{"entries":0,"tokens":0},"detailed":{"entries":0,"tokens":0},"smooth":{"entries":13,"tokens":3966}}; family claude-2025 (model)
+[claude-lhc:492550] [claude-lhc] generation be3edad0-c060-46c5-a26b-3c1eb12ebfb7: 4 projected lines from 4 served entries at /home/leemoore/.claude/projects/-srv-work-t3code-v2-baseline-lhc-fixture-lhc-v2-checks/be3edad0-c060-46c5-a26b-3c1eb12ebfb7.jsonl
+[claude-lhc:492550] [claude-lhc] 03:17:23.645 mid-turn compact (auto) swapped bf15d10d-f08d-4216-bb51-2967a38a4ed8 → be3edad0-c060-46c5-a26b-3c1eb12ebfb7; rebuild took 441 ms; continuing the turn there
+[claude-lhc:492550] [claude-lhc] 03:17:23.943 swap complete: first message (system/session_title_changed) of generation be3edad0-c060-46c5-a26b-3c1eb12ebfb7 872 ms after the hook stop
+[claude-lhc:492550] [claude-lhc] 03:17:27.780 segment: canonical turn closed at 23895 tokens (threshold 12000) after toolu_015Xn9P11GdX8PCebWXCQs44
+[claude-lhc:492550] [claude-lhc] [lhc compact:manual] provider context 114904 tokens; rebuilt view 28129 tokens (target 80000); compact point 50, covered from 1; degraded 0, gaps 0; bands {"brief":{"entries":0,"tokens":0},"detailed":{"entries":0,"tokens":0},"smooth":{"entries":14,"tokens":4230}}; family claude-2025 (model)
+[claude-lhc:492550] [claude-lhc] generation 4c6091ea-96e6-47fe-b8a1-6acc8ba8977d: 8 projected lines from 7 served entries at /home/leemoore/.claude/projects/-srv-work-t3code-v2-baseline-lhc-fixture-lhc-v2-checks/4c6091ea-96e6-47fe-b8a1-6acc8ba8977d.jsonl

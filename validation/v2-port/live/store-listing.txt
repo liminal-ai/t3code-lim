@@ -1,0 +1,5 @@
+total 2572
+drwx------ 2 leemoore leemoore    4096 Oct  2 23:20 .
+drwx------ 3 leemoore leemoore    4096 Oct  2 23:19 ..
+-rw------- 1 leemoore leemoore 2621440 Oct  2 23:20 a31ec84d-5890-45ad-9407-626b759fe880.sqlite
+2.6M	/srv/work/t3code-v2-baseline/lhc/state-lhc

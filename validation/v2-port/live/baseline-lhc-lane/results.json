@@ -1,0 +1,60 @@
+{
+  "lane": "lhc",
+  "startedAt": "2026-10-03T03:21:06.703Z",
+  "checks": [
+    {
+      "name": "provider",
+      "id": "claudeAgent",
+      "version": "2.1.288",
+      "status": "ready"
+    },
+    {
+      "name": "provider",
+      "id": "codex",
+      "version": "0.160.0",
+      "status": "ready"
+    },
+    {
+      "name": "native-turn",
+      "provider": "claudeAgent",
+      "threadId": "f9f40706-0d9b-4108-bc79-10bdae27064a",
+      "status": "passed"
+    },
+    {
+      "name": "native-turn",
+      "provider": "codex",
+      "threadId": "f2a72574-7675-41d2-8dfe-bfae2d16f61b",
+      "status": "passed"
+    },
+    {
+      "name": "service-restarted",
+      "status": "online"
+    },
+    {
+      "name": "rpc-reconnected",
+      "status": "connected"
+    },
+    {
+      "name": "restart-recall",
+      "provider": "claudeAgent",
+      "status": "passed"
+    },
+    {
+      "name": "restart-recall",
+      "provider": "codex",
+      "status": "passed"
+    },
+    {
+      "name": "fork-context-and-isolation",
+      "status": "passed",
+      "child": "36bdd66b-d2a1-453b-8a41-14c6662bb4e5"
+    },
+    {
+      "name": "interrupt",
+      "status": "passed",
+      "runId": "run:thread:f9f40706-0d9b-4108-bc79-10bdae27064a:ordinal:3"
+    }
+  ],
+  "finishedAt": "2026-10-03T03:22:00.271Z",
+  "passed": true
+}

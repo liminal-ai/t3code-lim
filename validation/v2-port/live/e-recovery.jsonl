@@ -1,0 +1,6 @@
+{"at":"2026-10-03T03:18:45.121Z","step":"sidecar killed mid-turn","runId":"run:thread:722e5eaf-ff46-4d87-9cfc-cd0e06de075c:ordinal:6","killed":["499259"]}
+{"at":"2026-10-03T03:18:45.189Z","step":"run after kill","status":"completed","error":null}
+{"at":"2026-10-03T03:18:49.496Z","step":"next turn after kill","status":"completed","reply":"amber lantern 3071","pass":true,"newSidecar":["500039"]}
+{"at":"2026-10-03T03:18:49.616Z","step":"interrupt","status":"interrupted"}
+{"at":"2026-10-03T03:18:51.773Z","step":"turn after interrupt","status":"completed","reply":"AFTER INTERRUPT"}
+{"at":"2026-10-03T03:18:56.811Z","step":"fork attempt","dispatched":{"sequence":346},"child":{"runs":[],"messages":0,"state":null}}
