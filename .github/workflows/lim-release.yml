@@ -82,7 +82,7 @@ jobs:
         run: vp run dist:desktop:artifact --platform '${{ matrix.platform }}' --arch '${{ matrix.arch }}' --target '${{ matrix.target }}' --build-version "$VERSION" --skip-build --verbose
       - name: Collect Electron installers
         run: |
-          node --input-type=module -e 'import fs from "node:fs"; const files=fs.readdirSync("release").filter(x=>/\.(dmg|exe|AppImage|zip|yml|blockmap)$/.test(x)); if(!files.some(x=>/\.(dmg|exe|AppImage)$/.test(x))) throw Error("No installer"); for(const f of files) fs.copyFile("release/"+f,"release-lim/"+f);'
+          node --input-type=module -e 'import fs from "node:fs"; const files=fs.readdirSync("release").filter(x=>/\.(dmg|exe|AppImage|zip)$/.test(x)); if(!files.some(x=>/\.(dmg|exe|AppImage)$/.test(x))) throw Error("No installer"); for(const f of files) fs.copyFile("release/"+f,"release-lim/"+f);'
       - uses: actions/upload-artifact@v4
         with:
           name: lim-${{ matrix.platform }}-${{ matrix.arch }}

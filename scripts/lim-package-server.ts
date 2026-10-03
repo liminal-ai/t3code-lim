@@ -28,6 +28,19 @@ await Effect.runPromise(
   ),
 );
 await fs.cp("apps/server/dist", path.join(dest, "dist"), { recursive: true });
+execFileSync(
+  "cargo",
+  ["build", "--locked", "--release", "--manifest-path", "native/resource-monitor/Cargo.toml"],
+  { stdio: "inherit" },
+);
+const monitorName = platform === "win" ? "t3-resource-monitor.exe" : "t3-resource-monitor";
+const monitorDir = path.join(dest, "dist/resource-monitor", `${process.platform}-${arch}`);
+await fs.mkdir(monitorDir, { recursive: true });
+await fs.copyFile(
+  path.join("native/resource-monitor/target/release", monitorName),
+  path.join(monitorDir, monitorName),
+);
+
 await fs.cp("lhc/.sidecar", path.join(dest, "lhc"), { recursive: true, dereference: true });
 await fs.mkdir(path.join(dest, "runtime"));
 await fs.copyFile(
