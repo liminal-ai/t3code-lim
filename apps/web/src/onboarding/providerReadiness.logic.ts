@@ -4,6 +4,7 @@ import {
   type ExecutionEnvironmentPlatformOs,
   type ServerProvider,
   type ServerSettings,
+  isClaudeDriverKind,
 } from "@t3tools/contracts";
 import * as Option from "effect/Option";
 import * as Schema from "effect/Schema";
@@ -111,7 +112,7 @@ export function resolveOnboardingProviderLoginCommand(
 ): string {
   const instance = settings.providerInstances[provider.instanceId];
 
-  if (provider.driver === "claudeAgent") {
+  if (isClaudeDriverKind(provider.driver)) {
     const config = decodeClaudeSettings(
       instance ? (instance.config ?? {}) : settings.providers.claudeAgent,
     );

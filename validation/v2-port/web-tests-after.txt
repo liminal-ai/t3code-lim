@@ -1,0 +1,1877 @@
+TSC_EXIT=0
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90m/srv/work/t3code-v2-lhc/apps/web[39m
+
+ [32m✓[39m [30m[42m unit [49m[39m src/themePalette.test.ts [2m([22m[2m34 tests[22m[2m)[22m[32m 96[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/terminal/ghostty/runtimeAbi.test.ts [2m([22m[2m9 tests[22m[2m)[22m[33m 696[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestList.logic.test.ts [2m([22m[2m126 tests[22m[2m)[22m[32m 72[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestDetail.logic.test.ts [2m([22m[2m125 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/rightPanelStore.test.ts [2m([22m[2m73 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ProviderUpdateLaunchNotification.logic.test.ts [2m([22m[2m46 tests[22m[2m)[22m[32m 29[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/keybindings.test.ts [2m([22m[2m133 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/GitActionsControl.logic.test.ts [2m([22m[2m68 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/session-logic.test.ts [2m([22m[2m44 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/composerDraftStore.test.ts [2m([22m[2m144 tests[22m[2m)[22m[32m 114[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/modelSelection.test.ts [2m([22m[2m41 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/terminal/ghostty/surface.test.ts [2m([22m[2m54 tests[22m[2m)[22m[32m 166[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/MessagesTimeline.logic.test.ts [2m([22m[2m140 tests[22m[2m)[22m[32m 201[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/Sidebar.logic.test.ts [2m([22m[2m140 tests[22m[2m)[22m[32m 171[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/attachmentUploadQueue.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/BranchToolbar.logic.test.ts [2m([22m[2m76 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/AssistantCitationSource.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/Sidebar.drag.test.ts [2m([22m[2m53 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/composerContextRecords.test.ts [2m([22m[2m30 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/browserRecording.test.ts [2m([22m[2m31 tests[22m[2m)[22m[33m 963[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/composer-logic.test.ts [2m([22m[2m84 tests[22m[2m)[22m[32m 75[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ChatView.logic.test.ts [2m([22m[2m127 tests[22m[2m)[22m[32m 54[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/CommandPalette.logic.test.ts [2m([22m[2m31 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/scopedSettings.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/authBootstrap.test.ts [2m([22m[2m23 tests[22m[2m)[22m[33m 377[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/fileEditorVirtualization.test.ts [2m([22m[2m29 tests[22m[2m)[22m[33m 1075[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/composerFooterLayout.test.ts [2m([22m[2m41 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/Sidebar.motion.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/assistantTextSelection.test.ts [2m([22m[2m55 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/providerInstances.test.ts [2m([22m[2m36 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/settingsSearch.test.ts [2m([22m[2m59 tests[22m[2m)[22m[32m 72[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/previewStateStore.test.ts [2m([22m[2m26 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browserHistoryStore.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+[90mstderr[2m | src/components/diffs/StyledDiffCodeView.test.tsx[2m > [22m[2mcode-view worker lifecycle[2m > [22m[2mstarts on demand, keeps quick reopens warm, and expires the last closed pool
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/themeBoot.test.ts [2m([22m[2m30 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ThreadStatusIndicators.test.ts [2m([22m[2m47 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/markdown-links.test.ts [2m([22m[2m66 tests[22m[2m)[22m[32m 51[2mms[22m[39m
+[90mstderr[2m | src/components/ChatMarkdown.test.tsx[2m > [22m[2mChatMarkdown context references[2m > [22m[2mrenders text and image references through the chip renderer, with readable fallback
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/PreviewView.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[33m 344[2mms[22m[39m
+[90mstderr[2m | src/components/ChatMarkdown.test.tsx[2m > [22m[2mChatMarkdown context references[2m > [22m[2mreads formatted context labels through nested markup instead of the context id
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ChatMarkdown.test.tsx[2m > [22m[2mChatMarkdown favicon privacy[2m > [22m[2msuppresses private link images while preserving public links across updates
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ChatMarkdown.test.tsx[2m > [22m[2mChatMarkdown streaming[2m > [22m[2mruns only a complete single-line shell block after a click
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/StyledDiffCodeView.test.tsx[2m > [22m[2mcode-view worker lifecycle[2m > [22m[2mrenders through Pierre's main-thread fallback when worker creation fails
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/StyledDiffCodeView.test.tsx[2m > [22m[2mcode-view worker lifecycle[2m > [22m[2mkeeps an initializing pool until its last view closes and ignores late responses
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/selectionActions.test.ts [2m([22m[2m32 tests[22m[2m)[22m[32m 56[2mms[22m[39m
+[90mstderr[2m | src/components/diffs/StyledDiffCodeView.test.tsx[2m > [22m[2mcode-view file reveals[2m > [22m[2mdoes not replay a handled tree click or scroll an old handle when a selected file remounts the view
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/StyledDiffCodeView.test.tsx[2m > [22m[2mcode-view file reveals[2m > [22m[2mwaits for a live viewer and applies each pending tree click only once
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/StyledDiffCodeView.test.tsx[2m > [22m[2mcode-view file reveals[2m > [22m[2mcancels pending tree clicks when an external selection or diff scope changes
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/StyledDiffCodeView.test.tsx[2m > [22m[2mcode-view file reveals[2m > [22m[2mreveals after a collapsed file expands and honors another click on the same file
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/diffs/StyledDiffCodeView.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 902[2mms[22m[39m
+   [32m✓[39m code-view worker lifecycle [2m(3)[22m
+     [33m[2m✓[22m[39m starts on demand, keeps quick reopens warm, and expires the last closed pool[33m 633[2mms[22m[39m
+[90mstderr[2m | src/components/ChatMarkdown.test.tsx[2m > [22m[2mChatMarkdown streaming[2m > [22m[2mdoes not retokenize completed lines when streaming finishes
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/openVsxThemes.test.ts [2m([22m[2m10 tests[22m[2m)[22m[33m 1052[2mms[22m[39m
+   [32m✓[39m Open VSX themes [2m(10)[22m
+     [33m[2m✓[22m[39m downloads a verified VSIX, reads JSONC includes, and pairs contributed variants[33m 1002[2mms[22m[39m
+[90mstderr[2m | src/components/ChatMarkdown.test.tsx[2m > [22m[2mChatMarkdown streaming[2m > [22m[2mpreserves code controls and details without highlighting an unchanged fence again
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ChatMarkdown.test.tsx[2m > [22m[2mChatMarkdown streaming[2m > [22m[2medits the current task text and marker after reusing a renderer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ChatMarkdown.test.tsx[2m > [22m[2mChatMarkdown skill chips[2m > [22m[2mupdates digit-leading skill labels when discovered skills change
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/onboarding/firstRun.logic.test.ts [2m([22m[2m40 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ChatMarkdown.test.tsx [2m([22m[2m51 tests[22m[2m)[22m[33m 702[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/openPullRequestLink.test.ts [2m([22m[2m43 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/previewMiniPlayerLayout.test.ts [2m([22m[2m35 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows dynamic tool input without cached output when the row is expanded
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows dynamic tool input without cached output when the row is expanded
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mleads an unanswered question row with the question text
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mleads an unanswered question row with the question text
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing inProgress tool output only at the end: true
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing inProgress tool output only at the end: true
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing inProgress tool output only at the end: true
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing inProgress tool output only at the end: true
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing inProgress tool output only at the end: true
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing inProgress tool output only at the end: true
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing inProgress tool output only at the end: false
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing inProgress tool output only at the end: false
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing inProgress tool output only at the end: false
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing inProgress tool output only at the end: false
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing inProgress tool output only at the end: false
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing inProgress tool output only at the end: false
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing completed tool output only at the end: true
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing completed tool output only at the end: true
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/composerProviderState.test.tsx [2m([22m[2m27 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing completed tool output only at the end: true
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing completed tool output only at the end: true
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing completed tool output only at the end: true
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing completed tool output only at the end: true
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing completed tool output only at the end: false
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing completed tool output only at the end: false
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing completed tool output only at the end: false
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing completed tool output only at the end: false
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing completed tool output only at the end: false
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrestores the composer after closing completed tool output only at the end: false
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mpreserves arbitrary XML-like tags and comparisons in rendered user messages
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mpreserves XML-like source inside user code spans and fences
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mdoes not render markdown title attributes in user messages
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders unsafe user HTML as inert source text
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mcontinues to render sanitized raw HTML in assistant messages
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2msanitizes executable HTML while preserving supported assistant markup
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders progressive history controls ahead of the bounded timeline
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/diffRendering.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mkeeps an empty bounded timeline actionable while earlier history loads
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2muses the larger leading inset only when the top fade is enabled
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mkeeps assistant changed-files headers sticky below the thread header
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2manchors a sent attachment message using its measured height
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+ [32m✓[39m [30m[42m unit [49m[39m src/environmentGrouping.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders SnapShot window details after the preview resolves
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mdoes not render SnapShot window details before the preview resolves
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mdoes not reserve end space for a follow-up user message
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2moffers preview and download actions for PDF attachments
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders a file download button without creating its URL in advance
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/ThreadRelationshipsControl.agents.test.tsx[2m > [22m[2mshows the matching child agent details and refreshes them when the agent settles
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mdoes not download an optimistic file before the server supplies its attachment ID
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders unknown attachment types as inert rows instead of crashing
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mkeeps reserved end space when tool work starts while reading history
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mhands end-following back to the list once the send anchor is released
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders collapse controls for long user messages
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mdoes not render collapse controls for short user messages
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/ThreadRelationshipsControl.agents.test.tsx[2m > [22m[2mshows readable models and only differing workspace details in agent tooltips
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2midentifies user-role messages sent by another agent
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mkeeps a subagent parent-thread link at the top of an empty timeline
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mkeeps steer intent visible on committed user messages
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mkeeps compact spacing below a collapsed turn divider
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows a collapsed disclosure for superseded attempt output
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/SnapShotSettings.test.tsx [2m([22m[2m15 tests[22m[2m)[22m[32m 91[2mms[22m[39m
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mexposes a per-response fork action for completed assistant items
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders inline terminal labels with the composer chip UI
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders chips for standalone element-pick context messages
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mkeeps the copy button for collapsed long user messages
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders context compaction entries in the normal work log
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mdoes not render the transient V2 interruption request
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/ThreadRelationshipsControl.agents.test.tsx[2m > [22m[2mshows the parent's own visible status as parent and child activity change
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/ThreadRelationshipsControl.agents.test.tsx[2m > [22m[2mshows transfer lifecycle states when viewing the source thread
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders context handoffs as from → to model endpoints instead of the summary
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders created threads as lean rows with inline chat links
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mkeeps the collapsed summary icon neutral when the group ends in a failure
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mkeeps mixed work logs neutral after a later tool call succeeds
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/ThreadRelationshipsControl.agents.test.tsx[2m > [22m[2mshows transfer lifecycle states when viewing the target thread
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 1 running subagents with 'Reading src/index.ts', grouping only multiple agents
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ThreadRelationshipsControl.agents.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 232[2mms[22m[39m
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 running subagents with 'Reading src/index.ts', grouping only multiple agents
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 running subagents with 'Reading src/index.ts', grouping only multiple agents
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 running subagents with 'Reading src/index.ts', grouping only multiple agents
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 1 completed subagents with 'Tests should be isolated.', grouping only multiple agents
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 completed subagents with 'Tests should be isolated.', grouping only multiple agents
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 completed subagents with 'Tests should be isolated.', grouping only multiple agents
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useSettings.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 completed subagents with 'Tests should be isolated.', grouping only multiple agents
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 1 running subagents with 'Reading src/index.ts', grouping only multiple agents
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 running subagents with 'Reading src/index.ts', grouping only multiple agents
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 running subagents with 'Reading src/index.ts', grouping only multiple agents
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 running subagents with 'Reading src/index.ts', grouping only multiple agents
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ProviderSettingsPanel.environment.test.tsx [2m([22m[2m18 tests[22m[2m)[22m[32m 76[2mms[22m[39m
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 1 running subagents with 'Streaming answer so far', grouping only multiple agents
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 running subagents with 'Streaming answer so far', grouping only multiple agents
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 running subagents with 'Streaming answer so far', grouping only multiple agents
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 running subagents with 'Streaming answer so far', grouping only multiple agents
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 1 cancelled subagents with 'Partial output before cancel', grouping only multiple agents
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 cancelled subagents with 'Partial output before cancel', grouping only multiple agents
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+ [32m✓[39m [30m[42m unit [49m[39m src/threadSelectionStore.test.ts [2m([22m[2m29 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 cancelled subagents with 'Partial output before cancel', grouping only multiple agents
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 cancelled subagents with 'Partial output before cancel', grouping only multiple agents
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 1 completed subagents with 'Audited 12 packages', grouping only multiple agents
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 completed subagents with 'Audited 12 packages', grouping only multiple agents
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 completed subagents with 'Audited 12 packages', grouping only multiple agents
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows 2 completed subagents with 'Audited 12 packages', grouping only multiple agents
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders V2 provider retries in the normal work log
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mkeeps inherited V2 work provenance on the rendered row
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders T3 MCP dynamic tools with the product logo and pretty name
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mformats changed file paths from the workspace root
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders review comment contexts as structured cards instead of raw tags
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders file review comments as source code instead of diffs
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mcollapses settled tool runs behind a generated summary toggle
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mrenders a muted failure marker for failed tool lifecycle entries
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mkeeps the red treatment for severe orchestration failures
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: **Viewing image first** with *care*, ~~old~~ `code` and [context](https://example.com)
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: **Viewing image first** with *care*, ~~old~~ `code` and [context](https://example.com)
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: **Viewing image first** with *care*, ~~old~~ `code` and [context](https://example.com)
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: first paragraph
+
+second paragraph
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: first paragraph
+
+second paragraph
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: first paragraph
+
+second paragraph
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: - first
+- second
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: - first
+- second
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: - first
+- second
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: first  
+second
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: first  
+second
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: first  
+second
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+ [32m✓[39m [30m[42m unit [49m[39m src/vscodeThemeImport.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 101[2mms[22m[39m
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: ![image description](image.png)
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: ![image description](image.png)
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: ![image description](image.png)
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: ![](image.png)
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: ![](image.png)
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: ![](image.png)
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/imageCompression.test.ts [2m([22m[2m29 tests[22m[2m)[22m[33m 2877[2mms[22m[39m
+   [32m✓[39m compressImageForStash [2m(12)[22m
+     [33m[2m✓[22m[39m re-encodes an oversized image to WebP within the budget[33m 319[2mms[22m[39m
+     [33m[2m✓[22m[39m steps quality down until the encoded image fits[33m 640[2mms[22m[39m
+     [33m[2m✓[22m[39m reports too-large when even the smallest encoding overflows the budget[33m 639[2mms[22m[39m
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: ---
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: ---
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mshows plain text for a V2 reasoning preview: ---
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mexpands and collapses a tool call through its header
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Warning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mexpands and collapses a tool call through its header
+[22m[39mWarning: useRouter must be used inside a <RouterProvider> component!
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Warning: useRouter must be used inside a <RouterProvider> component!
+
+[90mstderr[2m | src/components/chat/MessagesTimeline.test.tsx[2m > [22m[2mMessagesTimeline[2m > [22m[2mexpands and collapses a tool call through its header
+[22m[39mDetected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+Detected multiple renderers concurrently rendering the same context provider. This is currently unsupported.
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/MessagesTimeline.test.tsx [2m([22m[2m73 tests[22m[2m)[22m[33m 6356[2mms[22m[39m
+[90mstderr[2m | src/components/cloud/CloudEnvironmentConnectList.test.tsx[2m > [22m[2mcloud onboarding discovery[2m > [22m[2msignals that the section can expand after initial discovery settles
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/cloud/CloudEnvironmentConnectList.test.tsx[2m > [22m[2mcloud onboarding discovery[2m > [22m[2mkeeps incompatible discoveries unselected until the user enables a compatible server
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/cloud/CloudEnvironmentConnectList.test.tsx[2m > [22m[2mcloud onboarding discovery[2m > [22m[2mconnects and selects discovered computers by default without overwriting deselection
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/cloud/CloudEnvironmentConnectList.test.tsx[2m > [22m[2mcloud onboarding discovery[2m > [22m[2mshows a newly linked computer without remounting and stops polling once found
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/cloud/CloudEnvironmentConnectList.test.tsx[2m > [22m[2mcloud onboarding discovery[2m > [22m[2mkeeps a discovered computer visible when it is added to the browser
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/cloud/CloudEnvironmentConnectList.test.tsx[2m > [22m[2mcloud onboarding discovery[2m > [22m[2mwaits while hidden and refreshes immediately when visible again
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/cloud/CloudEnvironmentConnectList.test.tsx[2m > [22m[2mcloud onboarding discovery[2m > [22m[2mdoes not overlap a slow refresh or restart polling after unmount
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/cloud/CloudEnvironmentConnectList.test.tsx[2m > [22m[2mcloud onboarding discovery[2m > [22m[2mpauses while offline and resumes when discovery is online
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/cloud/CloudEnvironmentConnectList.test.tsx[2m > [22m[2mcloud onboarding discovery[2m > [22m[2mdoes not add polling to other cloud lists
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/cloud/CloudEnvironmentConnectList.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[32m 100[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/markdown-clipboard.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/CaptureShortcutConfig.test.tsx [2m([22m[2m13 tests[22m[2m)[22m[32m 70[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/cloud/linkEnvironment.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 162[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/previewAutomationRequestConsumer.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 289[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/desktop/SnapShotCoordinator.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/SnapShotSetupDialog.logic.test.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/browserTargetResolver.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/composer-editor-mentions.test.ts [2m([22m[2m34 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/SnapShotSettings.logic.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/composerAttachmentFiles.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/timestampFormat.test.ts [2m([22m[2m41 tests[22m[2m)[22m[32m 74[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ProviderSetupSection.test.tsx [2m([22m[2m14 tests[22m[2m)[22m[32m 42[2mms[22m[39m
+[90mstderr[2m | src/components/ServerUpdateAction.test.tsx[2m > [22m[2mServerUpdatesAction[2m > [22m[2mupdates both supported machines with their own continuation preference and skips the manual machine
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ServerUpdateAction.test.tsx[2m > [22m[2mServerUpdatesAction[2m > [22m[2mnames a failed machine while letting the other machine complete
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ServerUpdateAction.test.tsx[2m > [22m[2mServerUpdatesAction[2m > [22m[2mstarts each machine once when double-clicked and disables the action until both finish
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ServerUpdateAction.test.tsx[2m > [22m[2mServerUpdatesAction[2m > [22m[2masks once for desktop machines and cancels the entire batch
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ServerUpdateAction.test.tsx [2m([22m[2m14 tests[22m[2m)[22m[32m 94[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/uiStateStore.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/terminal/ghostty/core.test.ts [2m([22m[2m13 tests[22m[2m)[22m[33m 474[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browserFaviconStore.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/desktopUpdate.logic.test.ts [2m([22m[2m31 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/settingsScopeNavigation.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 68[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/composer-rich-text-doc.test.ts [2m([22m[2m81 tests[22m[2m)[22m[32m 57[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/contextMenuFallback.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/pendingUserInput.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/onboarding/projectImport.logic.test.ts [2m([22m[2m22 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+[90mstderr[2m | src/components/Sidebar.pointer.test.ts[2m > [22m[2msidebar pointer lifecycle[2m > [22m[2mcancels when search unmounts the list, started=false
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/Sidebar.pointer.test.ts[2m > [22m[2msidebar pointer lifecycle[2m > [22m[2mcancels when search unmounts the list, started=true
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/Sidebar.pointer.test.ts [2m([22m[2m24 tests[22m[2m)[22m[32m 63[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/KeybindingsSettings.logic.test.ts [2m([22m[2m25 tests[22m[2m)[22m[32m 59[2mms[22m[39m
+[90mstderr[2m | src/components/settings/colorPickers.test.tsx[2m > [22m[2mshared color controls in settings[2m > [22m[2madjusts each provider color axis independently and reports the value being changed
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/settings/colorPickers.test.tsx[2m > [22m[2mshared color controls in settings[2m > [22m[2msupports Home/End and clamps each axis without changing the other
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/settings/colorPickers.test.tsx[2m > [22m[2mshared color controls in settings[2m > [22m[2mpersists independent native range changes through theme batching with alpha
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/promptStashStore.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+[90mstderr[2m | src/components/settings/colorPickers.test.tsx[2m > [22m[2mshared color controls in settings[2m > [22m[2mbatches theme drag updates and flushes the final color with alpha on pointer release
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/settings/colorPickers.test.tsx[2m > [22m[2mshared color controls in settings[2m > [22m[2mclamps out-of-bounds drags and flushes theme changes on cancellation and unmount
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/settings/colorPickers.test.tsx[2m > [22m[2mshared color controls in settings[2m > [22m[2mpreserves the selected hue when a grey color is echoed back from theme settings
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/settings/colorPickers.test.tsx[2m > [22m[2mshared color controls in settings[2m > [22m[2madds an accent only after choosing one and clears it back to no accent
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/settings/colorPickers.test.tsx[2m > [22m[2mshared color controls in settings[2m > [22m[2mkeeps provider debounce at the consumer and commits pending color on unmount
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/preview/PreviewAutomationHosts.test.tsx[2m > [22m[2mPreviewAutomationHosts open[2m > [22m[2mwaits for saved settings before opening a tab with the configured profile and viewport
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/colorPickers.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[32m 140[2mms[22m[39m
+[90mstderr[2m | src/components/preview/PreviewAutomationHosts.test.tsx[2m > [22m[2mPreviewAutomationHosts open[2m > [22m[2mreports a settings read failure without opening a tab
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/preview/PreviewAutomationHosts.test.tsx[2m > [22m[2mPreviewAutomationHosts ownership[2m > [22m[2mreports only local live tabs and removes ownership when their web contents close
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/preview/PreviewAutomationHosts.test.tsx[2m > [22m[2mPreviewAutomationHosts ownership[2m > [22m[2mretries failed reports without clearing newer connection reports (reconnect: false)
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/preview/PreviewAutomationHosts.test.tsx[2m > [22m[2mPreviewAutomationHosts ownership[2m > [22m[2mretries failed reports without clearing newer connection reports (reconnect: true)
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/preview/PreviewAutomationHosts.test.tsx[2m > [22m[2mPreviewAutomationHosts ownership[2m > [22m[2mdoes not claim an available runtime from a server snapshot alone
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/PreviewAutomationHosts.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 58[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/terminalUiStateStore.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/onboarding/providerReadiness.logic.test.ts [2m([22m[2m28 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useHandleNewThread.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/chatCanvasLayout.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 87[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/wslPaths.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/AcpRegistrySearchStep.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/timelineScrollAnchoring.test.tsx [2m([22m[2m18 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/SettingsPanels.logic.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/RightPanelTabs.test.tsx [2m([22m[2m20 tests[22m[2m)[22m[32m 124[2mms[22m[39m
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mkeeps subagents silent with focus=true
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mkeeps subagents silent with focus=false
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2malerts once with system alerts off and opens the completed thread
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mdoes not show a completion toast for active threads
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mdoes not show a completion toast for blurred threads
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mdoes not show a completion toast for hidden threads
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mdoes not show a completion toast for archived threads
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mdoes not show a completion toast for disabled threads
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2muses the same input event for in-app and desktop alerts
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2muses the same approval event for in-app and desktop alerts
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2muses the same sessionError event for in-app and desktop alerts
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2muses the same turnError event for in-app and desktop alerts
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2muses the same limited event for in-app and desktop alerts
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2malerts when only a dev server is left running, not while a monitor can wake the agent
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mkeeps background desktop alerts when in-app notifications are disabled
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mdoes not replay a completion when opting in from all alerts off
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mcompares the environment as well as the thread
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mdoes not replay completed threads on first load or reconnect
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mkeeps sound but replaces the system popup when showing a toast
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.test.tsx[2m > [22m[2mthread notifications[2m > [22m[2mkeeps system alerts when the app is in the background
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ThreadNotificationCoordinator.test.tsx [2m([22m[2m20 tests[22m[2m)[22m[32m 77[2mms[22m[39m
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mown PR, a lower layer of the thread's stack[2m > [22m[2mhides the checkout
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/composerSubmission.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 82[2mms[22m[39m
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mown PR, a lower layer of the thread's stack[2m > [22m[2mResolve conflicts writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mown PR, a lower layer of the thread's stack[2m > [22m[2mAsk a question writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mown PR, a lower layer of the thread's stack[2m > [22m[2mExplain this PR writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mcounts notifying threads across environments, replaces repeat alerts, and clears on focus
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mdoes not badge old completions on first load or reconnect
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mremoves alerts only from environments that leave the client
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mown PR, a lower layer of the thread's stack[2m > [22m[2mFix findings in this thread writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mstarts a fresh count after another native app window gains focus
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mdoes not show visual alerts when off
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mdoes not show visual alerts when sound
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mdoes not show visual alerts when focused
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mdoes not show visual alerts when denied
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mdoes not show visual alerts when archived
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mbadges hasPendingApprovals and clears when notifications are disabled
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mbadges hasPendingUserInput and clears when notifications are disabled
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mshows in-app alerts without adding a badge while focused
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/ThreadNotificationCoordinator.badge.test.tsx[2m > [22m[2mbadges background failures with in-app notifications enabled
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ThreadNotificationCoordinator.badge.test.tsx [2m([22m[2m13 tests[22m[2m)[22m[32m 60[2mms[22m[39m
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mown PR, a lower layer of the thread's stack[2m > [22m[2mFix check writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mown PR, a lower layer of the thread's stack[2m > [22m[2mAdd to agent writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/scheduledTasksSettings.logic.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2manother PR beside the current thread[2m > [22m[2moffers the checkout
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/device/useDeviceControls.test.tsx[2m > [22m[2mserializes rapid actions and retains confirmed settings while pending or after failure
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2manother PR beside the current thread[2m > [22m[2mResolve conflicts writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/device/useDeviceControls.test.tsx[2m > [22m[2mserializes host actions across hide/reopen and discards detached results
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/device/useDeviceControls.test.tsx[2m > [22m[2mkeeps actions disabled when settings cannot be confirmed after a detached command
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/device/useDeviceControls.test.tsx[2m > [22m[2mdisables stale settings after a failed reopen read and recovers on a successful read
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/device/useDeviceControls.test.tsx[2m > [22m[2mdoes not let an older refresh overwrite a newer confirmed action
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/device/useDeviceControls.test.tsx[2m > [22m[2muses the detail snapshot until a new foreground event after the subscription is hidden
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/device/useDeviceControls.test.tsx[2m > [22m[2muses the detail snapshot until a new foreground event after the subscription is access renewed
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/environments/primary/bootstrap.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 103[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/device/useDeviceControls.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2manother PR beside the current thread[2m > [22m[2mAsk a question writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2manother PR beside the current thread[2m > [22m[2mExplain this PR writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2manother PR beside the current thread[2m > [22m[2mFix findings in this thread writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ContextWindowMeter.logic.test.ts [2m([22m[2m21 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestProjectAssignment.logic.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2manother PR beside the current thread[2m > [22m[2mFix check writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2manother PR beside the current thread[2m > [22m[2mAdd to agent writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mPR beside an unsent draft[2m > [22m[2moffers the checkout
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mPR beside an unsent draft[2m > [22m[2mResolve conflicts writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mPR beside an unsent draft[2m > [22m[2mAsk a question writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mPR beside an unsent draft[2m > [22m[2mExplain this PR writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mPR beside an unsent draft[2m > [22m[2mFix findings in this thread writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mPR beside an unsent draft[2m > [22m[2mFix check writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mPR beside an unsent draft[2m > [22m[2mAdd to agent writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mstandalone PR page[2m > [22m[2moffers the checkout
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mstandalone PR page[2m > [22m[2mResolve conflicts writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mstandalone PR page[2m > [22m[2mAsk a question writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mstandalone PR page[2m > [22m[2mExplain this PR writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mstandalone PR page[2m > [22m[2mFix findings in this thread writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mstandalone PR page[2m > [22m[2mFix check writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestDetailPanel.test.tsx[2m > [22m[2mstandalone PR page[2m > [22m[2mAdd to agent writes to the correct composer
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/PullRequestDetailPanel.test.tsx [2m([22m[2m28 tests[22m[2m)[22m[33m 818[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/projectFilesQueryState.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+[90mstderr[2m | src/components/usage/UsagePage.refresh.test.tsx[2m > [22m[2mrefreshes the visible limits countdown with refresh button 0 without switching tabs, even when quota is unchanged
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/customModelEditor.logic.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+[90mstderr[2m | src/components/usage/UsagePage.refresh.test.tsx[2m > [22m[2mrefreshes the visible limits countdown with refresh button 1 without switching tabs, even when quota is unchanged
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/terminal/ghostty/renderer.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+[90mstderr[2m | src/components/usage/UsagePage.refresh.test.tsx[2m > [22m[2muses the current time when returning to limits from tokens
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/usage/UsagePage.refresh.test.tsx[2m > [22m[2mrefreshes once on opening Limits and suppresses rapid returns and remounts
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/usage/UsagePage.refresh.test.tsx[2m > [22m[2mrefreshes once on opening Limits and suppresses rapid returns and remounts
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/pageScrollController.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+[90mstderr[2m | src/components/usage/UsagePage.refresh.test.tsx[2m > [22m[2mwaits for connection and refreshes new environments during a slow refresh
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel resize cleanup[2m > [22m[2mclears the cursor and pending resize after unmount
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel resize cleanup[2m > [22m[2mclears the cursor and pending resize after lost capture
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/usage/UsagePage.refresh.test.tsx[2m > [22m[2mkeeps manual refresh busy until the already-running automatic check settles
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel resize cleanup[2m > [22m[2mclears the cursor and pending resize after blur
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel resize cleanup[2m > [22m[2mclears the cursor and pending resize after cancel
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel resize cleanup[2m > [22m[2muses the release position for a fast left-edge drag
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel resize cleanup[2m > [22m[2muses the release position for a fast right-edge drag
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel resize cleanup[2m > [22m[2muses updated bounds during a drag from max 800 to 450
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel resize cleanup[2m > [22m[2muses updated bounds during a drag from max 450 to 800
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/usage/UsagePage.refresh.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[33m 340[2mms[22m[39m
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel resize cleanup[2m > [22m[2mhandles release before any move event
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel resize cleanup[2m > [22m[2mclamps the release position to the panel bounds
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel resize cleanup[2m > [22m[2msaves the final width when release is followed by lost capture
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel width storage changes[2m > [22m[2mrestores separate thread widths without remounting and retains them after reload
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel width storage changes[2m > [22m[2mrestores separate thread widths without remounting and retains them after reload
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useResizableWidth.test.tsx[2m > [22m[2mpanel width storage changes[2m > [22m[2mcancels an unfinished drag on a thread switch without saving it to either thread
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useResizableWidth.test.tsx [2m([22m[2m13 tests[22m[2m)[22m[32m 59[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestReactions.logic.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/browserImportWizard.logic.test.ts [2m([22m[2m27 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ProviderSettingsPanel.logic.test.ts [2m([22m[2m20 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/AcpSessionManagementSection.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/bundledDev.test.ts [2m([22m[2m2 tests[22m[2m)[22m[33m 938[2mms[22m[39m
+   [33m[2m✓[22m[39m initializes React refresh before a shared UI chunk runs in bundled dev[33m 762[2mms[22m[39m
+[90mstderr[2m | src/components/diffs/DiffFileTree.test.tsx[2m > [22m[2mdiff tree file activation[2m > [22m[2mmounts a file-to-symlink type change as one tree row
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/composerPromptHistory.test.ts [2m([22m[2m23 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+[90mstderr[2m | src/components/diffs/DiffFileTree.test.tsx[2m > [22m[2mdiff tree file activation[2m > [22m[2mreissues the reveal when the sole selected file is activated again
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/DiffFileTree.test.tsx[2m > [22m[2mdiff tree file activation[2m > [22m[2mreveals newly selected files once in either direction
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/DiffFileTree.test.tsx[2m > [22m[2mdiff tree file activation[2m > [22m[2mkeeps focus-only navigation separate from button activation
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/DiffFileTree.test.tsx[2m > [22m[2mdiff tree file activation[2m > [22m[2mdoes not reveal a selected file that a ctrlKey click deselects
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/DiffFileTree.test.tsx[2m > [22m[2mdiff tree file activation[2m > [22m[2mdoes not reveal a selected file that a metaKey click deselects
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/DiffFileTree.test.tsx[2m > [22m[2mdiff tree file activation[2m > [22m[2mlets a click narrow multiple selected files without a second reveal
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/DiffFileTree.test.tsx[2m > [22m[2mdiff tree file activation[2m > [22m[2mleaves directory selection and expansion to the tree
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/DiffFileTree.test.tsx[2m > [22m[2mdiff tree file activation[2m > [22m[2mreorders refreshed files without reopening a collapsed folder
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/diffs/DiffFileTree.test.tsx[2m > [22m[2mdiff tree file activation[2m > [22m[2mdoes not echo controlled selection, but lets the reader activate it
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/diffs/DiffFileTree.test.tsx [2m([22m[2m10 tests[22m[2m)[22m[32m 97[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/externalLinkContextMenu.test.ts [2m([22m[2m33 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/fileSaveCoordinator.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/versionSkew.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/AddProviderInstanceDialog.environment.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 56[2mms[22m[39m
+[90mstderr[2m | src/components/settings/SourceControlWritingSettings.test.tsx[2m > [22m[2mmixed source control instructions[2m > [22m[2mresets mixed template preferences without replacing each environment's instructions
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+Functions are not valid as a React child. This may happen if you return children instead of <children /> from render. Or maybe you meant to call this function rather than return it.
+  <span>{children}</span>
+
+[90mstderr[2m | src/components/settings/SourceControlWritingSettings.test.tsx[2m > [22m[2mmixed source control instructions[2m > [22m[2mresets every environment even when the representative already has default instructions
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useLiveRefresh.test.ts[2m > [22m[2mlive refresh cadence[2m > [22m[2mpolls every 45 seconds, pauses while hidden or busy, respects disabling, and cleans up
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/settings/SourceControlWritingSettings.test.tsx[2m > [22m[2mmixed source control instructions[2m > [22m[2mdoes not write an untouched bulk draft
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useLiveRefresh.test.ts[2m > [22m[2mlive refresh cadence[2m > [22m[2mkeeps an idle view paused after focus until input
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useLiveRefresh.test.ts[2m > [22m[2mlive refresh cadence[2m > [22m[2mkeeps an idle view paused after visibilitychange until input
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/settings/SourceControlWritingSettings.test.tsx[2m > [22m[2mmixed source control instructions[2m > [22m[2mapplies edited instructions to every selected environment
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useLiveRefresh.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+[90mstderr[2m | src/components/settings/SourceControlWritingSettings.test.tsx[2m > [22m[2mmixed source control instructions[2m > [22m[2mallows an intentional clear after editing
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/settings/SourceControlWritingSettings.test.tsx[2m > [22m[2mmixed source control instructions[2m > [22m[2mshows the plain editor once instructions agree, even while templates differ
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/SourceControlWritingSettings.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 86[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ModelPickerContent.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/AcpRegistryIcon.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useThreadActions.undo.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+[90mstderr[2m | src/components/projectScriptEditor.test.tsx[2m > [22m[2mproject action editor save lifecycle[2m > [22m[2mblocks repeated submits and edits until the current save completes
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/projectScriptEditor.test.tsx[2m > [22m[2mproject action editor save lifecycle[2m > [22m[2mdoes not close a replacement request or release its in-flight save
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useEnvironmentTheme.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 46[2mms[22m[39m
+[90mstderr[2m | src/components/projectScriptEditor.test.tsx[2m > [22m[2mproject action editor save lifecycle[2m > [22m[2mignores a stale failure after the request changes
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/projectScriptEditor.test.tsx[2m > [22m[2mproject action editor save lifecycle[2m > [22m[2mignores a stale rejection after the request changes
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/projectScriptEditor.test.tsx[2m > [22m[2mproject action editor save lifecycle[2m > [22m[2mshows a current save error and allows retry
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/projectScriptEditor.test.tsx[2m > [22m[2mproject action editor save lifecycle[2m > [22m[2mignores save completion after cancel
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/projectScriptEditor.test.tsx[2m > [22m[2mproject action editor save lifecycle[2m > [22m[2mignores save completion after unmount
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/projectScriptEditor.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[32m 200[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/composerSlashCommandSearch.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ProjectFavicon.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/connection/storage.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/recordingCompositor.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/terminal-links.test.ts [2m([22m[2m19 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ChangedFilesTree.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[32m 96[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/openTerminalLinkInPreview.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 78[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/threadSort.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/fileEditorLanguageReadiness.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 2336[2mms[22m[39m
+   [32m✓[39m editable file language readiness [2m(7)[22m
+     [33m[2m✓[22m[39m hydrate prepares the inferred language before the first edit of a worker-highlighted file[33m 432[2mms[22m[39m
+     [33m[2m✓[22m[39m renderFile prepares the inferred language before the first edit of a worker-highlighted file[33m 381[2mms[22m[39m
+     [33m[2m✓[22m[39m hydrate respects an explicit language when the filename suggests plain text[33m 385[2mms[22m[39m
+     [33m[2m✓[22m[39m renderFile respects an explicit language when the filename suggests plain text[33m 394[2mms[22m[39m
+     [33m[2m✓[22m[39m loads a newly opened language after reusing a worker-backed renderer[33m 328[2mms[22m[39m
+[90mstderr[2m | src/components/pullRequest/PullRequestSummaryTab.test.tsx[2m > [22m[2mtoggles checks from their heading and resets sections for another pull request
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/PullRequestSummaryTab.test.tsx[2m > [22m[2mkeeps an unsaved description when collapsed and reopened
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ProviderInstanceCard.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 63[2mms[22m[39m
+[90mstderr[2m | src/components/pullRequest/PullRequestSummaryTab.test.tsx[2m > [22m[2mopens bot reports in pages without hiding human comments
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/PullRequestSummaryTab.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 157[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/useSnapShotShortcutRecorder.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/threadActionMenu.logic.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/settingsScope.test.ts [2m([22m[2m18 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/state/terminalSessions.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/TraitsPicker.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useEnvironmentThemeSync.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 1264[2mms[22m[39m
+   [32m✓[39m published theme refresh [2m(5)[22m
+     [33m[2m✓[22m[39m updates the React snapshot when appearance changes in dark mode[33m 727[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ConnectionsSettings.logic.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestFilesViewed.logic.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/HostedBrowserWebview.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/browserSurfaceStore.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useCopyToClipboard.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 28[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/usage/usagePriceTable.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/sidebarPendingFileDropStore.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/connection/platform.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useTheme.test.ts [2m([22m[2m5 tests[22m[2m)[22m[33m 1586[2mms[22m[39m
+   [32m✓[39m theme failure handling [2m(5)[22m
+     [33m[2m✓[22m[39m preserves exact storage causes and operation context[33m 1003[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ProviderUpdateEnvironmentRows.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/onboarding/targetEnvironment.logic.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/connection/desktopLocal.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ThemeEditorHost.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/snapShotShortcut.test.ts [2m([22m[2m44 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/state/threads.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestProjectFilter.logic.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/shortcutModifierState.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/localApi.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 876[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/visibleAnimation.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+[90mstderr[2m | src/components/ThreadStatusIndicators.subscriptions.test.tsx[2m > [22m[2mleases only visible palette results while retaining observed and cached PR badges
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/PullRequestListFilters.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/browserViewportLayout.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ThreadStatusIndicators.subscriptions.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 110[2mms[22m[39m
+[90mstderr[2m | src/components/files/useFileSaveCoordinator.test.tsx[2m > [22m[2mfile-save React lifecycle[2m > [22m[2mpersists editor model changes after StrictMode setup replay
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/files/useFileSaveCoordinator.test.tsx[2m > [22m[2mfile-save React lifecycle[2m > [22m[2mpersists rendered Markdown task changes after StrictMode setup replay
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/files/useFileSaveCoordinator.test.tsx[2m > [22m[2mfile-save React lifecycle[2m > [22m[2mkeeps the debounce across rerenders of the same file
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/files/useFileSaveCoordinator.test.tsx[2m > [22m[2mfile-save React lifecycle[2m > [22m[2mflushes on unmount and ignores a retired editor callback
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/files/useFileSaveCoordinator.test.tsx[2m > [22m[2mfile-save React lifecycle[2m > [22m[2mretires callbacks when the file identity changes: {"relativePath":"other.txt"}
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/files/useFileSaveCoordinator.test.tsx[2m > [22m[2mfile-save React lifecycle[2m > [22m[2mretires callbacks when the file identity changes: {"cwd":"/other-workspace"}
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/files/useFileSaveCoordinator.test.tsx[2m > [22m[2mfile-save React lifecycle[2m > [22m[2mretires callbacks when the file identity changes: {"environmentId":"other-environment"}
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/files/useFileSaveCoordinator.test.tsx[2m > [22m[2mfile-save React lifecycle[2m > [22m[2mdoes not reactivate a retired callback when the same file mounts again
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/files/useFileSaveCoordinator.test.tsx[2m > [22m[2mfile-save React lifecycle[2m > [22m[2mdoes not reactivate a retired callback when the same file mounts again
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/useFileSaveCoordinator.test.tsx [2m([22m[2m8 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestMarkdown.logic.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ui/toast.logic.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/questionAttachments.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/session-logic.runtime-diagnostics.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/desktopTabLifetime.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 66[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/timelineScrollTarget.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/chatThreadActions.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/usage/usagePriceTargets.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestFileOrder.logic.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 24[2mms[22m[39m
+[90mstderr[2m | src/state/usage.test.tsx[2m > [22m[2musage environment selection[2m > [22m[2mstarts with all environments and adds results as they arrive
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/state/usage.test.tsx[2m > [22m[2musage environment selection[2m > [22m[2mexcludes unselected usage and pending environments, then restores all
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/state/usage.test.tsx[2m > [22m[2musage environment selection[2m > [22m[2mdistinguishes a pending selection from an empty or failed selection
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/state/usage.test.tsx[2m > [22m[2musage environment selection[2m > [22m[2mdeduplicates within the selection so an excluded owner cannot hide usage
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/state/usage.test.tsx[2m > [22m[2musage environment selection[2m > [22m[2mkeeps selected cached results visible during a refresh
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/state/usage.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 54[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/turnDiffTree.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+[90mstderr[2m | src/components/chat/AssistantCitationChip.test.tsx[2m > [22m[2mcitation comment source disappearance[2m > [22m[2mpreserves an over-length draft at the composer until it can be shortened and saved
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/AssistantCitationChip.test.tsx[2m > [22m[2mcitation comment source disappearance[2m > [22m[2mpreserves a rejected save and allows a later retry
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/AssistantCitationChip.test.tsx[2m > [22m[2mcitation comment source disappearance[2m > [22m[2mstill allows explicit cancellation after source disappearance
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/AssistantCitationChip.test.tsx[2m > [22m[2mcitation comment source disappearance[2m > [22m[2msaves and closes when the source disappears with a valid draft
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/AssistantCitationChip.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 99[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestEditing.logic.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ProviderSettingsForm.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/projectPaths.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ProviderModelPicker.test.tsx [2m([22m[2m14 tests[22m[2m)[22m[32m 70[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/composer-undo-grouping.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/showThreadUndoNotice.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 22[2mms[22m[39m
+[90mstderr[2m | src/components/pullRequest/usePullRequestFilesViewed.test.tsx[2m > [22m[2ma mark whose file was pushed to before the read that followed it[2m > [22m[2mgives way to the host and shows the file as changed
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/usePullRequestFilesViewed.test.tsx[2m > [22m[2ma mark whose file was pushed to before the read that followed it[2m > [22m[2mgives way to the host and shows the file as changed
+[22m[39mAn update to Surface inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/components/pullRequest/usePullRequestFilesViewed.test.tsx[2m > [22m[2ma mark whose file was pushed to before the read that followed it[2m > [22m[2mstays given way to on every later read, having nothing left to recover
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/usePullRequestFilesViewed.test.tsx[2m > [22m[2ma mark whose file was pushed to before the read that followed it[2m > [22m[2mstays given way to on every later read, having nothing left to recover
+[22m[39mAn update to Surface inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/components/pullRequest/usePullRequestFilesViewed.test.tsx[2m > [22m[2ma mark the host has not answered for yet[2m > [22m[2mholds the press while the write is still out
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/usePullRequestFilesViewed.test.tsx[2m > [22m[2ma mark the host has not answered for yet[2m > [22m[2mholds the press while the write is still out
+[22m[39mAn update to Surface inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/components/pullRequest/usePullRequestFilesViewed.test.tsx[2m > [22m[2ma mark the host has not answered for yet[2m > [22m[2mholds a press made since the read that would otherwise answer for it
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/pullRequest/usePullRequestFilesViewed.test.tsx[2m > [22m[2ma mark the host has not answered for yet[2m > [22m[2mholds a press made since the read that would otherwise answer for it
+[22m[39mAn update to Surface inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+[90mstderr[2m | src/components/pullRequest/usePullRequestFilesViewed.test.tsx[2m > [22m[2ma mark the host has not answered for yet[2m > [22m[2mholds a press made since the read that would otherwise answer for it
+[22m[39mAn update to Surface inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/usePullRequestFilesViewed.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 60[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/projectScripts.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/clientPersistenceStorage.test.ts [2m([22m[2m7 tests[22m[2m)[22m[33m 785[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/markdown-incremental.test.tsx [2m([22m[2m18 tests[22m[2m)[22m[33m 1992[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/remoteOpen.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/draftHeroTransition.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+[90mstderr[2m | src/components/chat/ThreadDetailsPrRow.test.tsx[2m > [22m[2mrequires a new merge click after passing checks become pending and pass again
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/ThreadDetailsPrRow.test.tsx[2m > [22m[2mshows a count only while checks run (success, skipped)
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/ThreadDetailsPrRow.test.tsx[2m > [22m[2mshows a count only while checks run (failure, cancelled)
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/ThreadDetailsPrRow.test.tsx[2m > [22m[2mshows a count only while checks run (success, action-required)
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/ThreadDetailsPrRow.test.tsx[2m > [22m[2mshows a count only while checks run (success, pending)
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/ThreadDetailsPrRow.test.tsx[2m > [22m[2mshows a count only while checks run (failure, pending)
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/useComposerTriggerState.test.tsx [2m([22m[2m11 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ThreadDetailsPrRow.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/state/desktopUpdate.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 277[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/sidebar/SidebarUpdateReleaseNotes.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+[90mstderr[2m | src/components/chat/composerEventScope.test.ts[2m > [22m[2mcomposer menu focus[2m > [22m[2mcloses while focus is on an open menu
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/composerEventScope.test.ts[2m > [22m[2mcomposer menu focus[2m > [22m[2mcloses while focus is on an unmounted menu
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/composerEventScope.test.ts[2m > [22m[2mcomposer menu focus[2m > [22m[2mcloses while focus is on another control
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/composerEventScope.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/providerStatus.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/previewAutomationOpenReadiness.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestDiff.logic.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/QueuedRunsControl.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/state/shell.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/useDiscoveredLocalServers.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/previewAutomationHostBudget.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/browserViewportActions.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/fileTreeDragMention.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/composerMentionDrag.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/openPreviewSession.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/workspaceFileDrop.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+[90mstderr[2m | src/components/settings/IntegrationsSettings.test.tsx[2m > [22m[2mIntegrations browser discovery[2m > [22m[2mdoes not scan browser files when entering or revisiting settings
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ProviderStatusBanner.test.tsx [2m([22m[2m9 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+[90mstderr[2m | src/components/settings/IntegrationsSettings.test.tsx[2m > [22m[2mIntegrations browser discovery[2m > [22m[2mdoes not scan browser files when entering or revisiting settings
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/settings/IntegrationsSettings.test.tsx[2m > [22m[2mIntegrations browser discovery[2m > [22m[2mplaces device settings directly after browser settings
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/IntegrationsSettings.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 204[2mms[22m[39m
+[90mstderr[2m | src/components/files/AttachmentFilePreview.test.tsx[2m > [22m[2mattachment HTML preview recovery[2m > [22m[2mkeeps a renewed URL for subsequent rendered and source views
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/files/AttachmentFilePreview.test.tsx[2m > [22m[2mattachment HTML preview recovery[2m > [22m[2mkeeps a renewed URL for subsequent rendered and source views
+[22m[39m[CLIENT_SETTINGS] hydrate failed {
+  operation: [32m'hydrate'[39m,
+  errorType: [32m'error'[39m,
+  errorName: [32m'Error'[39m,
+  stack: [32m'    at ensureLocalApi (/srv/work/t3code-v2-lhc/apps/web/src/localApi.ts:95:11)\n'[39m +
+    [32m'    at /srv/work/t3code-v2-lhc/apps/web/src/hooks/useSettings.ts:133:39\n'[39m +
+    [32m'    at hydrateClientSettings (/srv/work/t3code-v2-lhc/apps/web/src/hooks/useSettings.ts:151:4)\n'[39m +
+    [32m'    at subscribeClientSettings (/srv/work/t3code-v2-lhc/apps/web/src/hooks/useSettings.ts:95:8)\n'[39m +
+    [32m'    at subscribeToStore (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5414:14)\n'[39m +
+    [32m'    at Object.react_stack_bottom_frame (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15755:20)\n'[39m +
+    [32m'    at runWithFiberInDEV (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)\n'[39m +
+    [32m'    at commitHookEffectListMount (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9530:29)\n'[39m +
+    [32m'    at commitHookPassiveMountEffects (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9617:11)\n'[39m +
+    [32m'    at commitPassiveMountOnFiber (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11205:13)'[39m
+}
+
+ [32m✓[39m [30m[42m unit [49m[39m src/diffPanelStore.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+[90mstderr[2m | src/components/files/AttachmentFilePreview.test.tsx[2m > [22m[2mattachment HTML preview recovery[2m > [22m[2mdoes not fetch or mark an expired URL fresh when reauthorization is unavailable
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/files/AttachmentFilePreview.test.tsx[2m > [22m[2mattachment HTML preview recovery[2m > [22m[2mdoes not fetch or mark an expired URL fresh when reauthorization is unavailable
+[22m[39m[CLIENT_SETTINGS] hydrate failed {
+  operation: [32m'hydrate'[39m,
+  errorType: [32m'error'[39m,
+  errorName: [32m'Error'[39m,
+  stack: [32m'    at ensureLocalApi (/srv/work/t3code-v2-lhc/apps/web/src/localApi.ts:95:11)\n'[39m +
+    [32m'    at /srv/work/t3code-v2-lhc/apps/web/src/hooks/useSettings.ts:133:39\n'[39m +
+    [32m'    at hydrateClientSettings (/srv/work/t3code-v2-lhc/apps/web/src/hooks/useSettings.ts:151:4)\n'[39m +
+    [32m'    at subscribeClientSettings (/srv/work/t3code-v2-lhc/apps/web/src/hooks/useSettings.ts:95:8)\n'[39m +
+    [32m'    at subscribeToStore (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5414:14)\n'[39m +
+    [32m'    at Object.react_stack_bottom_frame (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15755:20)\n'[39m +
+    [32m'    at runWithFiberInDEV (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)\n'[39m +
+    [32m'    at commitHookEffectListMount (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9530:29)\n'[39m +
+    [32m'    at commitHookPassiveMountEffects (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9617:11)\n'[39m +
+    [32m'    at commitPassiveMountOnFiber (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11205:13)'[39m
+}
+
+[90mstderr[2m | src/components/files/AttachmentFilePreview.test.tsx[2m > [22m[2mattachment HTML preview recovery[2m > [22m[2mcan return to rendered HTML after local source decoding fails
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/files/AttachmentFilePreview.test.tsx[2m > [22m[2mattachment HTML preview recovery[2m > [22m[2mcan return to rendered HTML after local source decoding fails
+[22m[39m[CLIENT_SETTINGS] hydrate failed {
+  operation: [32m'hydrate'[39m,
+  errorType: [32m'error'[39m,
+  errorName: [32m'Error'[39m,
+  stack: [32m'    at ensureLocalApi (/srv/work/t3code-v2-lhc/apps/web/src/localApi.ts:95:11)\n'[39m +
+    [32m'    at /srv/work/t3code-v2-lhc/apps/web/src/hooks/useSettings.ts:133:39\n'[39m +
+    [32m'    at hydrateClientSettings (/srv/work/t3code-v2-lhc/apps/web/src/hooks/useSettings.ts:151:4)\n'[39m +
+    [32m'    at subscribeClientSettings (/srv/work/t3code-v2-lhc/apps/web/src/hooks/useSettings.ts:95:8)\n'[39m +
+    [32m'    at subscribeToStore (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:5414:14)\n'[39m +
+    [32m'    at Object.react_stack_bottom_frame (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:15755:20)\n'[39m +
+    [32m'    at runWithFiberInDEV (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:2315:13)\n'[39m +
+    [32m'    at commitHookEffectListMount (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9530:29)\n'[39m +
+    [32m'    at commitHookPassiveMountEffects (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:9617:11)\n'[39m +
+    [32m'    at commitPassiveMountOnFiber (/srv/work/t3code-v2-lhc/node_modules/.pnpm/react-test-renderer@19.2.6_react@19.2.6/node_modules/react-test-renderer/cjs/react-test-renderer.development.js:11205:13)'[39m
+}
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/AttachmentFilePreview.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 81[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/onboarding/WelcomeWizard.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[33m 724[2mms[22m[39m
+   [33m[2m✓[22m[39m enters the workspace after a partial import and warns after navigation finishes[33m 335[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/AddProviderInstanceDialog.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/Sidebar.snooze.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 18[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/previewMiniPlayerStore.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/queuedMessageEdit.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/appearanceFonts.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browserFaviconLogic.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/composerScrollGesture.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/usage/UsageProviderChart.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/composerContextUndo.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useLocalStorage.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 26[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/LinkPullRequestDialog.logic.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/proposedPlan.test.ts [2m([22m[2m15 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestChecks.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/state/desktopSshHosts.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 119[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ThreadTerminalDrawer.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/threadRoutes.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/composerContextReferences.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/desktopUpdate.toast.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 114[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/device/phoneTrackpad.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/permissions/usePermissionStatus.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/threadDetailsCardLayout.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/diffs/diffFileTree.logic.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ProviderStatusBanner.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/FilePreviewPanel.test.ts [2m([22m[2m16 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/elementContext.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/clerk/clerkAppearance.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/modelPickerSearch.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ComposerCommandMenu.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 48[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ProjectFaviconPickerDialog.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/worktreeCleanup.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/branding.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/providerSkillSearch.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+[90mstderr[2m | src/components/device/DeviceStreamView.test.tsx[2m > [22m[2mremoves MJPEG requests while hidden and reconnects when shown
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ExpandedImagePreview.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestPresentation.test.ts [2m([22m[2m17 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+[90mstderr[2m | src/components/device/DeviceStreamView.test.tsx[2m > [22m[2moffers Reconnect after the shared timeout and receives a frame after retry with unchanged access
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/confirmDialog.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+[90mstderr[2m | src/components/device/DeviceStreamView.test.tsx[2m > [22m[2mstarts exactly one new stream per Reconnect press
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/device/DeviceStreamView.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 87[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/rpc/requestLatencyState.test.ts [2m([22m[2m37 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/incrementalHighlighting.test.ts [2m([22m[2m18 tests[22m[2m)[22m[33m 836[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hostedPairing.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/diffFileActions.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/reviewCommentContext.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/desktopAppActivation.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/filePath.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestStackSnapshot.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+[90mstderr[2m | src/hooks/usePullRequestChecksRefresh.test.ts[2m > [22m[2mpolls quiet PRs each minute, speeds up for pending or missing checks, resumes from idle, and stops for closed PRs
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/usePullRequestChecksRefresh.test.ts[2m > [22m[2mpolls quiet PRs each minute, speeds up for action-required or missing checks, resumes from idle, and stops for closed PRs
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/usePullRequestChecksRefresh.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/workspaceBasenameLookup.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/state/pullRequests.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+[90mstderr[2m | src/components/usage/UsagePage.test.tsx[2m > [22m[2mUsagePage Escape navigation[2m > [22m[2mreturns to the previous page on Escape
+[22m[39mReceived `true` for a non-boolean attribute `current`.
+
+If you want to write it to the DOM, pass a string instead: current="true" or current={value.toString()}.
+Invalid ARIA attribute `ariaLabel`. Did you mean `aria-label`?
+Unknown event handler property `onValueChange`. It will be ignored.
+React does not recognize the `alignItemWithTrigger` prop on a DOM element. If you intentionally want it to appear in the DOM as a custom attribute, spell it as lowercase `alignitemwithtrigger` instead. If you accidentally passed it from a parent component, remove it from the DOM element.
+Received `false` for a non-boolean attribute `electron`.
+
+If you want to write it to the DOM, pass a string instead: electron="false" or electron={value.toString()}.
+
+If you used to conditionally omit it with electron={condition && value}, pass electron={condition ? value : undefined} instead.
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/IntegrationsSettings.logic.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/state/desktopNetworkAccess.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 170[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/deviceHostConnectionChecks.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ComposerPrimaryActions.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[32m 45[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/cloud/relayClientInstallDialog.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/usage/UsagePage.test.tsx [2m([22m[2m5 tests[22m[2m)[22m[33m 444[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/cloud/connectCliAuth.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/SettingInheritance.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestReviewStore.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/fileContextMenu.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/deviceHostsSettings.logic.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/settingsScopeAxis.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/state/desktopWslState.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 223[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/settingsLayout.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/restingComposerControlsMeasurement.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/ProjectFilePicker.logic.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/assistantCitationNavigation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 35[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ThreadErrorBanner.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 38[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useThreadActions.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 13[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ThreadDetailsPanel.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ResourceTelemetryDiagnostics.logic.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/terminalContext.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+[90mstderr[2m | src/components/chat/ComposerBannerStack.test.tsx[2m > [22m[2monly offers notice details when the description cannot fit
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ComposerBannerStack.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 36[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/markdown-list-indentation.test.tsx [2m([22m[2m7 tests[22m[2m)[22m[32m 65[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/pierre-icons.test.ts [2m([22m[2m8 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/SnapShotAttachmentDetails.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/terminal/ghostty/keyCodes.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/browserLinkTarget.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/terminalCloseConfirm.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/OpenInPicker.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/state/paginatedBranches.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+[90mstderr[2m | src/components/chat/ThreadDetailsPrRows.test.tsx[2m > [22m[2mshows only the current pull request until the rest are asked for
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/components/chat/ThreadDetailsPrRows.test.tsx[2m > [22m[2mkeeps the single row untouched when the thread links one pull request
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ThreadDetailsPrRows.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 43[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/hostedBrowserWebviewStyle.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/diffs/DiffCommentAnnotation.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 40[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/useComposerMenuState.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 33[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/terminalFocus.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/bootstrap.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 62[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/timelineMinimapItems.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/contextWindow.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/diffFileContents.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/terminalCloseShortcut.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/pullRequestReference.test.ts [2m([22m[2m14 tests[22m[2m)[22m[32m 17[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/useComposerFocusState.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/connection/clientMetadata.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/usage/usagePagePreferences.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 27[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/composer-list-continuation.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/projectScriptKeybindings.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ComposerStashMenu.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 44[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/PreviewEmptyState.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 41[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/agentSpawnSummary.test.ts [2m([22m[2m11 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/clerk/MobileClientsUserProfilePage.logic.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/pendingDraftWork.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/usage/usagePriceForm.test.ts [2m([22m[2m12 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/videoFirstFrame.test.ts [2m([22m[2m13 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/addBrowserSurface.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/snapShotAnimation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ComposerPendingApprovalPanel.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 34[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/environments/primary/httpLayer.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/SettingsPanels.restore.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/fileEditorHighlight.test.ts [2m([22m[2m8 tests[22m[2m)[22m[33m 25597[2mms[22m[39m
+   [32m✓[39m editable file highlighting [2m(8)[22m
+     [33m[2m✓[22m[39m cleans up an already terminated worker pool[33m 1995[2mms[22m[39m
+     [33m[2m✓[22m[39m still accepts an asynchronous highlight when the file has not changed[33m 1676[2mms[22m[39m
+     [33m[2m✓[22m[39m ignores a dispatched highlight after 1 Enter edits and highlights the new version[33m 4276[2mms[22m[39m
+     [33m[2m✓[22m[39m ignores a dispatched highlight after 60 Enter edits and highlights the new version[33m 3812[2mms[22m[39m
+     [33m[2m✓[22m[39m does not replace a same-line edit with stale tokens[33m 3534[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps undo edits after an older highlight arrives[33m 3738[2mms[22m[39m
+     [33m[2m✓[22m[39m evicts the pre-edit shared cache without losing already-highlighted lines[33m 2175[2mms[22m[39m
+     [33m[2m✓[22m[39m reopens the edited file with the same cache key while an old response is pending[33m 4388[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/browserDefaults.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/closePreviewSession.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/composer-rich-text.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/assistantCitationCommentDismissal.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestListLines.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/previewAnnotation.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 16[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/markdown-github-alerts.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 61[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/sidebar/SidebarUpdatePill.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ComposerPendingUserInputPanel.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 59[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/previewAutomationTarget.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/previewViewportReadiness.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/contextPresentationRegistry.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/previewWebviewConfigState.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+[90mstderr[2m | src/hooks/useEnvironmentDisconnectDelay.test.tsx[2m > [22m[2mwaits 20 seconds without restarting on renders for the same environment
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useEnvironmentDisconnectDelay.test.tsx[2m > [22m[2mcancels a brief outage and starts a fresh delay on the next outage
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+[90mstderr[2m | src/hooks/useEnvironmentDisconnectDelay.test.tsx[2m > [22m[2mdoes not carry elapsed time to another environment
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useEnvironmentDisconnectDelay.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 31[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/fileTreeExpansion.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ThreadStatusIndicators.test.tsx [2m([22m[2m6 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/KeybindingsUpdateToast.logic.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/AddProviderInstanceWizardSteps.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 21[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/backgroundActivityReporter.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 14[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/composerMenuHighlight.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/appearanceContrast.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/useComposerMultilinePrompt.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/attachmentUploadState.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/providerModels.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/folderDrop.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/lruCache.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/chunkReloadGuard.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/orchestrationV2Timeline.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ComposerPendingApprovalActions.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 50[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/threadUndo.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ui/switch.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 130[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useDefaultTheme.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/cloud/cloudEnvironmentConnectionPresentation.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/browserPointerStore.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/desktopSnapShot.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/composerContextPresentation.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/modelOrdering.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/baseRefChoices.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/snapShotSetupResume.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/clerk/T3ConnectUserProfilePage.test.tsx [2m([22m[2m3 tests[22m[2m)[22m[32m 37[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/cloud/managedAuth.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/filePathDisplay.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/themeInspector.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/previewRuntimeTabId.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/clerk/electronPasskeys.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/snapShotSound.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/browserRecordingScope.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/state/waitForAtomValue.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ProjectIconPickerDialog.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 32[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useTerminalFocus.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/composerInlineChip.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/previewNavigationReadiness.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/cloud/publicConfig.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 15[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/projectIdentity.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/webviewCrashRecovery.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/browser/BrowserDeviceToolbar.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 10[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/previewEmptyStateLogic.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/PreviewPanelShell.test.ts [2m([22m[2m7 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+[90mstderr[2m | src/panelAnimations.test.tsx[2m > [22m[2musePanelNavigationSuppression[2m > [22m[2msuppresses initial and navigated panel state until each route has painted
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ThreadRelationshipsControl.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 20[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/panelAnimations.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 19[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/threadSync.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 12[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/projectFilesQueryState.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 23[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/desktopPasteAsText.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/fileContentRevision.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+[90mstderr[2m | src/components/preview/PreviewFaviconIcon.test.tsx[2m > [22m[2mfalls through failed favicon sources and retries when the source list changes
+[22m[39mreact-test-renderer is deprecated. See https://react.dev/warnings/react-test-renderer
+
+ [32m✓[39m [30m[42m unit [49m[39m src/components/pullRequest/pullRequestSummaryScroll.logic.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/PreviewFaviconIcon.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 22[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/cloud/dpop.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 151[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/environments/primary/desktopAuth.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ProviderModelsSection.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/device/deviceHubApi.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/clerk/authRedirect.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/fileExplorerLabel.test.ts [2m([22m[2m10 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/themeEditorStore.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 9[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/SidebarStageBackdrop.test.tsx [2m([22m[2m4 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/fileTreePathReconciliation.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/HighlightedCodeLines.test.tsx [2m([22m[2m1 test[22m[2m)[22m[33m 393[2mms[22m[39m
+   [32m✓[39m highlighted code lines [2m(1)[22m
+     [33m[2m✓[22m[39m preserves Shiki HTML, including colors, escaping, whitespace, and blank lines[33m 391[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/diffs/commentSubmitShortcut.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/syntaxHighlighting.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/composerSelection.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/modelPickerKeys.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/previewViewportRollback.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/diffCollapse.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/pairingUrls.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/files/fileLineReveal.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ProviderInstanceIcon.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/usage/usageBreakdown.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/usePreviewBridge.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/EnvironmentIconPicker.test.ts [2m([22m[2m4 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/projectIconOptions.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 30[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/usage/usageShortcuts.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/color.test.ts [2m([22m[2m9 tests[22m[2m)[22m[32m 8[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ProjectSettingsPanel.logic.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/portDiscoveryState.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ui/qr-code.test.tsx [2m([22m[2m2 tests[22m[2m)[22m[32m 25[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/providerUpdateDismissal.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 11[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ui/toastHelpers.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/preview/agentBrowserCursorLogic.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/ui/sidebar.test.tsx [2m([22m[2m1 test[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/hooks/useWorkspaceMutationRefresh.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/editorLabels.test.ts [2m([22m[2m6 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/device/deviceFrameLayout.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/state/queries.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/state/entities.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/LoadBalancingSettings.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 5[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/providerDriverMeta.lhc.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 4[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/runtime.test.ts [2m([22m[2m1 test[22m[2m)[22m[32m 7[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/lib/utils.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/ThemeImportDialog.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/settings/GitHubRoutingSettings.test.ts [2m([22m[2m2 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+ [32m✓[39m [30m[42m unit [49m[39m src/components/chat/ChatHeader.test.ts [2m([22m[2m3 tests[22m[2m)[22m[32m 3[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m428 passed[39m[22m[90m (428)[39m
+[2m      Tests [22m [1m[32m5662 passed[39m[22m[90m (5662)[39m
+[2m   Start at [22m 23:24:57
+[2m   Duration [22m 44.76s[2m (import 49%, transform 31%, tests 12%, setup 7%, environment 1%)[22m
+

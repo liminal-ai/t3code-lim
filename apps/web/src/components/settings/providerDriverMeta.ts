@@ -8,6 +8,8 @@ import {
   OpenCodeSettings,
   PiSettings,
   ProviderDriverKind,
+  CLAUDE_LHC_DRIVER_KIND,
+  ClaudeLhcSettings,
 } from "@t3tools/contracts";
 import type * as Schema from "effect/Schema";
 
@@ -56,6 +58,11 @@ const PROVIDER_CLIENT_DEFINITIONS: readonly ProviderClientDefinition[] = [
     value: ProviderDriverKind.make("claudeAgent"),
     label: "Claude",
     settingsSchema: ClaudeSettings,
+  },
+  {
+    value: CLAUDE_LHC_DRIVER_KIND,
+    label: "Claude LHC",
+    settingsSchema: ClaudeLhcSettings,
   },
   {
     value: ProviderDriverKind.make("cursor"),

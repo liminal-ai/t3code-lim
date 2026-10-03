@@ -18,3 +18,5 @@ on lim-builder node lives under fnm, so it fails here with or without these chan
 `kind-checks-tests-after.txt` also has one GitManager timeout ("does not reuse a cross-repo PR when GitHub
 omits head identity metadata"). It times out on the pin's own GitManager files too
 (`gitmanager-crossrepo-timeout-on-stock.txt`), so it's environmental here, not from this port.
+| Web: Claude LHC in Settings (own schema), model options, default model, traits, usage, readiness, icon; a Claude LHC draft never falls back to another kind | `web-tests-before.txt` | `web-tests-after.txt`: 5662 web unit tests pass |
+| Live on the LHC lane (13977) | — | `live/README.md`: compaction, recall, restart, recovery, interrupt, fork refused, stock baseline |

@@ -24,6 +24,8 @@ import {
   type ThreadLinkedPullRequest,
   type RunId,
   type WorktreeSetupSnapshot,
+  CLAUDE_LHC_DRIVER_KIND,
+  PROVIDER_DISPLAY_NAMES,
 } from "@t3tools/contracts";
 import { worktreeSetupAgentStarted } from "@t3tools/client-runtime/worktree-setup";
 import * as DateTime from "effect/DateTime";
@@ -573,9 +575,10 @@ export function resolveComposerProviderSelection(input: {
   const requestedInstanceId = input.candidateInstanceIds.find(
     (candidate) => candidate != null && candidate !== NO_PROVIDER_MODEL_SELECTION.instanceId,
   );
+  const requestedEntry = input.entries.find((entry) => entry.instanceId === requestedInstanceId);
   const requestedDriverKind =
     input.lockedProvider ??
-    input.entries.find((entry) => entry.instanceId === requestedInstanceId)?.driverKind ??
+    requestedEntry?.driverKind ??
     input.entries[0]?.driverKind ??
     ProviderDriverKind.make("unconfigured");
   const lockedContinuationGroupKey = input.lockedProvider
@@ -587,11 +590,24 @@ export function resolveComposerProviderSelection(input: {
     input.lockedProvider === "antigravity" &&
     input.lockedInstanceId != null &&
     lockedContinuationGroupKey === null;
+  // A draft asking for Claude LHC never falls back to another kind: an LHC instance that is
+  // missing or cannot run shows as unavailable instead of silently starting a native thread.
+  // Default instance ids are their kind.
+  const requiresLhc =
+    (requestedEntry?.driverKind ?? requestedInstanceId) === CLAUDE_LHC_DRIVER_KIND;
+  // A custom-named instance that no longer exists can't say what kind it was (it may have been
+  // Claude LHC), so it falls back to nothing: unavailable.
+  const requestedVanishedCustom =
+    requestedInstanceId != null &&
+    requestedEntry === undefined &&
+    !Object.hasOwn(PROVIDER_DISPLAY_NAMES, requestedInstanceId);
   const compatibleEntries = input.entries.filter(
     (entry) =>
       (!input.lockedProvider || entry.driverKind === input.lockedProvider) &&
       (!lockedContinuationGroupKey || entry.continuationGroupKey === lockedContinuationGroupKey) &&
-      (!requiresExactInstance || entry.instanceId === input.lockedInstanceId),
+      (!requiresExactInstance || entry.instanceId === input.lockedInstanceId) &&
+      (!requiresLhc || entry.driverKind === CLAUDE_LHC_DRIVER_KIND) &&
+      !requestedVanishedCustom,
   );
   const selectedProviderEntry =
     input.candidateInstanceIds
