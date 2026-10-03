@@ -403,7 +403,23 @@ function queryRunnerError(cause: unknown, method: string): ClaudeAgentSdkQueryRu
     : new ClaudeAgentSdkQueryRunnerError({ cause, method });
 }
 
-function closeClaudeQuery(queryRuntime: ClaudeQuery) {
+/**
+ * What the runner uses of a query: the SDK's `Query`, or a stand-in with the same surface
+ * (Claude-LHC's sidecar). Iterated as an iterator itself (see `claudeQueryMessages`).
+ */
+export interface ClaudeQueryRuntime
+  extends AsyncIterator<SDKMessage, void>, AsyncIterable<SDKMessage, void> {
+  readonly setModel: (model?: string) => Promise<void>;
+  readonly interrupt: () => Promise<unknown>;
+  readonly close: () => void;
+}
+
+export type ClaudeCreateQuery = (input: {
+  readonly prompt: AsyncIterable<SDKUserMessage>;
+  readonly options: ClaudeQueryOptions;
+}) => ClaudeQueryRuntime;
+
+function closeClaudeQuery(queryRuntime: ClaudeQueryRuntime) {
   return Effect.try({
     try: () => queryRuntime.close(),
     catch: (cause) => queryRunnerError(cause, "close"),
@@ -416,7 +432,9 @@ function closeClaudeQuery(queryRuntime: ClaudeQuery) {
 // idle, deadlocking stream interruption (and with it, session scope close).
 // Query.return() runs cleanup() first, which closes the transport and
 // unblocks that read.
-export function claudeQueryMessages(queryRuntime: ClaudeQuery): AsyncIterable<SDKMessage, void> {
+export function claudeQueryMessages(
+  queryRuntime: ClaudeQueryRuntime,
+): AsyncIterable<SDKMessage, void> {
   return { [Symbol.asyncIterator]: () => queryRuntime };
 }
 
@@ -580,13 +598,17 @@ export function makeClaudeAgentSdkProtocolLogger(input: {
   };
 }
 
-export const claudeAgentSdkQueryRunnerLiveLayer: Layer.Layer<
-  ClaudeAgentSdkQueryRunner,
-  never,
-  Crypto.Crypto | ProviderEventLoggers.ProviderEventLoggers
-> = Layer.effect(
-  ClaudeAgentSdkQueryRunner,
+export interface ClaudeAgentSdkQueryRunnerOptions {
+  /** Builds each session's query: the SDK's `query` unless a driver supplies a stand-in (Claude-LHC). */
+  readonly createQuery?: ClaudeCreateQuery;
+  /** Set when this runner can't fork a session; forking fails with it (Claude-LHC). */
+  readonly forkRefusal?: string;
+}
+
+/** The query runner; the live layer is this with the SDK's own `query`. */
+export const makeClaudeAgentSdkQueryRunner = (options: ClaudeAgentSdkQueryRunnerOptions = {}) =>
   Effect.gen(function* () {
+    const createQuery: ClaudeCreateQuery = options.createQuery ?? query;
     const crypto = yield* Crypto.Crypto;
     const { native: nativeEventLogger } = yield* ProviderEventLoggers.ProviderEventLoggers;
 
@@ -613,7 +635,7 @@ export const claudeAgentSdkQueryRunnerLiveLayer: Layer.Layer<
         );
         const queryRuntime = yield* Effect.try({
           try: () =>
-            query({
+            createQuery({
               prompt,
               options: input.options,
             }),
@@ -701,6 +723,9 @@ export const claudeAgentSdkQueryRunnerLiveLayer: Layer.Layer<
       forkSession: Effect.fn("ClaudeAgentSdkQueryRunner.forkSession")(function* (
         input: ClaudeAgentSdkSessionForkInput,
       ) {
+        if (options.forkRefusal !== undefined) {
+          return yield* queryRunnerError(new Error(options.forkRefusal), "forkSession");
+        }
         const protocolLogger = makeClaudeAgentSdkProtocolLogger({
           nativeEventLogger,
           threadId: input.threadId,
@@ -770,8 +795,13 @@ export const claudeAgentSdkQueryRunnerLiveLayer: Layer.Layer<
       ),
       assertComplete: Effect.void,
     });
-  }),
-);
+  });
+
+export const claudeAgentSdkQueryRunnerLiveLayer: Layer.Layer<
+  ClaudeAgentSdkQueryRunner,
+  never,
+  Crypto.Crypto | ProviderEventLoggers.ProviderEventLoggers
+> = Layer.effect(ClaudeAgentSdkQueryRunner, makeClaudeAgentSdkQueryRunner());
 
 export function makeClaudeQueryOptions(input: {
   readonly modelSelection: ModelSelection;
