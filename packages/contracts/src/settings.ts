@@ -700,6 +700,56 @@ export const ClaudeSettings = makeProviderSettingsSchema(
 );
 export type ClaudeSettings = typeof ClaudeSettings.Type;
 
+// Claude LHC's two windows are required (an absent key takes the default; an
+// empty value is refused). The trigger is 100,000 to 1,000,000; the rebuilt
+// view 10,000 to 1,000,000, so the documented ~80k target fits.
+const CLAUDE_LHC_TRIGGER_PATTERN = /^(?:[1-9]\d{5}|1000000)$/;
+const CLAUDE_LHC_VIEW_PATTERN = /^(?:[1-9]\d{4}|[1-9]\d{5}|1000000)$/;
+
+const claudeLhcWindowSetting = (pattern: RegExp, defaultValue: string) =>
+  TrimmedString.check(Schema.isPattern(pattern)).pipe(
+    Schema.withDecodingDefault(Effect.succeed(defaultValue)),
+  );
+
+export const ClaudeLhcSettings = makeProviderSettingsSchema(
+  {
+    ...ClaudeSettings.fields,
+    autoCompactWindow: claudeLhcWindowSetting(CLAUDE_LHC_TRIGGER_PATTERN, "380000").pipe(
+      Schema.annotateKey({
+        title: "Compact trigger",
+        description:
+          "Provider-billed context at which LHC rebuilds the view. Narrow, precise coding: ~240k with a ~80k target. Ordinary intricate work: 350-380k (default). Broad long-horizon work: up to ~450k. Big-picture planning: 500-600k, accepting duller detail. Clarity rolls off from ~350-400k. Lowered automatically to fit a smaller model window.",
+        providerSettingsForm: {
+          placeholder: "e.g. 380000",
+          clearWhenEmpty: "omit",
+        },
+      }),
+    ),
+    lhcLowerBound: claudeLhcWindowSetting(CLAUDE_LHC_VIEW_PATTERN, "150000").pipe(
+      Schema.annotateKey({
+        title: "Rebuilt view size",
+        description:
+          "Size the rebuilt context is built to after a compact, in provider-billed tokens: 10,000 or more, and below the trigger. ~80k for focused coding, 150-180k for ordinary work.",
+        providerSettingsForm: {
+          placeholder: "e.g. 150000",
+          clearWhenEmpty: "omit",
+        },
+      }),
+    ),
+  },
+  {
+    order: ["binaryPath", "homePath", "autoCompactWindow", "lhcLowerBound", "launchArgs"],
+  },
+).check(
+  Schema.makeFilter(
+    (settings) =>
+      Number(settings.lhcLowerBound) < Number(settings.autoCompactWindow) ||
+      "The rebuilt view size must be below the compact trigger.",
+    { identifier: "ClaudeLhcWindows" },
+  ),
+);
+export type ClaudeLhcSettings = typeof ClaudeLhcSettings.Type;
+
 export const CursorSettings = makeProviderSettingsSchema(
   {
     // Off by default like Grok and OpenCode. Users opt in from Settings.
