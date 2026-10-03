@@ -17,16 +17,17 @@ Contracts
 
 Server
 
-- `apps/server/src/orchestration-v2/Adapters/ClaudeAdapterV2.ts`: the seam. `ClaudeQueryRuntime` /
-  `ClaudeCreateQuery` types; `makeClaudeAgentSdkQueryRunner({createQuery, forkRefusal})`, with the
-  live runner layer unchanged (the SDK's `query`); `fitLhcCompactionToContextWindow`;
-  `makeClaudeQueryOptions` passes `lhcLowerBound` with `autoCompactWindow`, fitted to the model's
-  window. Test: `ClaudeAdapterV2.lhc.test.ts`.
+- `apps/server/src/orchestration-v2/Adapters/ClaudeAdapterV2.ts`: only the seam (the rebase hot
+  spot, +41/-11). `ClaudeQueryRuntime` / `ClaudeCreateQuery` types and
+  `makeClaudeAgentSdkQueryRunner({createQuery, forkRefusal})`; the live runner layer is that with no
+  options (the SDK's own `query`). Nothing else in the adapter changes.
 - `apps/server/src/provider/Drivers/ClaudeLhcSidecar.ts` (+test): spawns the sidecar
   (`CLAUDE_LHC_SIDECAR`) over JSONL stdio. The runtime is its own iterator (V2 iterates the query
   object); `interrupt()` uses the sidecar's control. The store is always `<T3 home>-lhc`; the live
   stores `~/.t3code-lhc` (3773) and `~/.t3code-v044-lhc` (3780) are refused. The staged package must
-  match `lhc/sidecar.json` (version and integrity).
+  match `lhc/sidecar.json` (version and integrity). The seam adds the instance's two windows
+  (`autoCompactWindow`, `lhcLowerBound`) to each query's settings, fitted to the query's model
+  (`fitLhcCompactionToContextWindow`), so the adapter needs no LHC knowledge.
 - `apps/server/src/provider/Drivers/ClaudeDriver.ts`: `makeClaudeDriver(spec)`; `ClaudeDriver` is the
   stock spec. The spec adds the instance's query runner, a fork refusal, an unavailable reason
   (reported as `installed: false`) and a continuation-key mapping. The stock `create` body keeps
@@ -65,10 +66,21 @@ Sidecar (`lhc/`)
 
 ## Known limits
 
-- New compaction windows apply when a session opens: V2 keeps a thread's query open across turns.
-- V2's Claude adapter labels every Claude instance's provider refs `claudeAgent`. A forked LHC child
-  switched to a stock Claude instance before its first turn would fork the LHC native session through
-  the stock runner (an old, pre-compaction transcript). Closing it needs the adapter to stamp the
-  instance's driver kind.
+- New compaction windows apply when a session opens: V2 keeps a thread's query open across turns, so
+  a change in Settings reaches a thread at its next session (a new thread, or after the session is
+  released or the server restarts).
+- Fork-then-switch (raise upstream; not fixed here, it needs a deeper change in the adapter). V2's
+  Claude adapter labels every Claude instance's provider refs `claudeAgent`. Steps: (1) fork a
+  Claude LHC thread; (2) before the child's first turn, switch the child's model to a stock Claude
+  instance; (3) send. The child's first turn forks the LHC thread's native session through the stock
+  runner, so the child starts from that native transcript (the first generation, before LHC's
+  compactions), not the LHC view. An odd transcript, not data loss or a security issue. Forking
+  without switching is refused ("Claude LHC threads can't be forked…").
 - Two upstream tests fail on lim-builder with or without this patch (environment): an ACP test that
   expects `node` in `/usr/bin`, and a GitManager cross-repo PR test that times out.
+
+## Size against the pin
+
+Existing upstream files: 267 edited lines (+232/-35) in 18 files; the rest is new files (the
+sidecar seam, the LHC driver, the kind module, tests, `lhc/`). Measured with
+`git diff --numstat --diff-filter=M 8ed276c2 -- apps packages ':!*.test.ts'`.
