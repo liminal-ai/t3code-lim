@@ -1,0 +1,16 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90m/srv/work/t3code-v2-lhc/apps/server[39m
+
+ [32m✓[39m src/orchestration-v2/Adapters/ClaudeAdapterV2.lhc.test.ts [2m([22m[2m5 tests[22m[2m)[22m[32m 6[2mms[22m[39m
+ [32m✓[39m src/orchestration-v2/Adapters/ClaudeAdapterV2.test.ts [2m([22m[2m127 tests[22m[2m)[22m[33m 719[2mms[22m[39m
+
+[2m Test Files [22m [1m[32m2 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[32m132 passed[39m[22m[90m (132)[39m
+[2m   Start at [22m 22:58:14
+[2m   Duration [22m 5.72s[2m (transform 58%, import 30%, tests 10%, setup 2%)[22m
+
+[2m  Transform [22m [33mtransforming modules took 4.12s[39m[2m · 58% of tracked time, re-done on every run[22m
+[2m            [22m [2mpersist transforms across runs with [22m[33mfsModuleCache: true[39m
+[2m            [22m [2mon CI this only helps when the cache directory is persisted between runs[22m
+[2m            [22m [2mlearn more: https://vitest.dev/guide/improving-performance#caching-between-reruns[22m
+
