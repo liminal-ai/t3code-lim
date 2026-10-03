@@ -2242,6 +2242,13 @@ it.layer(
       config: { homePath: "/configured/claude" },
       expectedHome: "/configured/claude",
     },
+    {
+      name: "Claude LHC home",
+      driver: "claude-lhc",
+      variable: "CLAUDE_CONFIG_DIR",
+      config: { homePath: "/configured/claude-lhc" },
+      expectedHome: "/configured/claude-lhc",
+    },
   ])("prefers $name over the instance environment", ({ driver, variable, config, expectedHome }) =>
     Effect.gen(function* () {
       const path = yield* Path.Path;
