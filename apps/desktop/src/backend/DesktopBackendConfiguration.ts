@@ -1,5 +1,4 @@
 import * as NodeOS from "node:os";
-import * as NodePath from "node:path";
 
 import { parsePersistedServerObservabilitySettings } from "@t3tools/shared/serverSettings";
 import * as Context from "effect/Context";
@@ -9,6 +8,7 @@ import * as Encoding from "effect/Encoding";
 import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Path from "effect/Path";
 import * as PlatformError from "effect/PlatformError";
 import * as Schema from "effect/Schema";
 import * as SynchronizedRef from "effect/SynchronizedRef";
@@ -544,11 +544,12 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
   ): Effect.fn.Return<
     DesktopBackendManager.DesktopBackendStartConfig,
     never,
-    DesktopEnvironment.DesktopEnvironment | DesktopServerExposure.DesktopServerExposure
+    DesktopEnvironment.DesktopEnvironment | DesktopServerExposure.DesktopServerExposure | Path.Path
   > {
     const environment = yield* DesktopEnvironment.DesktopEnvironment;
     const serverExposure = yield* DesktopServerExposure.DesktopServerExposure;
     const backendExposure = yield* serverExposure.backendConfig;
+    const path = yield* Path.Path;
 
     const bootstrap = {
       mode: "desktop" as const,
@@ -587,7 +588,7 @@ const resolvePrimaryStartConfig = Effect.fn("desktop.backendConfiguration.resolv
         ELECTRON_RUN_AS_NODE: "1",
         ...(environment.isPackaged
           ? {
-              CLAUDE_LHC_SIDECAR: NodePath.join(
+              CLAUDE_LHC_SIDECAR: path.join(
                 environment.resourcesPath,
                 "claude-lhc",
                 "node_modules",
