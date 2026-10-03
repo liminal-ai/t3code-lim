@@ -70,7 +70,7 @@ T3's bundled model manifest gives Sonnet (4.6 and 5/5.5) a 200k context window b
 an option; Opus 5.5 and Fable default to 1M. A thread's `modelSelection` carries the choice
 (`options: [{ id: "contextWindow", value: "1m" }]`), and the sidecar fits the compaction windows to
 it. Settings can only set the new-thread default (`defaultModelSelection`, one instance, environment
-or per project); threads created over the API must pass the option themselves. On the LHC lane the
+or per project); threads created over the API (onboarding and test scripts, wherever agent threads are created) must pass the option themselves; the comms adapter only dispatches into existing threads, so it needs nothing. On the LHC lane the
 default is Claude LHC, Sonnet 5.5, 1M.
 
 ## Known limits
