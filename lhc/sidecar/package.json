@@ -1,0 +1,6 @@
+{
+  "private": true,
+  "dependencies": {
+    "claude-lhc": "0.1.1"
+  }
+}

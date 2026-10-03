@@ -1,0 +1,32 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90m/srv/work/t3code-v2-lhc/apps/server[39m
+
+ [31m❯[39m src/provider/Drivers/ClaudeLhcSidecar.test.ts [2m([22m[2m0 test[22m[2m)[22m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/provider/Drivers/ClaudeLhcSidecar.test.ts[2m [ src/provider/Drivers/ClaudeLhcSidecar.test.ts ][22m
+[31m[1mError[22m: Cannot find module './ClaudeLhcSidecar.ts' imported from /srv/work/t3code-v2-lhc/apps/server/src/provider/Drivers/ClaudeLhcSidecar.test.ts[39m
+[90m [2m❯[22m reviveInvokeError ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m542:14[22m[39m
+[90m [2m❯[22m Object.invoke ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m558:33[22m[39m
+[90m [2m❯[22m VitestModuleRunner.getModuleInformation ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m1212:7[22m[39m
+[90m [2m❯[22m request ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m1229:83[22m[39m
+[36m [2m❯[22m src/provider/Drivers/ClaudeLhcSidecar.test.ts:[2m8:1[22m[39m
+    [90m  6|[39m import { describe, expect, it } from "vite-plus/test";
+    [90m  7|[39m
+    [90m  8|[39m import {
+    [90m   |[39m [31m^[39m
+    [90m  9|[39m   claudeLhcHomeDir,
+    [90m 10|[39m   claudeLhcSidecarUnavailableReason,
+[90m [2m❯[22m VitestModuleRunner.directRequest ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m1272:59[22m[39m
+[90m [2m❯[22m VitestModuleRunner.cachedRequest ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m1179:73[22m[39m
+[90m [2m❯[22m VitestModuleRunner.import ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m1134:10[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [2mno tests[22m
+[2m   Start at [22m 22:52:39
+[2m   Duration [22m 171ms[2m (setup 64%, transform 32%, worker 4%)[22m
+
