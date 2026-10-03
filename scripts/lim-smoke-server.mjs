@@ -1,11 +1,12 @@
 // Exercise the extracted artifact, not the checkout or build directory.
-import { mkdtemp, readdir, readFile, rm } from "node:fs/promises";
+import { mkdtemp, readdir, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { execFileSync, spawn } from "node:child_process";
 import net from "node:net";
 const archive = path.resolve(process.argv[2]);
-const temp = await mkdtemp(path.join(tmpdir(), "t3-lim-smoke-"));
+// Windows TEMP may use an 8.3 alias; fs.watch needs the canonical directory.
+const temp = await realpath(await mkdtemp(path.join(tmpdir(), "t3-lim-smoke-")));
 let child;
 try {
   execFileSync(
