@@ -1,0 +1,18 @@
+{"deleted":"thread","id":"8e760a09-18c9-44c7-852e-6f9e11496955","title":"LHC fork attempt"}
+{"deleted":"thread","id":"e8aeaae7-dddc-45e6-b491-dd668f0e7347","title":"LHC fork attempt 2"}
+{"deleted":"thread","id":"f2a72574-7675-41d2-8dfe-bfae2d16f61b","title":"Baseline codex"}
+{"deleted":"thread","id":"36bdd66b-d2a1-453b-8a41-14c6662bb4e5","title":"Baseline isolated fork"}
+{"deleted":"thread","id":"f9f40706-0d9b-4108-bc79-10bdae27064a","title":"Baseline claudeAgent"}
+{"deleted":"thread","id":"722e5eaf-ff46-4d87-9cfc-cd0e06de075c","title":"LHC V2 recall"}
+{"deleted":"thread","id":"10eeca8a-e346-4858-a5ab-2e2606515022","title":"LHC V2 windows from settings"}
+{"deleted":"thread","id":"447792c3-95f8-491f-858b-97aff6e1d39a","title":"LHC V2 re-pin 2632"}
+{"deleted":"thread","id":"261844a8-110c-4778-b8f1-6b5bd5a191ce","title":"LHC V2 re-pin 2632, sequential reads"}
+{"deleted":"thread","id":"9d8cd900-f391-4a23-b3df-94f98d3f796b","title":"re-pin fork attempt"}
+{"deleted":"thread","id":"c79dbe3c-cfe5-443f-a0c9-2a9a6d13469e","title":"Baseline codex"}
+{"deleted":"thread","id":"25aa52c8-98b4-4b25-9f97-c20965404a71","title":"Baseline isolated fork"}
+{"deleted":"thread","id":"cf662486-ad74-430d-84e9-464cb025ae52","title":"Baseline claudeAgent"}
+{"deleted":"thread","id":"2084ec60-5afb-4e5c-afdd-d8d09265a238","title":"LHC V2 2632, 1M window"}
+{"deleted":"project","id":"f5621271-244f-462c-8082-e9ea92c8c228","title":"LHC V2 checks"}
+{"deleted":"project","id":"9fb872bf-44f7-4391-8ad0-6b11b212ae12","title":"Baseline 2026-10-03T03-21-06.652Z"}
+{"deleted":"project","id":"7820bf7f-026b-4a98-b17c-83ab45fb07ba","title":"Baseline 2026-10-03T15-01-26.835Z"}
+{"threadsDeleted":14,"projectsDeleted":3}

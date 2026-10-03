@@ -1,0 +1,178 @@
+{
+  "projects": [
+    {
+      "id": "f5621271-244f-462c-8082-e9ea92c8c228",
+      "title": "LHC V2 checks",
+      "workspaceRoot": "/srv/work/t3code-v2-baseline/lhc/fixture/lhc-v2-checks",
+      "deletedAt": null
+    },
+    {
+      "id": "9fb872bf-44f7-4391-8ad0-6b11b212ae12",
+      "title": "Baseline 2026-10-03T03-21-06.652Z",
+      "workspaceRoot": "/srv/work/t3code-v2-baseline/lhc/fixture/2026-10-03T03-21-06.652Z",
+      "deletedAt": null
+    },
+    {
+      "id": "7820bf7f-026b-4a98-b17c-83ab45fb07ba",
+      "title": "Baseline 2026-10-03T15-01-26.835Z",
+      "workspaceRoot": "/srv/work/t3code-v2-baseline/lhc/fixture/2026-10-03T15-01-26.835Z",
+      "deletedAt": null
+    }
+  ],
+  "threads": [
+    {
+      "id": "8e760a09-18c9-44c7-852e-6f9e11496955",
+      "projectId": "f5621271-244f-462c-8082-e9ea92c8c228",
+      "title": "LHC fork attempt",
+      "instance": "claude-lhc",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T03:18:51.775Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "e8aeaae7-dddc-45e6-b491-dd668f0e7347",
+      "projectId": "f5621271-244f-462c-8082-e9ea92c8c228",
+      "title": "LHC fork attempt 2",
+      "instance": "claude-lhc",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T03:20:00.115Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "f2a72574-7675-41d2-8dfe-bfae2d16f61b",
+      "projectId": "9fb872bf-44f7-4391-8ad0-6b11b212ae12",
+      "title": "Baseline codex",
+      "instance": "codex",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T03:21:09.532Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "36bdd66b-d2a1-453b-8a41-14c6662bb4e5",
+      "projectId": "9fb872bf-44f7-4391-8ad0-6b11b212ae12",
+      "title": "Baseline isolated fork",
+      "instance": "claudeAgent",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T03:21:56.461Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "f9f40706-0d9b-4108-bc79-10bdae27064a",
+      "projectId": "9fb872bf-44f7-4391-8ad0-6b11b212ae12",
+      "title": "Baseline claudeAgent",
+      "instance": "claudeAgent",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T03:21:06.914Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "722e5eaf-ff46-4d87-9cfc-cd0e06de075c",
+      "projectId": "f5621271-244f-462c-8082-e9ea92c8c228",
+      "title": "LHC V2 recall",
+      "instance": "claude-lhc",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T03:15:27.519Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "10eeca8a-e346-4858-a5ab-2e2606515022",
+      "projectId": "f5621271-244f-462c-8082-e9ea92c8c228",
+      "title": "LHC V2 windows from settings",
+      "instance": "claude-lhc",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T03:52:43.936Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "447792c3-95f8-491f-858b-97aff6e1d39a",
+      "projectId": "f5621271-244f-462c-8082-e9ea92c8c228",
+      "title": "LHC V2 re-pin 2632",
+      "instance": "claude-lhc",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T14:58:05.593Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "261844a8-110c-4778-b8f1-6b5bd5a191ce",
+      "projectId": "f5621271-244f-462c-8082-e9ea92c8c228",
+      "title": "LHC V2 re-pin 2632, sequential reads",
+      "instance": "claude-lhc",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T15:00:29.730Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "9d8cd900-f391-4a23-b3df-94f98d3f796b",
+      "projectId": "f5621271-244f-462c-8082-e9ea92c8c228",
+      "title": "re-pin fork attempt",
+      "instance": "claude-lhc",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T14:59:38.621Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "c79dbe3c-cfe5-443f-a0c9-2a9a6d13469e",
+      "projectId": "7820bf7f-026b-4a98-b17c-83ab45fb07ba",
+      "title": "Baseline codex",
+      "instance": "codex",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T15:01:30.136Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "25aa52c8-98b4-4b25-9f97-c20965404a71",
+      "projectId": "7820bf7f-026b-4a98-b17c-83ab45fb07ba",
+      "title": "Baseline isolated fork",
+      "instance": "claudeAgent",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T15:02:15.133Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "cf662486-ad74-430d-84e9-464cb025ae52",
+      "projectId": "7820bf7f-026b-4a98-b17c-83ab45fb07ba",
+      "title": "Baseline claudeAgent",
+      "instance": "claudeAgent",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T15:01:27.026Z",
+      "archivedAt": null,
+      "deletedAt": null
+    },
+    {
+      "id": "2084ec60-5afb-4e5c-afdd-d8d09265a238",
+      "projectId": "f5621271-244f-462c-8082-e9ea92c8c228",
+      "title": "LHC V2 2632, 1M window",
+      "instance": "claude-lhc",
+      "createdBy": "user",
+      "creationSource": "web",
+      "createdAt": "2026-10-03T16:13:24.231Z",
+      "archivedAt": null,
+      "deletedAt": null
+    }
+  ]
+}

@@ -1,0 +1,2 @@
+{"instanceId":"claudeAgent","driver":"claudeAgent","status":"ready","installed":true,"version":"2.1.288","models":["clau
+{"instanceId":"claude-lhc","driver":"claude-lhc","status":"ready","installed":true,"version":"2.1.288","models":["claude
