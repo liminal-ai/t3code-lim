@@ -65,23 +65,22 @@ await fs.writeFile(
   ) + "\n",
 );
 await fs.writeFile(
-  path.join(dest, "lhc-env.mjs"),
-  `import path from 'node:path';
-import {fileURLToPath} from 'node:url';
-const root = path.dirname(fileURLToPath(import.meta.url));
+  path.join(dest, "lhc-env.cjs"),
+  `const path = require('node:path');
+const root = __dirname;
 process.env.CLAUDE_LHC_SIDECAR = path.join(root,'lhc/node_modules/claude-lhc/dist/sidecar.js');
 `,
 );
 if (platform === "win") {
   await fs.writeFile(
     path.join(dest, "t3.cmd"),
-    '@echo off\r\n"%~dp0runtime\\node.exe" --import "%~dp0lhc-env.mjs" "%~dp0dist\\bin.mjs" %*\r\n',
+    '@echo off\r\n"%~dp0runtime\\node.exe" --require "%~dp0lhc-env.cjs" "%~dp0dist\\bin.mjs" %*\r\n',
   );
 } else {
   await fs.chmod(path.join(dest, "runtime/node"), 0o755);
   await fs.writeFile(
     path.join(dest, "t3"),
-    '#!/bin/sh\nroot=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$root/runtime/node" --import "$root/lhc-env.mjs" "$root/dist/bin.mjs" "$@"\n',
+    '#!/bin/sh\nroot=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)\nexec "$root/runtime/node" --require "$root/lhc-env.cjs" "$root/dist/bin.mjs" "$@"\n',
     { mode: 0o755 },
   );
 }

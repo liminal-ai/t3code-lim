@@ -8,14 +8,19 @@ const archive = path.resolve(process.argv[2]);
 const temp = await mkdtemp(path.join(tmpdir(), "t3-lim-smoke-"));
 let child;
 try {
-  execFileSync("tar", ["-xf", archive, "-C", temp]);
+  execFileSync(
+    process.platform === "win32"
+      ? path.join(process.env.SystemRoot ?? "C:\\Windows", "System32/tar.exe")
+      : "tar",
+    ["-xf", archive, "-C", temp],
+  );
   const [name] = await readdir(temp);
   const root = path.join(temp, name);
   const node = path.join(root, "runtime", process.platform === "win32" ? "node.exe" : "node");
   const launcher = path.join(root, "dist/bin.mjs");
-  const preload = path.join(root, "lhc-env.mjs");
+  const preload = path.join(root, "lhc-env.cjs");
   const meta = JSON.parse(await readFile(path.join(root, "release.json"), "utf8"));
-  const output = execFileSync(node, ["--import", preload, launcher, "--version"], {
+  const output = execFileSync(node, ["--require", preload, launcher, "--version"], {
     cwd: temp,
     encoding: "utf8",
   });
@@ -27,7 +32,7 @@ try {
   child = spawn(
     node,
     [
-      "--import",
+      "--require",
       preload,
       launcher,
       "serve",
