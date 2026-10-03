@@ -13,3 +13,8 @@ failing tests committed on their own first.
 `provider-tests-after.txt` has one failure that isn't from this port:
 `AcpSessionRuntime.processTree.test.ts` expects `node` in `/usr/bin` or `/bin` (Node's default PATH);
 on lim-builder node lives under fnm, so it fails here with or without these changes.
+| Kind checks: `GitManager` (a Claude LHC writer reads `CLAUDE.md`), terminal (its Claude home) | `kind-checks-tests-before.txt`; the GitManager case corrected (the instance must be configured) and shown failing again without the fix: `kind-checks-gitmanager-without-fix.txt` | `kind-checks-tests-after.txt`: 202 pass |
+
+`kind-checks-tests-after.txt` also has one GitManager timeout ("does not reuse a cross-repo PR when GitHub
+omits head identity metadata"). It times out on the pin's own GitManager files too
+(`gitmanager-crossrepo-timeout-on-stock.txt`), so it's environmental here, not from this port.

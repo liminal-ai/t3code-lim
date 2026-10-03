@@ -35,6 +35,7 @@ import {
   type SourceControlProviderKind,
   type SourceControlWritingStyleSettings,
   type ThreadId,
+  isClaudeDriverKind,
 } from "@t3tools/contracts";
 import {
   hasProjectSettingsOverrides,
@@ -780,7 +781,7 @@ export const make = Effect.gen(function* () {
             (yield* providerRegistry.getProviders).some(
               (provider) =>
                 provider.instanceId === settings.modelSelection.instanceId &&
-                provider.driver === "claudeAgent",
+                isClaudeDriverKind(provider.driver),
             );
           const claudeInstructions = isClaudeWriter
             ? yield* readRepositoryInstructions(cwd, "CLAUDE.md")

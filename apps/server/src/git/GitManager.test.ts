@@ -3133,6 +3133,9 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
       const { manager } = yield* makeManager({
         providers: [{ instanceId: "my_lhc", driver: "claude-lhc" }],
         serverSettings: {
+          providerInstances: {
+            [ProviderInstanceId.make("my_lhc")]: { driver: ProviderDriverKind.make("claude-lhc") },
+          },
           textGenerationModelSelection: {
             instanceId: ProviderInstanceId.make("my_lhc"),
             model: "claude-sonnet-4-6",
@@ -3153,9 +3156,10 @@ it.layer(GitManagerTestLayer)("GitManager", (it) => {
         action: "commit",
       });
 
-      expect(
-        generatedPolicy?.kind === "repo_conventions" && generatedPolicy.commitInstructions,
-      ).toContain(`Local CLAUDE.md:\n${claudeInstructions}`);
+      const policy = generatedPolicy as TextGeneration.CommitMessageGenerationInput["policy"];
+      expect(policy?.kind === "repo_conventions" ? policy.commitInstructions : "").toContain(
+        `Local CLAUDE.md:\n${claudeInstructions}`,
+      );
     }),
   );
 

@@ -1,0 +1,380 @@
+scripts/acp-mock-agent.ts(852,16): suggestion TS377015: This expression contains chained `pipe` calls that can be simplified to a single `pipe` call. effect(unnecessaryPipeChain)
+scripts/record-grok-acp-replay-fixture.ts(405,38): suggestion TS377112: This input is already assignable to the schema's Encoded type. Use `decodeSync` to preserve compile-time type checking instead of discarding the input type through `decodeUnknownSync`. effect(preferTypedSchemaDecoder)
+src/mcp/AcpMcpStdioBridge.ts(312,9): suggestion TS377012: This Effect generator contains `try/catch`; in this context, error handling is expressed with Effect APIs such as Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag). effect(tryCatchInEffectGen)
+src/mcp/AcpMcpStdioBridge.ts(355,7): suggestion TS377099: `Effect.ignoreCause` expresses ignored failure more directly than `Effect.catchCause` returning `Effect.void`. effect(catchToIgnore)
+src/mcp/McpSessionRegistry.testkit.ts(22,20): suggestion TS377016: `Effect.void` represents the same outcome as `Effect.succeed(undefined)` or `Effect.succeed(void 0)`. effect(effectSucceedWithVoid)
+src/mcp/WorktreeMcpService.test.ts(368,3): suggestion TS377017: This Effect.gen contains a single return statement. effect(unnecessaryEffectGen)
+src/mcp/toolkits/pullRequests/handlers.ts(169,27): suggestion TS377015: This expression contains chained `pipe` calls that can be simplified to a single `pipe` call. effect(unnecessaryPipeChain)
+src/orchestration-v2/Adapters/AcpAdapterV2.ts(4879,21): suggestion TS377017: This Effect.gen contains a single return statement. effect(unnecessaryEffectGen)
+src/orchestration-v2/Adapters/AcpAdapterV2.ts(5594,21): suggestion TS377017: This Effect.gen contains a single return statement. effect(unnecessaryEffectGen)
+src/orchestration-v2/Adapters/AcpRegistryAdapterV2.test.ts(395,65): suggestion TS377114: `Effect.asSome` expresses wrapping the success value in `Option.some` directly. effect(mapSomeToAsSome)
+src/orchestration-v2/Adapters/AcpRegistryAdapterV2.test.ts(403,39): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/Adapters/AcpRegistryAdapterV2.test.ts(408,39): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/Adapters/AcpRegistryAdapterV2.test.ts(412,35): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/Adapters/AcpRegistryAdapterV2.testkit.ts(31,32): suggestion TS377112: This input is already assignable to the schema's Encoded type. Use `decodeSync` to preserve compile-time type checking instead of discarding the input type through `decodeUnknownSync`. effect(preferTypedSchemaDecoder)
+src/orchestration-v2/Adapters/AntigravityAdapterV2.test.ts(45,17): suggestion TS377016: `Effect.void` represents the same outcome as `Effect.succeed(undefined)` or `Effect.succeed(void 0)`. effect(effectSucceedWithVoid)
+src/orchestration-v2/Adapters/AntigravityAdapterV2.test.ts(186,23): suggestion TS377016: `Effect.void` represents the same outcome as `Effect.succeed(undefined)` or `Effect.succeed(void 0)`. effect(effectSucceedWithVoid)
+src/orchestration-v2/Adapters/AntigravityAdapterV2.test.ts(334,23): suggestion TS377016: `Effect.void` represents the same outcome as `Effect.succeed(undefined)` or `Effect.succeed(void 0)`. effect(effectSucceedWithVoid)
+src/orchestration-v2/Adapters/AntigravityAdapterV2.test.ts(488,25): suggestion TS377016: `Effect.void` represents the same outcome as `Effect.succeed(undefined)` or `Effect.succeed(void 0)`. effect(effectSucceedWithVoid)
+src/orchestration-v2/Adapters/ClaudeAdapterV2.lhc.test.ts(13,29): suggestion TS377112: This input is already assignable to the schema's Encoded type. Use `decodeSync` to preserve compile-time type checking instead of discarding the input type through `decodeUnknownSync`. effect(preferTypedSchemaDecoder)
+src/orchestration-v2/Adapters/ClaudeAdapterV2.test.ts(1032,26): suggestion TS377111: `AbortController` is manually constructed inside Effect code. Use `Effect.abortSignal` for Effect-managed cancellation. effect(abortControllerInEffect)
+src/orchestration-v2/Adapters/ClaudeAdapterV2.test.ts(1047,26): suggestion TS377111: `AbortController` is manually constructed inside Effect code. Use `Effect.abortSignal` for Effect-managed cancellation. effect(abortControllerInEffect)
+src/orchestration-v2/Adapters/ClaudeAdapterV2.test.ts(1304,37): suggestion TS377015: This expression contains chained `pipe` calls that can be simplified to a single `pipe` call. effect(unnecessaryPipeChain)
+src/orchestration-v2/Adapters/ClaudeAdapterV2.test.ts(1310,28): suggestion TS377111: `AbortController` is manually constructed inside Effect code. Use `Effect.abortSignal` for Effect-managed cancellation. effect(abortControllerInEffect)
+src/orchestration-v2/Adapters/ClaudeAdapterV2.test.ts(1333,37): suggestion TS377111: `AbortController` is manually constructed inside Effect code. Use `Effect.abortSignal` for Effect-managed cancellation. effect(abortControllerInEffect)
+src/orchestration-v2/Adapters/CodexAdapterV2.ts(2674,19): suggestion TS377099: `Effect.ignore` expresses ignored failure more directly than `Effect.catch` returning `Effect.void`. effect(catchToIgnore)
+src/orchestration-v2/Adapters/CodexAdapterV2.ts(5976,26): suggestion TS377019: This `yield* Effect.fail(...)` passes a yieldable error value. `yield*` represents that value directly without wrapping it in `Effect.fail`. effect(unnecessaryFailYieldableError)
+src/orchestration-v2/Adapters/GrokAdapterV2.testkit.ts(34,38): suggestion TS377112: This input is already assignable to the schema's Encoded type. Use `decodeSync` to preserve compile-time type checking instead of discarding the input type through `decodeUnknownSync`. effect(preferTypedSchemaDecoder)
+src/orchestration-v2/Adapters/OpenCode2AdapterV2.ts(1632,26): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/Adapters/OpenCode2AdapterV2.ts(1632,58): suggestion TS377114: `Effect.asSome` expresses wrapping the success value in `Option.some` directly. effect(mapSomeToAsSome)
+src/orchestration-v2/Adapters/OpenCodeAdapterV2.test.ts(105,39): suggestion TS377112: This input is already assignable to the schema's Encoded type. Use `decodeSync` to preserve compile-time type checking instead of discarding the input type through `decodeUnknownSync`. effect(preferTypedSchemaDecoder)
+src/orchestration-v2/Adapters/OpenCodeAdapterV2.ts(1028,33): suggestion TS377111: `AbortController` is manually constructed inside Effect code. Use `Effect.abortSignal` for Effect-managed cancellation. effect(abortControllerInEffect)
+src/orchestration-v2/Adapters/OpenCodeAdapterV2.ts(1107,33): suggestion TS377019: This `yield* Effect.fail(...)` passes a yieldable error value. `yield*` represents that value directly without wrapping it in `Effect.fail`. effect(unnecessaryFailYieldableError)
+src/orchestration-v2/Adapters/OpenCodeAdapterV2.ts(3178,43): suggestion TS377111: `AbortController` is manually constructed inside Effect code. Use `Effect.abortSignal` for Effect-managed cancellation. effect(abortControllerInEffect)
+src/orchestration-v2/Adapters/OpenCodeAdapterV2.ts(3339,47): suggestion TS377111: `AbortController` is manually constructed inside Effect code. Use `Effect.abortSignal` for Effect-managed cancellation. effect(abortControllerInEffect)
+src/orchestration-v2/Adapters/PiRpc.ts(380,17): suggestion TS377114: `Effect.asSome` expresses wrapping the success value in `Option.some` directly. effect(mapSomeToAsSome)
+src/orchestration-v2/CheckpointRestoreSafety.test.ts(110,24): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/CheckpointRestoreSafety.ts(73,17): suggestion TS377116: `Effect.catchTag` expresses selective recovery more directly than `Effect.catch` with a conditional `Effect.fail` passthrough. effect(catchConditionalRefailToCatchIf)
+src/orchestration-v2/CommandReceiptStore.ts(176,29): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/CommandReceiptStore.ts(179,21): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/CommandReceiptStore.ts(180,58): suggestion TS377114: `Effect.asSome` expresses wrapping the success value in `Option.some` directly. effect(mapSomeToAsSome)
+src/orchestration-v2/CommandReceiptStore.ts(195,17): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/CommandReceiptStore.ts(204,25): suggestion TS377114: `Effect.asSome` expresses wrapping the success value in `Option.some` directly. effect(mapSomeToAsSome)
+src/orchestration-v2/EffectOutbox.ts(373,17): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectOutbox.ts(374,39): suggestion TS377114: `Effect.asSome` expresses wrapping the success value in `Option.some` directly. effect(mapSomeToAsSome)
+src/orchestration-v2/EffectWorker.test.ts(103,20): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectWorker.test.ts(222,24): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectWorker.test.ts(289,24): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectWorker.test.ts(359,24): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectWorker.test.ts(360,18): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectWorker.test.ts(424,24): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectWorker.test.ts(425,18): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectWorker.test.ts(485,24): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectWorker.test.ts(486,18): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectWorker.test.ts(557,24): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectWorker.test.ts(558,18): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectWorker.test.ts(676,24): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/EffectWorker.test.ts(704,24): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/FoundationPersistence.test.ts(1921,26): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/FoundationPersistence.test.ts(1926,11): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/FoundationPersistence.test.ts(1976,26): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/FoundationPersistence.test.ts(1978,11): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/FoundationPersistence.test.ts(2792,30): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/FoundationPersistence.test.ts(3014,30): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/OpenCode2OrchestratorV2.live.test.ts(118,20): suggestion TS377016: `Effect.void` represents the same outcome as `Effect.succeed(undefined)` or `Effect.succeed(void 0)`. effect(effectSucceedWithVoid)
+src/orchestration-v2/Orchestrator.ts(9341,7): suggestion TS377120: `Effect.filterOrFail` expresses this conditional validation more directly than `Effect.flatMap` with an identity `Effect.succeed` branch. effect(flatMapConditionalToFilterOrFail)
+src/orchestration-v2/ProjectSettingsUpgrade.integration.test.ts(161,28): suggestion TS377016: `Effect.void` represents the same outcome as `Effect.succeed(undefined)` or `Effect.succeed(void 0)`. effect(effectSucceedWithVoid)
+src/orchestration-v2/ProjectionControlReads.test.ts(279,11): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/ProviderTurnStartService.test.ts(101,13): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/ProviderTurnStartService.testkit.ts(14,20): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/ProviderTurnStartService.ts(481,15): suggestion TS377116: `Effect.catchCauseIf` expresses selective recovery more directly than `Effect.catchCause` with a conditional `Effect.failCause` passthrough. effect(catchConditionalRefailToCatchIf)
+src/orchestration-v2/RunExecutionService.ts(841,17): suggestion TS377116: `Effect.catchCauseIf` expresses selective recovery more directly than `Effect.catchCause` with a conditional `Effect.failCause` passthrough. effect(catchConditionalRefailToCatchIf)
+src/orchestration-v2/RuntimePolicy.test.ts(92,9): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/RuntimeRequestService.test.ts(75,5): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/RuntimeRequestService.test.ts(139,5): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/RuntimeRequestService.test.ts(206,44): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/RuntimeRequestService.test.ts(217,11): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/ThreadLaunchService.test.ts(156,33): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/ThreadLaunchService.test.ts(183,32): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/ThreadManagementService.ts(458,7): suggestion TS377120: `Effect.filterOrFail` expresses this conditional validation more directly than `Effect.flatMap` with an identity `Effect.succeed` branch. effect(flatMapConditionalToFilterOrFail)
+src/orchestration-v2/ThreadManagementService.ts(475,5): suggestion TS377015: This expression contains chained `pipe` calls that can be simplified to a single `pipe` call. effect(unnecessaryPipeChain)
+src/orchestration-v2/ThreadManagementService.ts(486,9): suggestion TS377120: `Effect.filterOrFail` expresses this conditional validation more directly than `Effect.flatMap` with an identity `Effect.succeed` branch. effect(flatMapConditionalToFilterOrFail)
+src/orchestration-v2/ThreadPullRequestService.ts(327,17): suggestion TS377116: `Effect.catchCauseIf` expresses selective recovery more directly than `Effect.catchCause` with a conditional `Effect.failCause` passthrough. effect(catchConditionalRefailToCatchIf)
+src/orchestration-v2/ThreadSettlementService.ts(310,11): suggestion TS377116: `Effect.catchCauseIf` expresses selective recovery more directly than `Effect.catchCause` with a conditional `Effect.failCause` passthrough. effect(catchConditionalRefailToCatchIf)
+src/orchestration-v2/ThreadSettlementService.ts(479,11): suggestion TS377116: `Effect.catchCauseIf` expresses selective recovery more directly than `Effect.catchCause` with a conditional `Effect.failCause` passthrough. effect(catchConditionalRefailToCatchIf)
+src/orchestration-v2/ThreadSettlementService.ts(497,7): suggestion TS377116: `Effect.catchCauseIf` expresses selective recovery more directly than `Effect.catchCause` with a conditional `Effect.failCause` passthrough. effect(catchConditionalRefailToCatchIf)
+src/orchestration-v2/ThreadSettlementService.ts(521,9): suggestion TS377116: `Effect.catchCauseIf` expresses selective recovery more directly than `Effect.catchCause` with a conditional `Effect.failCause` passthrough. effect(catchConditionalRefailToCatchIf)
+src/orchestration-v2/http.ts(224,11): suggestion TS377012: This Effect generator contains `try/catch`; in this context, error handling is expressed with Effect APIs such as Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag). effect(tryCatchInEffectGen)
+src/orchestration-v2/runtimeLayer.test.ts(106,18): suggestion TS377117: `Effect.succeedNone` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/orchestration-v2/runtimeLayer.test.ts(872,11): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/persistence/initializeV2Database.ts(45,9): suggestion TS377116: `Effect.catchTag` expresses selective recovery more directly than `Effect.catch` with a conditional `Effect.fail` passthrough. effect(catchConditionalRefailToCatchIf)
+src/project/AgentSessionImporter.test.ts(68,13): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/project/ManagedProjectFolders.ts(362,13): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/project/ManagedProjectFolders.ts(364,15): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/project/ProjectSetupScriptRunner.test.ts(63,26): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/provider/CodexInstallation.ts(207,26): suggestion TS377112: This input is already assignable to the schema's Encoded type. Use `decodeEffect` to preserve compile-time type checking instead of discarding the input type through `decodeUnknownEffect`. effect(preferTypedSchemaDecoder)
+src/provider/CursorCredentialStore.ts(61,7): suggestion TS377074: `Effect.runPromise` is called inside an Effect with a separate services invocation. In this context, child Effects run with the surrounding services, which can be accessed through `Effect.context` and `Effect.runPromiseWith`. effect(runEffectInsideEffect)
+src/provider/CursorCredentialStore.ts(65,29): suggestion TS377016: `Effect.void` represents the same outcome as `Effect.succeed(undefined)` or `Effect.succeed(void 0)`. effect(effectSucceedWithVoid)
+src/provider/CursorCredentialStore.ts(75,7): suggestion TS377074: `Effect.runPromise` is called inside an Effect with a separate services invocation. In this context, child Effects run with the surrounding services, which can be accessed through `Effect.context` and `Effect.runPromiseWith`. effect(runEffectInsideEffect)
+src/provider/CursorCredentialStore.ts(88,18): suggestion TS377074: `Effect.runPromise` is called inside an Effect with a separate services invocation. In this context, child Effects run with the surrounding services, which can be accessed through `Effect.context` and `Effect.runPromiseWith`. effect(runEffectInsideEffect)
+src/provider/Drivers/AcpRegistryDriver.ts(639,53): suggestion TS377114: `Effect.asSome` expresses wrapping the success value in `Option.some` directly. effect(mapSomeToAsSome)
+src/provider/Drivers/CursorDriver.ts(212,13): suggestion TS377120: `Effect.filterOrElse` expresses this conditional validation more directly than `Effect.flatMap` with an identity `Effect.succeed` branch. effect(flatMapConditionalToFilterOrFail)
+src/provider/Drivers/GrokDriver.ts(150,9): suggestion TS377120: `Effect.filterOrElse` expresses this conditional validation more directly than `Effect.flatMap` with an identity `Effect.succeed` branch. effect(flatMapConditionalToFilterOrFail)
+src/provider/Layers/CodexProvider.ts(450,11): suggestion TS377016: `Effect.void` represents the same outcome as `Effect.succeed(undefined)` or `Effect.succeed(void 0)`. effect(effectSucceedWithVoid)
+src/provider/Layers/ProviderAuthService.test.ts(290,24): suggestion TS377019: This `yield* Effect.fail(...)` passes a yieldable error value. `yield*` represents that value directly without wrapping it in `Effect.fail`. effect(unnecessaryFailYieldableError)
+src/provider/Layers/cursorUsageLimits.test.ts(64,5): suggestion TS377017: This Effect.gen contains a single return statement. effect(unnecessaryEffectGen)
+src/provider/OpenCodeServerLedger.ts(173,12): suggestion TS377016: `Effect.void` represents the same outcome as `Effect.succeed(undefined)` or `Effect.succeed(void 0)`. effect(effectSucceedWithVoid)
+src/provider/OpenCodeServerLedger.ts(215,24): suggestion TS377014: This generator returns an Effect-able value directly, which produces a nested `Effect<Effect<...>>`. If the intended result is the inner Effect value, `return yield*` represents that form. effect(returnEffectInGen)
+src/provider/OpenCodeServerLedger.ts(235,9): suggestion TS377014: This generator returns an Effect-able value directly, which produces a nested `Effect<Effect<...>>`. If the intended result is the inner Effect value, `return yield*` represents that form. effect(returnEffectInGen)
+src/provider/OpenCodeServerLedger.ts(250,7): suggestion TS377014: This generator returns an Effect-able value directly, which produces a nested `Effect<Effect<...>>`. If the intended result is the inner Effect value, `return yield*` represents that form. effect(returnEffectInGen)
+src/provider/acp/AcpClientTerminals.test.ts(265,32): suggestion TS377113: `Effect.forEach` expresses this effectful array mapping more directly than `Effect.all` over `Array#map`. effect(allOfMapToForEach)
+src/provider/acp/AcpRegistryAuth.ts(145,13): suggestion TS377118: `Effect.fromOption` expresses this Option-to-Effect conversion more directly than `Option.match` or an Option tag conditional. effect(optionMatchToFromOption)
+src/provider/acp/AcpRegistryRuntimeCoordinator.ts(164,52): suggestion TS377114: `Effect.asSome` expresses wrapping the success value in `Option.some` directly. effect(mapSomeToAsSome)
+src/provider/acp/AcpRegistrySupport.ts(1262,9): suggestion TS377116: `Effect.catchIf` expresses selective recovery more directly than `Effect.catch` with a conditional `Effect.fail` passthrough. effect(catchConditionalRefailToCatchIf)
+src/provider/acp/AcpSessionRuntime.processTree.test.ts(379,13): suggestion TS377012: This Effect generator contains `try/catch`; in this context, error handling is expressed with Effect APIs such as Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag). effect(tryCatchInEffectGen)
+src/provider/acp/AcpSessionRuntime.processTree.test.ts(405,9): suggestion TS377012: This Effect generator contains `try/catch`; in this context, error handling is expressed with Effect APIs such as Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag). effect(tryCatchInEffectGen)
+src/provider/acp/AcpSessionRuntime.processTree.test.ts(410,9): suggestion TS377012: This Effect generator contains `try/catch`; in this context, error handling is expressed with Effect APIs such as Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag). effect(tryCatchInEffectGen)
+src/provider/acp/AcpSessionRuntime.processTree.test.ts(416,11): suggestion TS377012: This Effect generator contains `try/catch`; in this context, error handling is expressed with Effect APIs such as Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag). effect(tryCatchInEffectGen)
+src/provider/acp/AcpSessionRuntime.processTree.test.ts(557,13): suggestion TS377012: This Effect generator contains `try/catch`; in this context, error handling is expressed with Effect APIs such as Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag). effect(tryCatchInEffectGen)
+src/provider/acp/AcpSessionRuntime.processTree.test.ts(572,9): suggestion TS377012: This Effect generator contains `try/catch`; in this context, error handling is expressed with Effect APIs such as Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag). effect(tryCatchInEffectGen)
+src/provider/acp/AcpSessionRuntime.ts(505,7): suggestion TS377012: This Effect generator contains `try/catch`; in this context, error handling is expressed with Effect APIs such as Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag). effect(tryCatchInEffectGen)
+src/provider/acp/AcpSessionRuntime.ts(515,7): suggestion TS377012: This Effect generator contains `try/catch`; in this context, error handling is expressed with Effect APIs such as Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag). effect(tryCatchInEffectGen)
+src/provider/acp/AcpSessionRuntime.ts(531,7): suggestion TS377012: This Effect generator contains `try/catch`; in this context, error handling is expressed with Effect APIs such as Effect.try, Effect.tryPromise, Effect.catch, Effect.catchTag). effect(tryCatchInEffectGen)
+src/provider/acp/AcpSessionRuntime.ts(2076,17): suggestion TS377118: `Effect.fromOption` expresses this Option-to-Effect conversion more directly than `Option.match` or an Option tag conditional. effect(optionMatchToFromOption)
+src/provider/acp/AcpSessionRuntime.ts(2340,9): suggestion TS377116: `Effect.catchIf` expresses selective recovery more directly than `Effect.catch` with a conditional `Effect.fail` passthrough. effect(catchConditionalRefailToCatchIf)
+src/provider/acp/AcpSessionRuntime.ts(2709,17): suggestion TS377116: `Effect.catchCauseIf` expresses selective recovery more directly than `Effect.catchCause` with a conditional `Effect.failCause` passthrough. effect(catchConditionalRefailToCatchIf)
+src/provider/acp/XAiAcpExtension.ts(1595,15): suggestion TS377009: The previous Effect does not fail, so this error-handling branch will never run. effect(catchUnfailableEffect)
+src/provider/acp/XAiAcpExtension.ts(1595,15): suggestion TS377099: `Effect.ignore` expresses ignored failure more directly than `Effect.catch` returning `Effect.void`. effect(catchToIgnore)
+src/provider/acp/XAiAcpExtension.ts(1677,15): suggestion TS377116: `Effect.catchCauseIf` expresses selective recovery more directly than `Effect.catchCause` with a conditional `Effect.failCause` passthrough. effect(catchConditionalRefailToCatchIf)
+src/relay/AgentAwarenessRelay.test.ts(258,9): suggestion TS377117: `Effect.succeedSome` expresses this Option success value directly. effect(preferSucceedSomeOrNone)
+src/serverSettings.test.ts(314,30): suggestion TS377113: `Effect.forEach` expresses this effectful array mapping more directly than `Effect.all` over `Array#map`. effect(allOfMapToForEach)
+src/sourceControl/GitHubCli.test.ts(271,30): suggestion TS377113: `Effect.forEach` expresses this effectful array mapping more directly than `Effect.all` over `Array#map`. effect(allOfMapToForEach)
+src/sourceControl/GitHubCli.test.ts(377,30): suggestion TS377113: `Effect.forEach` expresses this effectful array mapping more directly than `Effect.all` over `Array#map`. effect(allOfMapToForEach)
+src/textGeneration/CodexTextGeneration.ts(83,38): suggestion TS377099: `Effect.ignore` expresses ignored failure more directly than `Effect.catch` returning `Effect.void`. effect(catchToIgnore)
+src/textGeneration/CodexTextGeneration.ts(88,13): suggestion TS377099: `Effect.ignore` expresses ignored failure more directly than `Effect.catch` returning `Effect.void`. effect(catchToIgnore)
+src/ws.ts(1255,23): suggestion TS377118: `Effect.fromOption` expresses this Option-to-Effect conversion more directly than `Option.match` or an Option tag conditional. effect(optionMatchToFromOption)
+src/ws.ts(2286,24): suggestion TS377019: This `yield* Effect.fail(...)` passes a yieldable error value. `yield*` represents that value directly without wrapping it in `Effect.fail`. effect(unnecessaryFailYieldableError)
+src/ws.ts(2295,24): suggestion TS377019: This `yield* Effect.fail(...)` passes a yieldable error value. `yield*` represents that value directly without wrapping it in `Effect.fail`. effect(unnecessaryFailYieldableError)
+src/ws.ts(2303,24): suggestion TS377019: This `yield* Effect.fail(...)` passes a yieldable error value. `yield*` represents that value directly without wrapping it in `Effect.fail`. effect(unnecessaryFailYieldableError)
+TSC_EXIT=0
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90m/srv/work/t3code-v2-lhc/apps/server[39m
+
+[90mstdout[2m | src/terminal/Manager.test.ts[2m > [22m[2mTerminalManager[2m > [22m[2mkeeps last known subprocess state when the process snapshot fails
+[22m[39m[23:08:58.500] WARN (#175): failed to snapshot processes for terminal subprocess polling {
+  reason: {
+    _tag: [32m'TerminalSubprocessCheckError'[39m,
+    command: [32m'ps'[39m,
+    exitCode: [33m1[39m,
+    timedOut: [33mfalse[39m,
+    stdoutTruncated: [33mfalse[39m
+  }
+}
+
+[90mstdout[2m | src/terminal/Manager.test.ts[2m > [22m[2mTerminalManager[2m > [22m[2mkeeps last known subprocess state when the process snapshot fails
+[22m[39m[23:08:58.541] WARN (#175): failed to snapshot processes for terminal subprocess polling {
+  reason: {
+    _tag: [32m'TerminalSubprocessCheckError'[39m,
+    command: [32m'ps'[39m,
+    exitCode: [33m1[39m,
+    timedOut: [33mfalse[39m,
+    stdoutTruncated: [33mfalse[39m
+  }
+}
+
+[90mstdout[2m | src/terminal/Manager.test.ts[2m > [22m[2mTerminalManager[2m > [22m[2mkeeps last known subprocess state when the process snapshot fails
+[22m[39m[23:08:58.622] WARN (#175): failed to snapshot processes for terminal subprocess polling {
+  reason: {
+    _tag: [32m'TerminalSubprocessCheckError'[39m,
+    command: [32m'ps'[39m,
+    exitCode: [33m1[39m,
+    timedOut: [33mfalse[39m,
+    stdoutTruncated: [33mfalse[39m
+  }
+}
+
+[90mstdout[2m | src/terminal/Manager.test.ts[2m > [22m[2mTerminalManager[2m > [22m[2mrestarts with current provider secrets and clears bounded history
+[22m[39m[23:08:59.458] INFO (#481): Migrations ran successfully {
+  migrations: [
+    [32m'1_OrchestrationEvents'[39m,
+    [32m'2_OrchestrationCommandReceipts'[39m,
+    [32m'3_CheckpointDiffBlobs'[39m,
+    [32m'4_ProviderSessionRuntime'[39m,
+    [32m'5_Projections'[39m,
+    [32m'6_ProjectionThreadSessionRuntimeModeColumns'[39m,
+    [32m'7_ProjectionThreadMessageAttachments'[39m,
+    [32m'8_ProjectionThreadActivitySequence'[39m,
+    [32m'9_ProviderSessionRuntimeMode'[39m,
+    [32m'10_ProjectionThreadsRuntimeMode'[39m,
+    [32m'11_OrchestrationThreadCreatedRuntimeMode'[39m,
+    [32m'12_ProjectionThreadsInteractionMode'[39m,
+    [32m'13_ProjectionThreadProposedPlans'[39m,
+    [32m'14_ProjectionThreadProposedPlanImplementation'[39m,
+    [32m'15_ProjectionTurnsSourceProposedPlan'[39m,
+    [32m'16_CanonicalizeModelSelections'[39m,
+    [32m'17_ProjectionThreadsArchivedAt'[39m,
+    [32m'18_ProjectionThreadsArchivedAtIndex'[39m,
+    [32m'19_ProjectionSnapshotLookupIndexes'[39m,
+    [32m'20_AuthAccessManagement'[39m,
+    [32m'21_AuthSessionClientMetadata'[39m,
+    [32m'22_AuthSessionLastConnectedAt'[39m,
+    [32m'23_ProjectionThreadShellSummary'[39m,
+    [32m'24_BackfillProjectionThreadShellSummary'[39m,
+    [32m'25_CleanupInvalidProjectionPendingApprovals'[39m,
+    [32m'26_CanonicalizeModelSelectionOptions'[39m,
+    [32m'27_ProviderSessionRuntimeInstanceId'[39m,
+    [32m'28_ProjectionThreadSessionInstanceId'[39m,
+    [32m'29_ProjectionThreadDetailOrderingIndexes'[39m,
+    [32m'30_ProjectionThreadShellArchiveIndexes'[39m,
+    [32m'31_AuthAuthorizationScopes'[39m,
+    [32m'32_AuthPairingProofKeyThumbprint'[39m,
+    [32m'33_ProjectionThreadsSettled'[39m,
+    [32m'34_ProjectionThreadsSnoozed'[39m,
+    [32m'35_ProjectionThreadTitleRegeneration'[39m,
+    [32m'36_ProjectionThreadsPinned'[39m,
+    [32m'37_ProjectionTurnsKeysetIndex'[39m,
+    [32m'38_ProjectionThreadsPinOrderKey'[39m,
+    [32m'39_ProjectionProjectsDefaultThreadEnvMode'[39m,
+    [32m'40_ProjectionProjectFaviconPath'[39m,
+    [32m'41_AuthSessionClientConnection'[39m,
+    [32m'42_ProjectionThreadLinkedPullRequest'[39m,
+    [32m'43_ProjectionThreadsUnsettledAt'[39m,
+    [32m'44_ClearAutomaticProjectModelDefaults'[39m,
+    [32m'45_ProjectionProjectsAutoPull'[39m,
+    [32m'46_RepairAutomaticSettlementTimestamps'[39m,
+    [32m'47_ProjectionProjectIcon'[39m,
+    [32m'48_ProjectionThreadBranchPullRequest'[39m,
+    [32m'49_ProjectionThreadsActiveOrderKey'[39m,
+    [32m'50_ProjectionThreadPullRequests'[39m,
+    [32m'51_ProjectionThreadMessageContext'[39m,
+    [32m'52_ProjectionThreadTitleState'[39m,
+    [32m'53_PullRequestFilesViewed'[39m,
+    [32m'54_ProjectionThreadsAutoSettleDisabledAt'[39m,
+    [32m'55_OrchestrationV2'[39m,
+    [32m'56_RemoveRedundantProjectionIndexes'[39m
+  ]
+}
+
+ [32m✓[39m src/terminal/Manager.test.ts [2m([22m[2m87 tests[22m[2m)[22m[33m 1716[2mms[22m[39m
+   [32m✓[39m TerminalManager [2m(84)[22m
+     [33m[2m✓[22m[39m backs off the spawned fallback when the resource monitor snapshot fails[33m 309[2mms[22m[39m
+ [31m❯[39m src/git/GitManager.test.ts [2m([22m[2m116 tests[22m[2m | [22m[31m1 failed[39m[2m)[22m[33m 42928[2mms[22m[39m
+   [31m❯[39m GitManager [2m(116)[22m
+     [32m✓[39m status includes draft PR metadata when branch already has a draft PR[32m 268[2mms[22m[39m
+     [32m✓[39m status trims PR metadata returned by gh before publishing it[32m 170[2mms[22m[39m
+     [32m✓[39m status ignores invalid gh pr list entries and keeps valid ones[32m 174[2mms[22m[39m
+     [32m✓[39m status preserves lowercase merged and closed PR states from gh json[32m 174[2mms[22m[39m
+     [32m✓[39m status returns an explicit non-repo result for non-git directories[32m 59[2mms[22m[39m
+     [32m✓[39m status returns an explicit non-repo result for deleted directories[32m 45[2mms[22m[39m
+     [32m✓[39m status briefly caches repeated lookups for the same cwd[32m 172[2mms[22m[39m
+     [32m✓[39m a warm PR cache does not reread repository identity for status[32m 162[2mms[22m[39m
+     [32m✓[39m turn-end refresh finds a new PR and keeps known PRs cached[32m 297[2mms[22m[39m
+     [32m✓[39m turn-end refresh preserves failed PR lookup backoff[32m 197[2mms[22m[39m
+     [32m✓[39m status skips the provider lookup for a branch that was never pushed[32m 157[2mms[22m[39m
+     [32m✓[39m branch PR lookup returns null when the repository has no remotes[32m 66[2mms[22m[39m
+     [32m✓[39m branch PR lookup uses a saved tracked branch without changing checkout[32m 128[2mms[22m[39m
+     [32m✓[39m branch PR lookup uses the default branch from a non-origin remote[32m 124[2mms[22m[39m
+     [32m✓[39m branch PR lookup uses the saved name after the local branch is deleted[32m 127[2mms[22m[39m
+     [32m✓[39m branch PR lookup recovers a deleted fork branch from its remote-tracking ref[32m 145[2mms[22m[39m
+     [32m✓[39m branch PR lookup rejects ambiguous deleted-branch remote refs[32m 117[2mms[22m[39m
+     [32m✓[39m branch PR lookup does not reuse a cached PR after the remote is repointed[32m 149[2mms[22m[39m
+     [32m✓[39m branch PR lookup shares the status cache for the same repository identity[32m 199[2mms[22m[39m
+     [33m[2m✓[22m[39m branch PR lookup rechecks open PRs every minute and settled answers less often[33m 335[2mms[22m[39m
+     [32m✓[39m branch PR lookup propagates provider failures[32m 121[2mms[22m[39m
+     [32m✓[39m status finds a merged PR after its remote branch was deleted[32m 173[2mms[22m[39m
+     [32m✓[39m status still looks up PRs for a branch pushed without --set-upstream[32m 155[2mms[22m[39m
+     [32m✓[39m backs off repeated PR lookup failures past the healthy refresh cadence[32m 0[2mms[22m[39m
+     [32m✓[39m reads the repository from the returned PR URL https://github.example.com/team/repository/pull/42?tab=files[32m 0[2mms[22m[39m
+     [32m✓[39m reads the repository from the returned PR URL https://gitlab.example.com/group/subgroup/repository/-/merge_requests/42[32m 0[2mms[22m[39m
+     [32m✓[39m reads the repository from the returned PR URL https://bitbucket.org/team/repository/pull-requests/42[32m 0[2mms[22m[39m
+     [32m✓[39m reads the repository from the returned PR URL https://dev.azure.com/org/project/_git/repository/pullrequest/42[32m 0[2mms[22m[39m
+     [32m✓[39m reads the repository from the returned PR URL https://org.visualstudio.com/project/_git/repository/pullrequest/42[32m 0[2mms[22m[39m
+     [32m✓[39m reads the repository from the returned PR URL https://gitlab.example/group/pull/123/repository/-/merge_requests/42[32m 0[2mms[22m[39m
+     [32m✓[39m reads the repository from the returned PR URL https://github.example.com/team/repository/issues/42[32m 0[2mms[22m[39m
+     [32m✓[39m distinguishes Enterprise forks with the same head branch[32m 136[2mms[22m[39m
+     [32m✓[39m matches nested GitLab forks through the adapter for git@gitlab.com:Group/Subgroup/Fork.git[32m 144[2mms[22m[39m
+     [32m✓[39m matches nested GitLab forks through the adapter for https://gitlab.com/Group/Subgroup/Fork.git[32m 139[2mms[22m[39m
+     [32m✓[39m status ignores unrelated fork PRs when the current branch tracks the same repository[32m 135[2mms[22m[39m
+     [32m✓[39m status detects cross-repo PRs from the upstream remote URL owner[32m 185[2mms[22m[39m
+     [32m✓[39m status preserves a fork PR whose head is named after the default branch[32m 186[2mms[22m[39m
+     [32m✓[39m status ignores synthetic local branch aliases when the upstream remote name contains slashes[32m 206[2mms[22m[39m
+     [32m✓[39m status returns merged PR state when latest PR was merged[32m 134[2mms[22m[39m
+     [32m✓[39m status hides merged PRs on the default branch[32m 137[2mms[22m[39m
+     [32m✓[39m status does not inherit a merged PR from a feature branch's default upstream[32m 166[2mms[22m[39m
+     [32m✓[39m status finds a PR pushed under the branch's own name despite a default upstream[32m 177[2mms[22m[39m
+     [32m✓[39m status finds a fork PR pushed under the branch's own name despite a default upstream[32m 207[2mms[22m[39m
+     [32m✓[39m branch PR lookup verifies identity on the fork that holds the own-name ref[32m 152[2mms[22m[39m
+     [32m✓[39m status keeps an own-name PR when a later lookup fails on a default upstream[32m 280[2mms[22m[39m
+     [32m✓[39m status prefers open PR when merged PR has newer updatedAt[32m 139[2mms[22m[39m
+     [32m✓[39m status is resilient to gh lookup failures and returns pr null[32m 165[2mms[22m[39m
+     [32m✓[39m status logs actionable provider detail without exposing the upstream cause[32m 167[2mms[22m[39m
+     [32m✓[39m status keeps the last known PR when a later lookup fails[32m 243[2mms[22m[39m
+     [32m✓[39m status does not reuse a stale PR after the branch is retargeted to a different upstream[32m 257[2mms[22m[39m
+     [32m✓[39m status keeps the last known PR when the branch gains its first upstream[32m 229[2mms[22m[39m
+     [32m✓[39m status drops the last known PR when the tracked remote is repointed[32m 247[2mms[22m[39m
+     [32m✓[39m status keeps the last known PR when the current remote URL can't be resolved[32m 230[2mms[22m[39m
+     [32m✓[39m creates a commit when working tree is dirty[32m 144[2mms[22m[39m
+     [32m✓[39m preserves custom style when instructions are empty[32m 130[2mms[22m[39m
+     [32m✓[39m falls back when the dedicated source control writer is unavailable[32m 133[2mms[22m[39m
+     [32m✓[39m applies a V2-native thread's project settings to generated commit text[32m 134[2mms[22m[39m
+     [32m✓[39m includes local agent instructions when recent history is empty[32m 138[2mms[22m[39m
+     [32m✓[39m a Claude LHC instance writes with the local CLAUDE.md too[32m 131[2mms[22m[39m
+     [32m✓[39m uses custom commit message when provided[32m 131[2mms[22m[39m
+     [32m✓[39m commits only selected files when filePaths is provided[32m 137[2mms[22m[39m
+     [33m[2m✓[22m[39m creates feature branch, commits, and pushes with featureBranch option[33m 321[2mms[22m[39m
+     [32m✓[39m featureBranch uses custom commit message and derives branch name[32m 185[2mms[22m[39m
+     [32m✓[39m skips commit when there are no uncommitted changes[32m 109[2mms[22m[39m
+     [32m✓[39m featureBranch returns error when worktree is clean[32m 105[2mms[22m[39m
+     [32m✓[39m commits and pushes with upstream auto-setup when needed[32m 280[2mms[22m[39m
+     [33m[2m✓[22m[39m pushes and creates PR from a no-upstream branch when local commits are ahead of base[33m 362[2mms[22m[39m
+     [32m✓[39m skips push when branch is already up to date[32m 227[2mms[22m[39m
+     [32m✓[39m pushes existing clean commits without rerunning commit logic[32m 252[2mms[22m[39m
+     [32m✓[39m pushes existing commits without committing dirty worktree changes[32m 262[2mms[22m[39m
+     [33m[2m✓[22m[39m create_pr pushes a clean branch before creating the PR when needed[33m 332[2mms[22m[39m
+     [33m[2m✓[22m[39m create_pr falls back to main when source control provider detection fails[33m 321[2mms[22m[39m
+     [33m[2m✓[22m[39m create_pr targets the remote default branch when it is not main[33m 338[2mms[22m[39m
+     [32m✓[39m returns existing PR metadata for commit/push/pr action[32m 291[2mms[22m[39m
+     [33m[2m✓[22m[39m returns existing cross-repo PR metadata found under the bare branch name[33m 302[2mms[22m[39m
+     [33m[2m✓[22m[39m returns the correct existing PR when a slash remote checks out to a synthetic local alias[33m 365[2mms[22m[39m
+     [33m[2m✓[22m[39m picks the fork PR among same-named branches from other repositories[33m 323[2mms[22m[39m
+     [33m[2m✓[22m[39m stops probing head selectors after finding an existing PR[33m 307[2mms[22m[39m
+[31m     [31m×[31m does not reuse a cross-repo PR when GitHub omits head identity metadata[39m[33m 20016[2mms[22m[39m
+     [32m✓[39m matches mounted Forgejo heads without confusing forks sharing a branch[32m 1[2mms[22m[39m
+     [32m✓[39m rejects same-repo PR metadata when matching a cross-repo head context[32m 0[2mms[22m[39m
+     [32m✓[39m accepts fork PR metadata when origin is the fork checkout remote[32m 0[2mms[22m[39m
+     [33m[2m✓[22m[39m creates PR when one does not already exist[33m 419[2mms[22m[39m
+     [33m[2m✓[22m[39m generates PR content from branch changes when the remote base advances[33m 348[2mms[22m[39m
+     [33m[2m✓[22m[39m creates a new PR instead of reusing an unrelated fork PR with the same head branch[33m 322[2mms[22m[39m
+     [33m[2m✓[22m[39m creates cross-repo PRs with the fork owner selector and default base branch[33m 378[2mms[22m[39m
+     [32m✓[39m rejects push/pr actions from detached HEAD[32m 95[2mms[22m[39m
+     [32m✓[39m surfaces missing gh binary errors[32m 253[2mms[22m[39m
+     [32m✓[39m surfaces gh auth errors with guidance[32m 247[2mms[22m[39m
+     [32m✓[39m resolves pull requests from #number references[32m 61[2mms[22m[39m
+     [32m✓[39m prepares pull request threads in local mode by checking out the PR branch[32m 139[2mms[22m[39m
+     [32m✓[39m restores same-repository upstream tracking after local PR checkout without a remote ref[32m 231[2mms[22m[39m
+     [32m✓[39m restores same-repository upstream tracking when provider omits head repository metadata[32m 216[2mms[22m[39m
+     [32m✓[39m prepares pull request threads in worktree mode on the PR head branch[32m 293[2mms[22m[39m
+     [32m✓[39m preserves both branch materialization failures when the fallback also fails[32m 155[2mms[22m[39m
+     [32m✓[39m launches setup when creating a new PR worktree[32m 290[2mms[22m[39m
+     [33m[2m✓[22m[39m preserves fork upstream tracking when preparing a worktree PR thread[33m 342[2mms[22m[39m
+     [32m✓[39m preserves fork upstream tracking when preparing a local PR thread[32m 219[2mms[22m[39m
+     [32m✓[39m derives fork repository identity from PR URL when GitHub omits nameWithOwner[32m 226[2mms[22m[39m
+     [32m✓[39m reuses an existing dedicated worktree for the PR head branch[32m 204[2mms[22m[39m
+     [33m[2m✓[22m[39m refreshes a reused PR worktree onto the updated pull request head[33m 340[2mms[22m[39m
+     [33m[2m✓[22m[39m runs the setup script when a reused PR worktree moves onto the new head[33m 337[2mms[22m[39m
+     [33m[2m✓[22m[39m leaves the setup script alone when a reused PR worktree is already on the head[33m 314[2mms[22m[39m
+     [33m[2m✓[22m[39m resets a clean reused PR worktree onto a force-pushed pull request head[33m 376[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps a reused PR worktree that carries its own commit off the rewritten head[33m 389[2mms[22m[39m
+     [33m[2m✓[22m[39m keeps a dirty reused PR worktree off the rewritten pull request head[33m 365[2mms[22m[39m
+     [33m[2m✓[22m[39m refreshes a reused PR worktree that has no upstream from the pull request ref[33m 440[2mms[22m[39m
+     [32m✓[39m never moves an unrelated local branch that shares the fork head branch name[32m 246[2mms[22m[39m
+     [33m[2m✓[22m[39m does not block fork PR worktree prep when the fork head branch collides with root main[33m 373[2mms[22m[39m
+     [33m[2m✓[22m[39m does not overwrite an existing local main branch when preparing a fork PR worktree[33m 401[2mms[22m[39m
+     [32m✓[39m reuses an existing PR worktree and restores fork upstream tracking[32m 272[2mms[22m[39m
+     [33m[2m✓[22m[39m does not fail PR worktree prep when setup terminal startup fails[33m 355[2mms[22m[39m
+     [32m✓[39m rejects worktree prep when the PR head branch is checked out in the main repo[32m 90[2mms[22m[39m
+     [32m✓[39m emits ordered progress events for commit hooks[32m 204[2mms[22m[39m
+     [32m✓[39m emits action_failed when a commit hook rejects[32m 148[2mms[22m[39m
+     [32m✓[39m create_pr emits only the PR phase when the branch is already pushed[32m 276[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/git/GitManager.test.ts[2m > [22mGitManager[2m > [22mdoes not reuse a cross-repo PR when GitHub omits head identity metadata
+[31m[1mError[22m: Test timed out in 20000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".[39m
+[36m [2m❯[22m Array.<anonymous> src/git/GitManager.test.ts:[2m3996:6[22m[39m
+    [90m3994|[39m   );
+    [90m3995|[39m
+    [90m3996|[39m   it.effect(
+    [90m   |[39m      [31m^[39m
+    [90m3997|[39m     "does not reuse a cross-repo PR when GitHub omits head identity me…
+    [90m3998|[39m     () =>
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[1m[32m202 passed[39m[22m[90m (203)[39m
+[2m   Start at [22m 23:08:52
+[2m   Duration [22m 47.96s[2m (tests 82%, transform 12%, import 6%)[22m
+

@@ -1,0 +1,171 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90m/srv/work/t3code-v2-lhc/apps/server[39m
+
+[90mstdout[2m | src/git/GitManager.test.ts[2m > [22m[2mGitManager[2m > [22m[2ma Claude LHC instance writes with the local CLAUDE.md too
+[22m[39m[23:08:33.033] ERROR (#30): Error [AssertionError]: expected 'Follow the repository\'s established …' to contain 'Local CLAUDE.md:\nKeep pull request b…'
+    at [90m/srv/work/t3code-v2-lhc/apps/server/[39msrc/git/GitManager.test.ts:3160:84 {
+  actual: [32m"Follow the repository's established commit message style when examples are available."[39m,
+  expected: [32m'Local CLAUDE.md:\nKeep pull request bodies brief.'[39m,
+  showDiff: [33mtrue[39m,
+  operator: [32m'strictEqual'[39m,
+  [cause]: [90mundefined[39m
+}
+
+ [31m❯[39m src/git/GitManager.test.ts [2m([22m[2m116 tests[22m[2m | [22m[31m1 failed[39m[2m | [22m[33m115 skipped[39m[2m)[22m[32m 225[2mms[22m[39m
+   [31m❯[39m GitManager [2m(116)[22m
+     [2m[90m↓[39m[22m status includes draft PR metadata when branch already has a draft PR
+     [2m[90m↓[39m[22m status trims PR metadata returned by gh before publishing it
+     [2m[90m↓[39m[22m status ignores invalid gh pr list entries and keeps valid ones
+     [2m[90m↓[39m[22m status preserves lowercase merged and closed PR states from gh json
+     [2m[90m↓[39m[22m status returns an explicit non-repo result for non-git directories
+     [2m[90m↓[39m[22m status returns an explicit non-repo result for deleted directories
+     [2m[90m↓[39m[22m status briefly caches repeated lookups for the same cwd
+     [2m[90m↓[39m[22m a warm PR cache does not reread repository identity for status
+     [2m[90m↓[39m[22m turn-end refresh finds a new PR and keeps known PRs cached
+     [2m[90m↓[39m[22m turn-end refresh preserves failed PR lookup backoff
+     [2m[90m↓[39m[22m status skips the provider lookup for a branch that was never pushed
+     [2m[90m↓[39m[22m branch PR lookup returns null when the repository has no remotes
+     [2m[90m↓[39m[22m branch PR lookup uses a saved tracked branch without changing checkout
+     [2m[90m↓[39m[22m branch PR lookup uses the default branch from a non-origin remote
+     [2m[90m↓[39m[22m branch PR lookup uses the saved name after the local branch is deleted
+     [2m[90m↓[39m[22m branch PR lookup recovers a deleted fork branch from its remote-tracking ref
+     [2m[90m↓[39m[22m branch PR lookup rejects ambiguous deleted-branch remote refs
+     [2m[90m↓[39m[22m branch PR lookup does not reuse a cached PR after the remote is repointed
+     [2m[90m↓[39m[22m branch PR lookup shares the status cache for the same repository identity
+     [2m[90m↓[39m[22m branch PR lookup rechecks open PRs every minute and settled answers less often
+     [2m[90m↓[39m[22m branch PR lookup propagates provider failures
+     [2m[90m↓[39m[22m status finds a merged PR after its remote branch was deleted
+     [2m[90m↓[39m[22m status still looks up PRs for a branch pushed without --set-upstream
+     [2m[90m↓[39m[22m backs off repeated PR lookup failures past the healthy refresh cadence
+     [2m[90m↓[39m[22m reads the repository from the returned PR URL https://github.example.com/team/repository/pull/42?tab=files
+     [2m[90m↓[39m[22m reads the repository from the returned PR URL https://gitlab.example.com/group/subgroup/repository/-/merge_requests/42
+     [2m[90m↓[39m[22m reads the repository from the returned PR URL https://bitbucket.org/team/repository/pull-requests/42
+     [2m[90m↓[39m[22m reads the repository from the returned PR URL https://dev.azure.com/org/project/_git/repository/pullrequest/42
+     [2m[90m↓[39m[22m reads the repository from the returned PR URL https://org.visualstudio.com/project/_git/repository/pullrequest/42
+     [2m[90m↓[39m[22m reads the repository from the returned PR URL https://gitlab.example/group/pull/123/repository/-/merge_requests/42
+     [2m[90m↓[39m[22m reads the repository from the returned PR URL https://github.example.com/team/repository/issues/42
+     [2m[90m↓[39m[22m distinguishes Enterprise forks with the same head branch
+     [2m[90m↓[39m[22m matches nested GitLab forks through the adapter for git@gitlab.com:Group/Subgroup/Fork.git
+     [2m[90m↓[39m[22m matches nested GitLab forks through the adapter for https://gitlab.com/Group/Subgroup/Fork.git
+     [2m[90m↓[39m[22m status ignores unrelated fork PRs when the current branch tracks the same repository
+     [2m[90m↓[39m[22m status detects cross-repo PRs from the upstream remote URL owner
+     [2m[90m↓[39m[22m status preserves a fork PR whose head is named after the default branch
+     [2m[90m↓[39m[22m status ignores synthetic local branch aliases when the upstream remote name contains slashes
+     [2m[90m↓[39m[22m status returns merged PR state when latest PR was merged
+     [2m[90m↓[39m[22m status hides merged PRs on the default branch
+     [2m[90m↓[39m[22m status does not inherit a merged PR from a feature branch's default upstream
+     [2m[90m↓[39m[22m status finds a PR pushed under the branch's own name despite a default upstream
+     [2m[90m↓[39m[22m status finds a fork PR pushed under the branch's own name despite a default upstream
+     [2m[90m↓[39m[22m branch PR lookup verifies identity on the fork that holds the own-name ref
+     [2m[90m↓[39m[22m status keeps an own-name PR when a later lookup fails on a default upstream
+     [2m[90m↓[39m[22m status prefers open PR when merged PR has newer updatedAt
+     [2m[90m↓[39m[22m status is resilient to gh lookup failures and returns pr null
+     [2m[90m↓[39m[22m status logs actionable provider detail without exposing the upstream cause
+     [2m[90m↓[39m[22m status keeps the last known PR when a later lookup fails
+     [2m[90m↓[39m[22m status does not reuse a stale PR after the branch is retargeted to a different upstream
+     [2m[90m↓[39m[22m status keeps the last known PR when the branch gains its first upstream
+     [2m[90m↓[39m[22m status drops the last known PR when the tracked remote is repointed
+     [2m[90m↓[39m[22m status keeps the last known PR when the current remote URL can't be resolved
+     [2m[90m↓[39m[22m creates a commit when working tree is dirty
+     [2m[90m↓[39m[22m preserves custom style when instructions are empty
+     [2m[90m↓[39m[22m falls back when the dedicated source control writer is unavailable
+     [2m[90m↓[39m[22m applies a V2-native thread's project settings to generated commit text
+     [2m[90m↓[39m[22m includes local agent instructions when recent history is empty
+[31m     [31m×[31m a Claude LHC instance writes with the local CLAUDE.md too[39m[32m 214[2mms[22m[39m
+     [2m[90m↓[39m[22m uses custom commit message when provided
+     [2m[90m↓[39m[22m commits only selected files when filePaths is provided
+     [2m[90m↓[39m[22m creates feature branch, commits, and pushes with featureBranch option
+     [2m[90m↓[39m[22m featureBranch uses custom commit message and derives branch name
+     [2m[90m↓[39m[22m skips commit when there are no uncommitted changes
+     [2m[90m↓[39m[22m featureBranch returns error when worktree is clean
+     [2m[90m↓[39m[22m commits and pushes with upstream auto-setup when needed
+     [2m[90m↓[39m[22m pushes and creates PR from a no-upstream branch when local commits are ahead of base
+     [2m[90m↓[39m[22m skips push when branch is already up to date
+     [2m[90m↓[39m[22m pushes existing clean commits without rerunning commit logic
+     [2m[90m↓[39m[22m pushes existing commits without committing dirty worktree changes
+     [2m[90m↓[39m[22m create_pr pushes a clean branch before creating the PR when needed
+     [2m[90m↓[39m[22m create_pr falls back to main when source control provider detection fails
+     [2m[90m↓[39m[22m create_pr targets the remote default branch when it is not main
+     [2m[90m↓[39m[22m returns existing PR metadata for commit/push/pr action
+     [2m[90m↓[39m[22m returns existing cross-repo PR metadata found under the bare branch name
+     [2m[90m↓[39m[22m returns the correct existing PR when a slash remote checks out to a synthetic local alias
+     [2m[90m↓[39m[22m picks the fork PR among same-named branches from other repositories
+     [2m[90m↓[39m[22m stops probing head selectors after finding an existing PR
+     [2m[90m↓[39m[22m does not reuse a cross-repo PR when GitHub omits head identity metadata
+     [2m[90m↓[39m[22m matches mounted Forgejo heads without confusing forks sharing a branch
+     [2m[90m↓[39m[22m rejects same-repo PR metadata when matching a cross-repo head context
+     [2m[90m↓[39m[22m accepts fork PR metadata when origin is the fork checkout remote
+     [2m[90m↓[39m[22m creates PR when one does not already exist
+     [2m[90m↓[39m[22m generates PR content from branch changes when the remote base advances
+     [2m[90m↓[39m[22m creates a new PR instead of reusing an unrelated fork PR with the same head branch
+     [2m[90m↓[39m[22m creates cross-repo PRs with the fork owner selector and default base branch
+     [2m[90m↓[39m[22m rejects push/pr actions from detached HEAD
+     [2m[90m↓[39m[22m surfaces missing gh binary errors
+     [2m[90m↓[39m[22m surfaces gh auth errors with guidance
+     [2m[90m↓[39m[22m resolves pull requests from #number references
+     [2m[90m↓[39m[22m prepares pull request threads in local mode by checking out the PR branch
+     [2m[90m↓[39m[22m restores same-repository upstream tracking after local PR checkout without a remote ref
+     [2m[90m↓[39m[22m restores same-repository upstream tracking when provider omits head repository metadata
+     [2m[90m↓[39m[22m prepares pull request threads in worktree mode on the PR head branch
+     [2m[90m↓[39m[22m preserves both branch materialization failures when the fallback also fails
+     [2m[90m↓[39m[22m launches setup when creating a new PR worktree
+     [2m[90m↓[39m[22m preserves fork upstream tracking when preparing a worktree PR thread
+     [2m[90m↓[39m[22m preserves fork upstream tracking when preparing a local PR thread
+     [2m[90m↓[39m[22m derives fork repository identity from PR URL when GitHub omits nameWithOwner
+     [2m[90m↓[39m[22m reuses an existing dedicated worktree for the PR head branch
+     [2m[90m↓[39m[22m refreshes a reused PR worktree onto the updated pull request head
+     [2m[90m↓[39m[22m runs the setup script when a reused PR worktree moves onto the new head
+     [2m[90m↓[39m[22m leaves the setup script alone when a reused PR worktree is already on the head
+     [2m[90m↓[39m[22m resets a clean reused PR worktree onto a force-pushed pull request head
+     [2m[90m↓[39m[22m keeps a reused PR worktree that carries its own commit off the rewritten head
+     [2m[90m↓[39m[22m keeps a dirty reused PR worktree off the rewritten pull request head
+     [2m[90m↓[39m[22m refreshes a reused PR worktree that has no upstream from the pull request ref
+     [2m[90m↓[39m[22m never moves an unrelated local branch that shares the fork head branch name
+     [2m[90m↓[39m[22m does not block fork PR worktree prep when the fork head branch collides with root main
+     [2m[90m↓[39m[22m does not overwrite an existing local main branch when preparing a fork PR worktree
+     [2m[90m↓[39m[22m reuses an existing PR worktree and restores fork upstream tracking
+     [2m[90m↓[39m[22m does not fail PR worktree prep when setup terminal startup fails
+     [2m[90m↓[39m[22m rejects worktree prep when the PR head branch is checked out in the main repo
+     [2m[90m↓[39m[22m emits ordered progress events for commit hooks
+     [2m[90m↓[39m[22m emits action_failed when a commit hook rejects
+     [2m[90m↓[39m[22m create_pr emits only the PR phase when the branch is already pushed
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/git/GitManager.test.ts[2m > [22mGitManager[2m > [22ma Claude LHC instance writes with the local CLAUDE.md too
+[31m[1mAssertionError[22m: expected 'Follow the repository\'s established …' to contain 'Local CLAUDE.md:\nKeep pull request b…'[39m
+
+[32m- Expected[39m
+[31m+ Received[39m
+
+[32m- Local CLAUDE.md:[39m
+[32m- [7mKeep pull request bodies brief[27m.[39m
+[31m+ [7mFollow the repository's established commit message style when examples are available[27m.[39m
+
+[36m [2m❯[22m src/git/GitManager.test.ts:[2m3160:84[22m[39m
+    [90m3158|[39m
+    [90m3159|[39m       const policy = generatedPolicy as TextGeneration.CommitMessageGe…
+    [90m3160|[39m       expect(policy?.kind === "repo_conventions" ? policy.commitInstru…
+    [90m   |[39m                                                                                    [31m^[39m
+    [90m3161|[39m         `Local CLAUDE.md:\n${claudeInstructions}`,
+    [90m3162|[39m       );
+[90m [2m❯[22m IteratorImpl.~effect/Effect/successCont ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/internal/effect.ts:[2m1428:28[22m[39m
+[90m [2m❯[22m ExitPrimitive.~effect/Effect/evaluate ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/internal/core.ts:[2m523:30[22m[39m
+[90m [2m❯[22m FiberImpl.runLoop ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/internal/effect.ts:[2m685:39[22m[39m
+[90m [2m❯[22m FiberImpl.evaluate ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/internal/effect.ts:[2m628:23[22m[39m
+[90m [2m❯[22m ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/internal/effect.ts:[2m1167:17[22m[39m
+[90m [2m❯[22m ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/Effect.ts:[2m25246:13[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m1 failed[39m[22m[2m | [22m[33m115 skipped[39m[90m (116)[39m
+[2m   Start at [22m 23:08:27
+[2m   Duration [22m 5.54s[2m (transform 66%, import 29%, tests 4%, setup 1%)[22m
+
+[2m  Transform [22m [33mtransforming modules took 3.60s[39m[2m · 66% of tracked time, re-done on every run[22m
+[2m            [22m [2mpersist transforms across runs with [22m[33mfsModuleCache: true[39m
+[2m            [22m [2mon CI this only helps when the cache directory is persisted between runs[22m
+[2m            [22m [2mlearn more: https://vitest.dev/guide/improving-performance#caching-between-reruns[22m
+
