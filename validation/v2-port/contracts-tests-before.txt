@@ -1,0 +1,125 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90m/srv/work/t3code-v2-lhc/packages/contracts[39m
+
+ [31m❯[39m src/claudeDriverKinds.test.ts [2m([22m[2m0 test[22m[2m)[22m
+ [31m❯[39m src/claudeLhcSettings.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m5 failed[39m[2m)[22m[32m 5[2mms[22m[39m
+   [31m❯[39m ClaudeLhcSettings (fix pass 1, 3.12) [2m(5)[22m
+[31m     [31m×[31m defaults both windows when absent[39m[32m 3[2mms[22m[39m
+[31m     [31m×[31m allows the documented ~80k rebuilt view[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m rejects empty values[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m rejects a rebuilt view at or above the trigger[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m keeps the ranges: trigger 100k-1M, view 10k-1M[39m[32m 0[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Suites 1 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/claudeDriverKinds.test.ts[2m [ src/claudeDriverKinds.test.ts ][22m
+[31m[1mError[22m: Cannot find module './claudeDriverKinds.ts' imported from /srv/work/t3code-v2-lhc/packages/contracts/src/claudeDriverKinds.test.ts[39m
+[90m [2m❯[22m reviveInvokeError ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m542:14[22m[39m
+[90m [2m❯[22m Object.invoke ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m558:33[22m[39m
+[90m [2m❯[22m VitestModuleRunner.getModuleInformation ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m1212:7[22m[39m
+[90m [2m❯[22m request ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m1229:83[22m[39m
+[36m [2m❯[22m src/claudeDriverKinds.test.ts:[2m3:1[22m[39m
+    [90m  1|[39m import { describe, expect, it } from "vite-plus/test";
+    [90m  2|[39m
+    [90m  3|[39m import {
+    [90m   |[39m [31m^[39m
+    [90m  4|[39m   CLAUDE_DRIVER_KIND,
+    [90m  5|[39m   CLAUDE_DRIVER_KINDS,
+[90m [2m❯[22m VitestModuleRunner.directRequest ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m1272:59[22m[39m
+[90m [2m❯[22m VitestModuleRunner.cachedRequest ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m1179:73[22m[39m
+[90m [2m❯[22m VitestModuleRunner.import ../../node_modules/.pnpm/@voidzero-dev+vite-plus-core@1.0.0_@types+node@24.12.4_esbuild@0.28.2_jiti@2.7.0_terser_128cd438c7eeb8a6a649ebd7f051e315/node_modules/@voidzero-dev/vite-plus-core/dist/vite/node/module-runner.js:[2m1134:10[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯[22m[39m
+
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 5 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/claudeLhcSettings.test.ts[2m > [22mClaudeLhcSettings (fix pass 1, 3.12)[2m > [22mdefaults both windows when absent
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'ast')[39m
+[90m [2m❯[22m Module.decodeUnknownEffect ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/SchemaParser.ts:[2m244:63[22m[39m
+[90m [2m❯[22m decodeUnknownEffect ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/Schema.ts:[2m1474:31[22m[39m
+[90m [2m❯[22m Module.decodeUnknownSync ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/Schema.ts:[2m1812:18[22m[39m
+[36m [2m❯[22m src/claudeLhcSettings.test.ts:[2m12:27[22m[39m
+    [90m 10|[39m describe("ClaudeLhcSettings (fix pass 1, 3.12)", () => {
+    [90m 11|[39m   it("defaults both windows when absent", () => {
+    [90m 12|[39m     const result = Schema.decodeUnknownSync(ClaudeLhcSettings)({});
+    [90m   |[39m                           [31m^[39m
+    [90m 13|[39m     expect(result).toMatchObject({ autoCompactWindow: "380000", lhcLow…
+    [90m 14|[39m   });
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/claudeLhcSettings.test.ts[2m > [22mClaudeLhcSettings (fix pass 1, 3.12)[2m > [22mallows the documented ~80k rebuilt view
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'ast')[39m
+[90m [2m❯[22m decodeUnknownEffect ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/SchemaParser.ts:[2m244:63[22m[39m
+[90m [2m❯[22m Module.decodeUnknownResult ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/SchemaParser.ts:[2m461:19[22m[39m
+[90m [2m❯[22m Module.decodeUnknownResult ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/Schema.ts:[2m1669:31[22m[39m
+[36m [2m❯[22m decode src/claudeLhcSettings.test.ts:[2m7:10[22m[39m
+    [90m  5|[39m
+    [90m  6|[39m const decode = (config: Record<string, unknown>) =>
+    [90m  7|[39m   Schema.decodeUnknownResult(ClaudeLhcSettings)(config);
+    [90m   |[39m          [31m^[39m
+    [90m  8|[39m const ok = (config: Record<string, unknown>) => decode(config)._tag ==…
+    [90m  9|[39m
+[90m [2m❯[22m ok src/claudeLhcSettings.test.ts:[2m8:49[22m[39m
+[90m [2m❯[22m src/claudeLhcSettings.test.ts:[2m17:12[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/claudeLhcSettings.test.ts[2m > [22mClaudeLhcSettings (fix pass 1, 3.12)[2m > [22mrejects empty values
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'ast')[39m
+[90m [2m❯[22m decodeUnknownEffect ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/SchemaParser.ts:[2m244:63[22m[39m
+[90m [2m❯[22m Module.decodeUnknownResult ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/SchemaParser.ts:[2m461:19[22m[39m
+[90m [2m❯[22m Module.decodeUnknownResult ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/Schema.ts:[2m1669:31[22m[39m
+[36m [2m❯[22m decode src/claudeLhcSettings.test.ts:[2m7:10[22m[39m
+    [90m  5|[39m
+    [90m  6|[39m const decode = (config: Record<string, unknown>) =>
+    [90m  7|[39m   Schema.decodeUnknownResult(ClaudeLhcSettings)(config);
+    [90m   |[39m          [31m^[39m
+    [90m  8|[39m const ok = (config: Record<string, unknown>) => decode(config)._tag ==…
+    [90m  9|[39m
+[90m [2m❯[22m ok src/claudeLhcSettings.test.ts:[2m8:49[22m[39m
+[90m [2m❯[22m src/claudeLhcSettings.test.ts:[2m21:12[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/claudeLhcSettings.test.ts[2m > [22mClaudeLhcSettings (fix pass 1, 3.12)[2m > [22mrejects a rebuilt view at or above the trigger
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'ast')[39m
+[90m [2m❯[22m decodeUnknownEffect ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/SchemaParser.ts:[2m244:63[22m[39m
+[90m [2m❯[22m Module.decodeUnknownResult ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/SchemaParser.ts:[2m461:19[22m[39m
+[90m [2m❯[22m Module.decodeUnknownResult ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/Schema.ts:[2m1669:31[22m[39m
+[36m [2m❯[22m decode src/claudeLhcSettings.test.ts:[2m7:10[22m[39m
+    [90m  5|[39m
+    [90m  6|[39m const decode = (config: Record<string, unknown>) =>
+    [90m  7|[39m   Schema.decodeUnknownResult(ClaudeLhcSettings)(config);
+    [90m   |[39m          [31m^[39m
+    [90m  8|[39m const ok = (config: Record<string, unknown>) => decode(config)._tag ==…
+    [90m  9|[39m
+[90m [2m❯[22m ok src/claudeLhcSettings.test.ts:[2m8:49[22m[39m
+[90m [2m❯[22m src/claudeLhcSettings.test.ts:[2m26:12[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/claudeLhcSettings.test.ts[2m > [22mClaudeLhcSettings (fix pass 1, 3.12)[2m > [22mkeeps the ranges: trigger 100k-1M, view 10k-1M
+[31m[1mTypeError[22m: Cannot read properties of undefined (reading 'ast')[39m
+[90m [2m❯[22m decodeUnknownEffect ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/SchemaParser.ts:[2m244:63[22m[39m
+[90m [2m❯[22m Module.decodeUnknownResult ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/SchemaParser.ts:[2m461:19[22m[39m
+[90m [2m❯[22m Module.decodeUnknownResult ../../node_modules/.pnpm/effect@4.0.0-rc.115_patch_hash=0dfc4bb8ebd80fb3e06b91ef61346f5259517ab0f2437644fe95ae531084b1f5/node_modules/effect/src/Schema.ts:[2m1669:31[22m[39m
+[36m [2m❯[22m decode src/claudeLhcSettings.test.ts:[2m7:10[22m[39m
+    [90m  5|[39m
+    [90m  6|[39m const decode = (config: Record<string, unknown>) =>
+    [90m  7|[39m   Schema.decodeUnknownResult(ClaudeLhcSettings)(config);
+    [90m   |[39m          [31m^[39m
+    [90m  8|[39m const ok = (config: Record<string, unknown>) => decode(config)._tag ==…
+    [90m  9|[39m
+[90m [2m❯[22m ok src/claudeLhcSettings.test.ts:[2m8:49[22m[39m
+[90m [2m❯[22m src/claudeLhcSettings.test.ts:[2m32:12[22m[39m
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m2 failed[39m[22m[90m (2)[39m
+[2m      Tests [22m [1m[31m5 failed[39m[22m[90m (5)[39m
+[2m   Start at [22m 22:50:18
+[2m   Duration [22m 545ms[2m (import 41%, transform 32%, setup 24%, worker 1%, tests 1%)[22m
+
