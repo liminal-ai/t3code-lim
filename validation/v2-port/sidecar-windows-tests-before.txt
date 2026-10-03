@@ -1,0 +1,51 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90m/srv/work/t3code-v2-lhc/apps/server[39m
+
+ [31m❯[39m src/provider/Drivers/ClaudeLhcSidecar.test.ts [2m([22m[2m11 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[32m 141[2mms[22m[39m
+   [31m❯[39m ClaudeLhcSidecar [2m(11)[22m
+     [32m✓[39m resolves CLAUDE_LHC_SIDECAR as the JS entry and throws the unavailable reason[32m 4[2mms[22m[39m
+     [32m✓[39m reports why the sidecar cannot run: unset, or naming a missing file[32m 1[2mms[22m[39m
+     [32m✓[39m 3.14: refuses a staged sidecar that doesn't match the pin (version or integrity)[32m 1[2mms[22m[39m
+     [32m✓[39m 3.11: the LHC store is <T3 home>-lhc, and the old fork's store is refused[32m 0[2mms[22m[39m
+     [32m✓[39m V2: the 3780 instance's store (~/.t3code-v044-lhc) is refused as well as the old fork's[32m 1[2mms[22m[39m
+[31m     [31m×[31m fitLhcCompactionToContextWindow keeps windows that fit and lowers ones that don't[39m[32m 2[2mms[22m[39m
+[31m     [31m×[31m V2: the query's settings carry the instance's two windows, fitted to claude-sonnet-4-6's window, merged with the rest[39m[32m 28[2mms[22m[39m
+[31m     [31m×[31m V2: the query's settings carry the instance's two windows, fitted to claude-haiku-4-5's window, merged with the rest[39m[32m 23[2mms[22m[39m
+[31m     [31m×[31m V2: the query's settings carry the instance's two windows, fitted to claude-opus-5-5's window, merged with the rest[39m[32m 26[2mms[22m[39m
+     [32m✓[39m V2: interrupt() reaches the sidecar as an interrupt control[32m 26[2mms[22m[39m
+     [32m✓[39m bridges prompts, messages, approvals and controls over stdio and ends the stream on close[32m 29[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 4 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/provider/Drivers/ClaudeLhcSidecar.test.ts[2m > [22mClaudeLhcSidecar[2m > [22mfitLhcCompactionToContextWindow keeps windows that fit and lowers ones that don't
+[31m[1mTypeError[22m: fitLhcCompactionToContextWindow is not a function[39m
+[36m [2m❯[22m src/provider/Drivers/ClaudeLhcSidecar.test.ts:[2m146:12[22m[39m
+    [90m144|[39m
+    [90m145|[39m   it("fitLhcCompactionToContextWindow keeps windows that fit and lower…
+    [90m146|[39m     expect(fitLhcCompactionToContextWindow({ autoCompactWindow: 380_00…
+    [90m   |[39m            [31m^[39m
+    [90m147|[39m     expect(fitLhcCompactionToContextWindow({ autoCompactWindow: 380_00…
+    [90m148|[39m     expect(fitLhcCompactionToContextWindow({ autoCompactWindow: 380_00…
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/provider/Drivers/ClaudeLhcSidecar.test.ts[2m > [22mClaudeLhcSidecar[2m > [22mV2: the query's settings carry the instance's two windows, fitted to claude-sonnet-4-6's window, merged with the rest
+[41m[1m FAIL [22m[49m src/provider/Drivers/ClaudeLhcSidecar.test.ts[2m > [22mClaudeLhcSidecar[2m > [22mV2: the query's settings carry the instance's two windows, fitted to claude-haiku-4-5's window, merged with the rest
+[41m[1m FAIL [22m[49m src/provider/Drivers/ClaudeLhcSidecar.test.ts[2m > [22mClaudeLhcSidecar[2m > [22mV2: the query's settings carry the instance's two windows, fitted to claude-opus-5-5's window, merged with the rest
+[31m[1mTypeError[22m: fitLhcCompactionToContextWindow is not a function[39m
+[36m [2m❯[22m src/provider/Drivers/ClaudeLhcSidecar.test.ts:[2m168:24[22m[39m
+    [90m166|[39m       });
+    [90m167|[39m       const init = (await runtime[Symbol.asyncIterator]().next()).valu…
+    [90m168|[39m       const expected = fitLhcCompactionToContextWindow({
+    [90m   |[39m                        [31m^[39m
+    [90m169|[39m         autoCompactWindow: 380_000,
+    [90m170|[39m         lhcLowerBound: 150_000,
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[2m | [22m[1m[32m7 passed[39m[22m[90m (11)[39m
+[2m   Start at [22m 23:49:03
+[2m   Duration [22m 1.10s[2m (transform 47%, import 33%, tests 14%, setup 5%)[22m
+

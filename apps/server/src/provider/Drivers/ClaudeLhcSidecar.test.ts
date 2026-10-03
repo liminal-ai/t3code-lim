@@ -3,12 +3,19 @@ import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 
+import { ProviderInstanceId } from "@t3tools/contracts";
 import { describe, expect, it } from "vite-plus/test";
+
+import {
+  BUNDLED_CLAUDE_MODEL_CATALOG,
+  resolveClaudeCatalogContextWindowTokens,
+} from "../ClaudeModelCatalog.ts";
 
 import {
   claudeLhcHomeDir,
   claudeLhcSidecarUnavailableReason,
   FORK_LHC_HOME,
+  fitLhcCompactionToContextWindow,
   REFUSED_LHC_HOMES,
   makeClaudeLhcCreateQuery,
   resolveClaudeLhcSidecarPath,
@@ -30,7 +37,7 @@ const pending = new Map();
 readline.createInterface({ input: process.stdin }).on("line", (line) => {
   const frame = JSON.parse(line);
   if (frame.type === "start") {
-    write({ type: "msg", message: { type: "system", subtype: "init", session_id: frame.options.sessionId, model: frame.options.model, has_callbacks: typeof frame.options.canUseTool, env_marker: frame.options.env && frame.options.env.SIDECAR_TEST_MARKER, lhc_home: process.env.T3CODE_LHC_HOME } });
+    write({ type: "msg", message: { type: "system", subtype: "init", session_id: frame.options.sessionId, model: frame.options.model, has_callbacks: typeof frame.options.canUseTool, env_marker: frame.options.env && frame.options.env.SIDECAR_TEST_MARKER, settings: frame.options.settings, lhc_home: process.env.T3CODE_LHC_HOME } });
   } else if (frame.type === "user") {
     const text = frame.message.message.content[0].text;
     const id = ++reqId;
@@ -134,6 +141,66 @@ describe("ClaudeLhcSidecar", () => {
       ),
     ).toMatch(/live store/);
   });
+
+  it("fitLhcCompactionToContextWindow keeps windows that fit and lowers ones that don't", () => {
+    expect(
+      fitLhcCompactionToContextWindow({
+        autoCompactWindow: 380_000,
+        lhcLowerBound: 150_000,
+        contextWindow: 1_000_000,
+      }),
+    ).toEqual({ autoCompactWindow: 380_000, lhcLowerBound: 150_000 });
+    expect(
+      fitLhcCompactionToContextWindow({
+        autoCompactWindow: 380_000,
+        lhcLowerBound: 150_000,
+        contextWindow: 200_000,
+      }),
+    ).toEqual({ autoCompactWindow: 160_000, lhcLowerBound: 80_000 });
+    expect(
+      fitLhcCompactionToContextWindow({
+        autoCompactWindow: 380_000,
+        lhcLowerBound: 150_000,
+        contextWindow: undefined,
+      }),
+    ).toEqual({ autoCompactWindow: 380_000, lhcLowerBound: 150_000 });
+  });
+
+  it.each(["claude-sonnet-4-6", "claude-haiku-4-5", "claude-opus-5-5"])(
+    "V2: the query's settings carry the instance's two windows, fitted to %s's window, merged with the rest",
+    async (model) => {
+      const createQuery = makeClaudeLhcCreateQuery({
+        environment: { ...process.env, CLAUDE_LHC_SIDECAR: makeFakeSidecar() },
+        baseDir: BASE_DIR,
+        pin: PIN,
+        windows: { autoCompactWindow: "380000", lhcLowerBound: "150000" },
+      });
+      const prompts = (async function* () {
+        await new Promise<void>(() => {});
+      })();
+      const runtime = createQuery({
+        prompt: prompts as never,
+        options: {
+          sessionId: "sess-w",
+          model,
+          settings: { autoCompactWindow: 380_000, showThinkingSummaries: true } as never,
+        },
+      });
+      const init = (await runtime[Symbol.asyncIterator]().next()).value as {
+        settings: Record<string, unknown>;
+      };
+      const expected = fitLhcCompactionToContextWindow({
+        autoCompactWindow: 380_000,
+        lhcLowerBound: 150_000,
+        contextWindow: resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {
+          instanceId: ProviderInstanceId.make("claude-lhc"),
+          model,
+        }),
+      });
+      expect(init.settings).toEqual({ showThinkingSummaries: true, ...expected });
+      runtime.close();
+    },
+  );
 
   it("V2: interrupt() reaches the sidecar as an interrupt control", async () => {
     const createQuery = makeClaudeLhcCreateQuery({
