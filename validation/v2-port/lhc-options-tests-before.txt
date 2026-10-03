@@ -1,0 +1,45 @@
+
+[1m[30m[46m RUN [49m[39m[22m [36mv5.0.1 [39m[90m/srv/work/t3code-v2-lhc/apps/server[39m
+
+ [31m❯[39m src/orchestration-v2/Adapters/ClaudeAdapterV2.lhc.test.ts [2m([22m[2m5 tests[22m[2m | [22m[31m4 failed[39m[2m)[22m[32m 6[2mms[22m[39m
+   [31m❯[39m ClaudeAdapterV2, Claude-LHC compaction settings [2m(5)[22m
+[31m     [31m×[31m fitLhcCompactionToContextWindow keeps windows that fit and lowers ones that don't[39m[32m 3[2mms[22m[39m
+[31m     [31m×[31m an LHC instance's query settings carry both windows, fitted to claude-sonnet-4-6's context window[39m[32m 1[2mms[22m[39m
+[31m     [31m×[31m an LHC instance's query settings carry both windows, fitted to claude-haiku-4-5's context window[39m[32m 0[2mms[22m[39m
+[31m     [31m×[31m an LHC instance's query settings carry both windows, fitted to claude-opus-5-5's context window[39m[32m 0[2mms[22m[39m
+     [32m✓[39m a stock Claude instance's query settings carry no lhcLowerBound[32m 1[2mms[22m[39m
+
+[31m⎯⎯⎯⎯⎯⎯⎯[39m[1m[41m Failed Tests 4 [49m[22m[31m⎯⎯⎯⎯⎯⎯⎯[39m
+
+[41m[1m FAIL [22m[49m src/orchestration-v2/Adapters/ClaudeAdapterV2.lhc.test.ts[2m > [22mClaudeAdapterV2, Claude-LHC compaction settings[2m > [22mfitLhcCompactionToContextWindow keeps windows that fit and lowers ones that don't
+[31m[1mTypeError[22m: fitLhcCompactionToContextWindow is not a function[39m
+[36m [2m❯[22m src/orchestration-v2/Adapters/ClaudeAdapterV2.lhc.test.ts:[2m30:23[22m[39m
+    [90m 28|[39m   it("fitLhcCompactionToContextWindow keeps windows that fit and lower…
+    [90m 29|[39m     assert.deepEqual(
+    [90m 30|[39m       ClaudeAdapterV2.fitLhcCompactionToContextWindow({ autoCompactWin…
+    [90m   |[39m                       [31m^[39m
+    [90m 31|[39m       { autoCompactWindow: 380_000, lhcLowerBound: 150_000 },
+    [90m 32|[39m     );
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯[22m[39m
+
+[41m[1m FAIL [22m[49m src/orchestration-v2/Adapters/ClaudeAdapterV2.lhc.test.ts[2m > [22mClaudeAdapterV2, Claude-LHC compaction settings[2m > [22man LHC instance's query settings carry both windows, fitted to claude-sonnet-4-6's context window
+[41m[1m FAIL [22m[49m src/orchestration-v2/Adapters/ClaudeAdapterV2.lhc.test.ts[2m > [22mClaudeAdapterV2, Claude-LHC compaction settings[2m > [22man LHC instance's query settings carry both windows, fitted to claude-haiku-4-5's context window
+[41m[1m FAIL [22m[49m src/orchestration-v2/Adapters/ClaudeAdapterV2.lhc.test.ts[2m > [22mClaudeAdapterV2, Claude-LHC compaction settings[2m > [22man LHC instance's query settings carry both windows, fitted to claude-opus-5-5's context window
+[31m[1mTypeError[22m: fitLhcCompactionToContextWindow is not a function[39m
+[36m [2m❯[22m src/orchestration-v2/Adapters/ClaudeAdapterV2.lhc.test.ts:[2m46:40[22m[39m
+    [90m 44|[39m     "an LHC instance's query settings carry both windows, fitted to %s…
+    [90m 45|[39m     (model) => {
+    [90m 46|[39m       const expected = ClaudeAdapterV2.fitLhcCompactionToContextWindow…
+    [90m   |[39m                                        [31m^[39m
+    [90m 47|[39m         autoCompactWindow: 380_000,
+    [90m 48|[39m         lhcLowerBound: 150_000,
+
+[31m[2m⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯[22m[39m
+
+
+[2m Test Files [22m [1m[31m1 failed[39m[22m[90m (1)[39m
+[2m      Tests [22m [1m[31m4 failed[39m[22m[2m | [22m[1m[32m1 passed[39m[22m[90m (5)[39m
+[2m   Start at [22m 22:57:54
+[2m   Duration [22m 1.41s[2m (transform 58%, import 37%, setup 5%)[22m
+
