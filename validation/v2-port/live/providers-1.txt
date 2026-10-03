@@ -1,0 +1,7 @@
+{"instanceId":"codex","driver":"codex","status":"ready","installed":true,"version":"0.160.0","models":["gpt-6.1-sol","gpt-6-astra","gpt-6-sol"]}
+{"instanceId":"claudeAgent","driver":"claudeAgent","status":"ready","installed":true,"version":"2.1.288","models":["claude-opus-5-5","claude-sonnet-5-5","claude-fable-5-1"]}
+{"instanceId":"cursor","driver":"cursor","status":"disabled","installed":false,"version":null,"message":"Cursor is disabled in T3 Code settings.","models":[]}
+{"instanceId":"grok","driver":"grok","status":"disabled","installed":false,"version":null,"message":"Grok is disabled in T3 Code settings.","models":["grok-build"]}
+{"instanceId":"opencode","driver":"opencode","status":"disabled","installed":false,"version":null,"message":"OpenCode is disabled in T3 Code settings.","models":[]}
+{"instanceId":"antigravity","driver":"antigravity","status":"disabled","installed":false,"version":null,"message":"Antigravity is disabled in T3 Code settings.","models":[]}
+{"instanceId":"pi","driver":"pi","status":"disabled","installed":false,"version":null,"message":"Pi is disabled in T3 Code settings.","models":["default"]}
