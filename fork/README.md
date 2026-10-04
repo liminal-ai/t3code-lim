@@ -49,3 +49,5 @@ Initial desktop builds are unsigned (no signing credentials supplied). Windows d
 Service processes run extracted release artifacts, never the source checkout. Environment configuration records the provider executable PATH. Credentials are not stored in this repo. Production retains pairing, settings and threads. Staging starts with its own data; never copy live auth into it.
 
 Before deployment, stop the specific service and back up its config, data and data-lhc together. Install the tested artifact, change current, start and smoke-check. Keep the previous release and backup. If a release migrates data incompatibly, restore its matching data backup during rollback; switching the executable alone is not a database rollback.
+
+The desktop runtime name and locally hosted web title are **T3 Code Lim**, matching the installer. Legacy profile paths stay unchanged so upgrading preserves existing histories and pairings.
