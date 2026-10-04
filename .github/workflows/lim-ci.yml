@@ -22,7 +22,9 @@ jobs:
         with:
           node-version: "24.18.0"
           run-install: false
-      - run: vp install --frozen-lockfile --filter=t3... --filter=@t3tools/desktop... --filter=@t3tools/scripts...
+      - run: vp install --frozen-lockfile --filter=t3... --filter=@t3tools/desktop... --filter=@t3tools/web... --filter=@t3tools/scripts...
       - run: vp run --filter t3 --filter @t3tools/desktop typecheck
       - name: Provider and packaging regressions
         run: vp test run apps/server/src/provider/Drivers/ClaudeLhcSidecar.test.ts apps/server/src/provider/Drivers/ClaudeLhcDriver.test.ts apps/desktop/src/backend/DesktopBackendConfiguration.test.ts scripts/build-desktop-artifact.test.ts
+      - name: Runtime branding regressions
+        run: vp test run apps/desktop/src/app/DesktopEnvironment.test.ts apps/desktop/src/app/DesktopAppIdentity.test.ts apps/desktop/src/app/DesktopPreReadyPlatform.test.ts apps/web/src/branding.test.ts
