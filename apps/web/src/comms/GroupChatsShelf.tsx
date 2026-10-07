@@ -20,6 +20,9 @@ import { readGroupChatSeen, useGroupChatSeenVersion } from "./groupChatSeen";
 const EXPANDED_KEY = "t3code:sidebar:group-chats-expanded";
 /** Rows that watch their chat's latest deliveries (Kit, 2026-10-07: never more than 20). */
 const ACTIVITY_WATCH_LIMIT = 20;
+/** Chats shown before "Show more": prod has dozens of old validation groups. */
+const SHELF_INITIAL_COUNT = 8;
+const SHELF_PAGE_COUNT = 20;
 
 /** The group chats the shelf shows; `undefined` while unknown, empty when hidden. */
 function useShelfChats(): ReadonlyArray<ConversationSummary> | undefined {
@@ -113,6 +116,7 @@ export function GroupChatsShelf(props: { readonly className?: string }) {
   const [expanded, setExpanded] = useLocalStorage(EXPANDED_KEY, true, Schema.Boolean);
   const toggle = useCallback(() => setExpanded((value) => !value), [setExpanded]);
   const [creating, setCreating] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(SHELF_INITIAL_COUNT);
   const navigate = useNavigate();
   const activeId = useParams({
     strict: false,
@@ -154,21 +158,35 @@ export function GroupChatsShelf(props: { readonly className?: string }) {
           <p className="px-2.5 py-1 text-xs text-sidebar-muted-foreground/60">No group chats yet</p>
         ) : (
           <ul role="presentation" className="flex flex-col gap-px">
-            {chats.map((chat, index) => (
-              <GroupChatRow
-                key={chat.id}
-                chat={chat}
-                active={chat.id === activeId}
-                unseen={isUnread(chat)}
-                watch={index < ACTIVITY_WATCH_LIMIT}
-                onOpen={() =>
-                  void navigate({
-                    to: "/group-chats/$conversationId",
-                    params: { conversationId: chat.id },
-                  })
-                }
-              />
-            ))}
+            {/* Newest activity first; the open chat stays listed even past the cut. */}
+            {chats
+              .filter((chat, index) => index < visibleCount || chat.id === activeId)
+              .map((chat, index) => (
+                <GroupChatRow
+                  key={chat.id}
+                  chat={chat}
+                  active={chat.id === activeId}
+                  unseen={isUnread(chat)}
+                  watch={index < ACTIVITY_WATCH_LIMIT}
+                  onOpen={() =>
+                    void navigate({
+                      to: "/group-chats/$conversationId",
+                      params: { conversationId: chat.id },
+                    })
+                  }
+                />
+              ))}
+            {chats.length > visibleCount ? (
+              <li className="list-none">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((count) => count + SHELF_PAGE_COUNT)}
+                  className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 text-left text-xs text-sidebar-muted-foreground/60 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
+                >
+                  Show {Math.min(chats.length - visibleCount, SHELF_PAGE_COUNT)} more
+                </button>
+              </li>
+            ) : null}
           </ul>
         )
       ) : null}

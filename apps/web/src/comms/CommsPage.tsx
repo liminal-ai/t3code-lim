@@ -86,7 +86,8 @@ function AgentRow(props: {
   return (
     <li
       className={cn(
-        "grid grid-cols-[minmax(10rem,14rem)_minmax(8rem,12rem)_minmax(10rem,1fr)_auto] items-start gap-4 border-b border-border px-4 py-2.5 text-sm",
+        // Narrow screens stack the cells; wider ones lay them out as columns.
+        "grid grid-cols-1 items-start gap-1 border-b border-border px-4 py-2.5 text-sm md:grid-cols-[minmax(10rem,14rem)_minmax(8rem,12rem)_minmax(10rem,1fr)_auto] md:gap-4",
         entry.state === "retired" && "opacity-50",
       )}
       data-testid={`comms-agent-${name}`}
@@ -185,8 +186,8 @@ function AgentsTab() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-3 border-b border-border px-4 py-2">
-        <div className="w-64">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
+        <div className="w-full sm:w-64">
           <Input
             type="search"
             aria-label="Search agents"
@@ -246,7 +247,7 @@ function GroupsTab() {
   );
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-3 border-b border-border px-4 py-2">
+      <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
         <span className="text-xs text-muted-foreground">{groups.length} group chats</span>
         <div className="flex-1" />
         <Button size="compact" onClick={() => setCreating(true)}>
@@ -333,8 +334,11 @@ export function CommsPage(props: {
             <Toggle value="groups">Group Chats</Toggle>
           </ToggleGroup>
           {config?.testMode ? (
-            <span className="rounded-full border border-warning/60 px-1.5 text-3xs text-warning">
-              test mode: writes limited to ta- agents and tg- groups
+            <span className="shrink-0 rounded-full border border-warning/60 px-1.5 text-3xs whitespace-nowrap text-warning">
+              test mode
+              <span className="hidden md:inline">
+                : writes limited to ta- agents and tg- groups
+              </span>
             </span>
           ) : null}
         </WorkspacePageHeader>
