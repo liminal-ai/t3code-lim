@@ -39,7 +39,7 @@ import {
   nameProblem,
   parseDuties,
 } from "./commsAdmin.logic";
-import type { ConversationView, DirectoryList, RegistryEntry } from "./commsTypes";
+import type { CommsConfig, ConversationView, DirectoryList, RegistryEntry } from "./commsTypes";
 
 const TEST_AGENT_PREFIX = "ta-";
 const TEST_GROUP_PREFIX = "tg-";
@@ -335,6 +335,20 @@ export function RegisterAgentDialog(props: {
   );
 }
 
+/**
+ * Test mode offers only what the server will accept: this instance's own test
+ * agents (owned by the post-as person, homed on the home machine) and that person.
+ */
+function isOwnTestParticipant(entry: RegistryEntry, config: CommsConfig | undefined): boolean {
+  const name = entry.participant.name;
+  if (name === config?.postAs) return true;
+  return (
+    name.startsWith(TEST_AGENT_PREFIX) &&
+    entry.owner?.name === config?.postAs &&
+    entry.home?.machine === config?.homeMachine
+  );
+}
+
 /** Active participants (not system) that can join a group. */
 function useJoinable(): ReadonlyArray<RegistryEntry> {
   const registry = useRegistry();
@@ -382,13 +396,8 @@ export function CreateGroupDialog(props: {
   const testMode = config?.testMode === true;
   const self = config?.postAs ?? null;
   const shown = useMemo(
-    () =>
-      testMode
-        ? joinable.filter(
-            (e) => e.participant.name.startsWith(TEST_AGENT_PREFIX) || e.participant.name === self,
-          )
-        : joinable,
-    [joinable, self, testMode],
+    () => (testMode ? joinable.filter((e) => isOwnTestParticipant(e, config)) : joinable),
+    [config, joinable, testMode],
   );
   const [title, setTitle] = useState(testMode ? TEST_GROUP_PREFIX : "");
   const [checked, setChecked] = useState<ReadonlySet<string>>(() => new Set(self ? [self] : []));
@@ -489,11 +498,7 @@ export function ManageMembersDialog(props: {
   const members = useMemo(() => new Set(view?.members.map((m) => m.name) ?? []), [view]);
   const testMode = config?.testMode === true;
   const addable = joinable.filter(
-    (e) =>
-      !members.has(e.participant.name) &&
-      (!testMode ||
-        e.participant.name.startsWith(TEST_AGENT_PREFIX) ||
-        e.participant.name === config?.postAs),
+    (e) => !members.has(e.participant.name) && (!testMode || isOwnTestParticipant(e, config)),
   );
   const [adding, setAdding] = useState("");
   const submit = useSubmit();

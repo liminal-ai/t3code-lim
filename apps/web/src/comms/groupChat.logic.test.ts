@@ -83,5 +83,11 @@ describe("memberActivity", () => {
     expect(activity.get("ta-ash")).toBe("working");
     expect(activity.get("ta-birch")).toBe("idle");
     expect(memberActivity([message({ "ta-ash": "uncertain" })]).get("ta-ash")).toBe("failed");
+    // An older request still in flight keeps the agent working after a newer one is answered.
+    expect(
+      memberActivity([message({ "ta-ash": "delivered" }), message({ "ta-ash": "replied" })]).get(
+        "ta-ash",
+      ),
+    ).toBe("working");
   });
 });

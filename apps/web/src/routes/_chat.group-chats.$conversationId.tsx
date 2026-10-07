@@ -96,14 +96,15 @@ function GroupChatRouteView() {
 
   // Shown messages count as seen: the sidebar row's unread dot clears, and the
   // poster's comms inbox items for this chat are marked read.
+  // Only a new message counts: delivery-state updates re-send the view without one.
   const lastSeq = view?.conversation.lastSeq ?? 0;
   useEffect(() => {
-    if (!view || lastSeq === 0) return;
+    if (lastSeq === 0) return;
     markGroupChatSeen(conversationId, lastSeq);
     if (self) {
       void commsCall("inbox:markRead", { human: self, conversationId }).catch(() => undefined);
     }
-  }, [conversationId, lastSeq, self, view]);
+  }, [conversationId, lastSeq, self]);
 
   // Follow new messages while the reader sits at the bottom; leave them alone otherwise.
   const scrollRef = useRef<HTMLDivElement | null>(null);

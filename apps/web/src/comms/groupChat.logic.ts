@@ -131,23 +131,23 @@ const FAILED: ReadonlySet<DeliveryState> = new Set(["failed", "uncertain"]);
 export type MemberActivity = "working" | "failed" | "idle";
 
 /**
- * Each member's activity from the latest delivery addressed to them in the
- * loaded messages: working while it's in flight, failed when it ended without
- * an answer, else idle.
+ * Each member's activity from the deliveries addressed to them in the loaded
+ * messages: working while any is still in flight (overlapping requests), else
+ * failed when the latest ended without an answer, else idle.
  */
 export function memberActivity(
   messages: ReadonlyArray<ConversationMessage>,
 ): ReadonlyMap<string, MemberActivity> {
-  const activity = new Map<string, MemberActivity>();
+  const latest = new Map<string, MemberActivity>();
+  const working = new Set<string>();
   for (const { deliveries } of messages) {
     for (const delivery of deliveries) {
-      activity.set(
-        delivery.recipient,
-        IN_FLIGHT.has(delivery.state) ? "working" : FAILED.has(delivery.state) ? "failed" : "idle",
-      );
+      if (IN_FLIGHT.has(delivery.state)) working.add(delivery.recipient);
+      latest.set(delivery.recipient, FAILED.has(delivery.state) ? "failed" : "idle");
     }
   }
-  return activity;
+  for (const name of working) latest.set(name, "working");
+  return latest;
 }
 
 export function deliveryLabel(state: DeliveryState): string {
