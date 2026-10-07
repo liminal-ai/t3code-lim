@@ -9,12 +9,16 @@ import {
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
 import * as Path from "effect/Path";
+import { vi } from "vite-plus/test";
 
 import {
   formatCliCommand,
   resolveRootCliCommand,
   resolveServerInstallation,
 } from "./invocation.ts";
+
+// Keep process-based command tests independent of the release version in this checkout.
+vi.mock("../../package.json", () => ({ default: { version: "0.0.46" } }));
 
 it("formats package runner commands from their cache entry paths", () => {
   for (const [entryPath, expected] of [
