@@ -10,6 +10,7 @@ export function isSidebarUtilityPage(pathname: string) {
     pathname.startsWith("/settings/") ||
     pathname.startsWith("/projects/") ||
     pathname === "/usage" ||
+    pathname === "/comms" || // Fork seam (agent comms)
     pathname === "/pull-requests"
   );
 }

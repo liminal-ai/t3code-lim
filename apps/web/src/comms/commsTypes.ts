@@ -91,4 +91,17 @@ export interface CommsConfig {
   readonly testMode: boolean;
   /** The person this UI posts as; null when unset (read-only). */
   readonly postAs: string | null;
+  /** The comms machine whose connector drives this T3; null when unset. */
+  readonly homeMachine: string | null;
+}
+
+export interface RegistryEntry {
+  readonly participant: ParticipantRef;
+  readonly state: ParticipantState;
+  readonly presence: (Presence & { readonly stale?: boolean }) | null;
+  readonly description?: string;
+  readonly duties?: ReadonlyArray<string>;
+  readonly owner?: ParticipantRef;
+  readonly harness?: string;
+  readonly home?: Home;
 }

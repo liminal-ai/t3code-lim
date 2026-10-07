@@ -14,7 +14,9 @@
 //   COMMS_POST_AS            the person the UI posts as, e.g. `lee` (also the one
 //                            person test mode allows)
 //   COMMS_TEST_MODE=1        restrict to test participants (see commsPolicy.ts)
-//   COMMS_TEST_MACHINE       the machine test agents are homed on
+//   COMMS_HOME_MACHINE       the comms machine whose connector drives this T3
+//                            (agents registered from its threads live there; in
+//                            test mode, the only machine test agents may use)
 import { AuthOrchestrationOperateScope, AuthOrchestrationReadScope } from "@t3tools/contracts";
 import { ConvexClient } from "convex/browser";
 import { makeFunctionReference } from "convex/server";
@@ -46,11 +48,11 @@ interface CommsSettings {
   readonly tokenFile: string;
   readonly postAs: string | undefined;
   readonly testMode: boolean;
-  readonly testMachine: string | undefined;
+  readonly homeMachine: string | undefined;
 }
 
 const testOptions = (settings: CommsSettings) => ({
-  testMachine: settings.testMachine,
+  testMachine: settings.homeMachine,
   human: settings.postAs,
 });
 
@@ -65,7 +67,7 @@ export function resolveCommsSettings(
     tokenFile,
     postAs: env.COMMS_POST_AS?.trim() || undefined,
     testMode: env.COMMS_TEST_MODE === "1",
-    testMachine: env.COMMS_TEST_MACHINE?.trim() || undefined,
+    homeMachine: (env.COMMS_HOME_MACHINE ?? env.COMMS_TEST_MACHINE)?.trim() || undefined,
   };
 }
 
@@ -213,6 +215,7 @@ const configHandler = (settings: CommsSettings) =>
       enabled: true,
       testMode: settings.testMode,
       postAs: settings.postAs ?? null,
+      homeMachine: settings.homeMachine ?? null,
     });
   });
 

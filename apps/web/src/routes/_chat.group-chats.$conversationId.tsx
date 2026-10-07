@@ -6,7 +6,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import ChatMarkdown from "~/components/ChatMarkdown";
 import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
 import { SidebarInset } from "~/components/ui/sidebar";
+import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
+import { ManageMembersDialog } from "~/comms/CommsDialogs";
 import { commsCall, useCommsConfig, useCommsQuery } from "~/comms/commsClient";
 import type { ConversationView } from "~/comms/commsTypes";
 import {
@@ -37,6 +39,7 @@ function readStored(key: string): string | null {
 function GroupChatRouteView() {
   const { conversationId } = Route.useParams();
   const config = useCommsConfig();
+  const [managing, setManaging] = useState(false);
   const self = config?.postAs ?? null;
   const { data: view, error } = useCommsQuery<ConversationView>("conversations:view", {
     conversationId,
@@ -125,7 +128,13 @@ function GroupChatRouteView() {
               </span>
             ) : null}
           </div>
+          <Button size="compact" variant="ghost" onClick={() => setManaging(true)}>
+            Members
+          </Button>
         </WorkspacePageHeader>
+        {managing ? (
+          <ManageMembersDialog conversationId={conversationId} open onOpenChange={setManaging} />
+        ) : null}
         <div
           ref={scrollRef}
           className="topbar-scroll-fade min-h-0 flex-1 overflow-y-auto"

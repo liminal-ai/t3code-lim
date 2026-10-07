@@ -1,4 +1,6 @@
-import { ArrowLeftIcon, ChartNoAxesColumnIcon, SettingsIcon } from "lucide-react";
+import { ArrowLeftIcon, ChartNoAxesColumnIcon, RadioTowerIcon, SettingsIcon } from "lucide-react";
+// Fork-only (agent comms): the Comms button reads whether comms is configured.
+import { useCommsConfig } from "~/comms/commsClient";
 import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
@@ -164,6 +166,23 @@ function SidebarUtilityItem({
   );
 }
 
+// Fork-only (agent comms): the Comms button.
+function CommsSidebarItem(props: { readonly onNavigate: () => void }) {
+  const config = useCommsConfig();
+  const navigate = useNavigate();
+  if (!config?.enabled) return null;
+  return (
+    <SidebarUtilityItem
+      icon={<RadioTowerIcon />}
+      label="Comms"
+      onClick={() => {
+        props.onNavigate();
+        void navigate({ to: "/comms", search: { tab: "agents" } });
+      }}
+    />
+  );
+}
+
 export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
   const navigate = useNavigate();
   const navigateToMainApp = useNavigateToMainApp();
@@ -229,6 +248,8 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
             label="Usage"
             onClick={handleUsageClick}
           />
+          {/* Fork seam (agent comms) */}
+          <CommsSidebarItem onNavigate={closeMobileSidebar} />
         </>
       )}
       <SidebarUpdatePill />

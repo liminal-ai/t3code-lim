@@ -13,6 +13,7 @@ import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import { Spinner } from "~/components/ui/spinner";
 import { Textarea } from "~/components/ui/textarea";
+import { Tooltip, TooltipPopup, TooltipTrigger } from "~/components/ui/tooltip";
 
 import type { ConversationMessage, DeliveryView, ParticipantRef } from "./commsTypes";
 import {
@@ -85,10 +86,9 @@ function DeliveryChips(props: { readonly deliveries: ReadonlyArray<DeliveryView>
           delivery.state === "pending" ||
           delivery.state === "claimed" ||
           delivery.state === "delivered";
-        return (
+        const chip = (
           <span
             key={delivery.id}
-            aria-description={delivery.detail}
             data-state={delivery.state}
             className={cn(
               "rounded-full border px-1.5 py-px",
@@ -106,6 +106,17 @@ function DeliveryChips(props: { readonly deliveries: ReadonlyArray<DeliveryView>
             @{delivery.recipient} {deliveryLabel(delivery.state)}
           </span>
         );
+        // Why a delivery failed or is unclear: the comms server's detail.
+        return delivery.detail ? (
+          <Tooltip key={delivery.id}>
+            <TooltipTrigger render={chip} />
+            <TooltipPopup side="top" className="max-w-80">
+              {delivery.detail}
+            </TooltipPopup>
+          </Tooltip>
+        ) : (
+          chip
+        );
       })}
     </div>
   );
@@ -119,13 +130,16 @@ export function GroupChatTranscript(props: {
   readonly renderMarkdown: (text: string) => ReactNode;
 }) {
   const { messages, renderMarkdown, self } = props;
+  const byId = new Map(messages.map(({ message }) => [message.id, message]));
   return (
     <ol className="flex flex-col gap-3 px-3 py-4 sm:px-6" data-testid="comms-group-transcript">
       {messages.map(({ message, deliveries }) => {
         const own = message.sender.name === self;
+        const request = message.inReplyTo ? byId.get(message.inReplyTo) : undefined;
         return (
           <li
             key={message.id}
+            id={`comms-message-${message.id}`}
             data-seq={message.seq}
             data-sender={message.sender.name}
             className={cn("flex flex-col gap-1", own ? "items-end" : "items-start")}
@@ -142,10 +156,23 @@ export function GroupChatTranscript(props: {
               <time dateTime={new Date(message.createdAt).toISOString()}>
                 {formatRelativeTimeLabel(new Date(message.createdAt).toISOString())}
               </time>
-              {!own && message.recipients.length > 0 ? (
+              {!own && message.recipients.length > 0 && !request ? (
                 <span>to {message.recipients.map((r) => `@${r.name}`).join(", ")}</span>
               ) : null}
             </div>
+            {request ? (
+              <button
+                type="button"
+                className="max-w-[85%] cursor-pointer truncate text-left text-xs text-muted-foreground hover:text-foreground"
+                onClick={() =>
+                  document
+                    .getElementById(`comms-message-${request.id}`)
+                    ?.scrollIntoView({ behavior: "smooth", block: "center" })
+                }
+              >
+                ↩ @{request.sender.name}: {request.text.split("\n", 1)[0]}
+              </button>
+            ) : null}
             {own ? (
               <div className="max-w-[85%] whitespace-pre-wrap rounded-2xl rounded-tr-sm bg-primary/10 px-3 py-2 text-sm text-foreground sm:max-w-[70%]">
                 {message.text}

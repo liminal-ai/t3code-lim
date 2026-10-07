@@ -190,7 +190,7 @@ let configPromise: Promise<CommsConfig> | undefined;
 let configValue: CommsConfig | undefined;
 const configListeners = new Set<() => void>();
 
-const DISABLED: CommsConfig = { enabled: false, testMode: false, postAs: null };
+const DISABLED: CommsConfig = { enabled: false, testMode: false, postAs: null, homeMachine: null };
 
 function loadConfig(): Promise<CommsConfig> {
   configPromise ??= fetch(url("/config"), { credentials: "include" })
