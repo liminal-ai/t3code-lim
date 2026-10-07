@@ -7,21 +7,26 @@ import { seenStorageKey } from "./groupChat.logic";
 
 const listeners = new Set<() => void>();
 let version = 0;
+// What this page has seen, so unread clears even when storage refuses writes.
+const seenInPage = new Map<string, number>();
 
 export function readGroupChatSeen(conversationId: string): number {
+  let stored = 0;
   try {
-    return Number(window.localStorage.getItem(seenStorageKey(conversationId))) || 0;
+    stored = Number(window.localStorage.getItem(seenStorageKey(conversationId))) || 0;
   } catch {
-    return 0;
+    // storage unavailable: the page's own record below
   }
+  return Math.max(stored, seenInPage.get(conversationId) ?? 0);
 }
 
 export function markGroupChatSeen(conversationId: string, seq: number): void {
   if (seq <= readGroupChatSeen(conversationId)) return;
+  seenInPage.set(conversationId, seq);
   try {
     window.localStorage.setItem(seenStorageKey(conversationId), String(seq));
   } catch {
-    // private mode or quota: unread state lasts for this page only
+    // private mode or quota: the page's record keeps it until reload
   }
   version++;
   for (const listener of listeners) listener();
