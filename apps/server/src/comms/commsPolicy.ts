@@ -177,3 +177,91 @@ export function filterTestConversations<T extends PolicyConversation>(
 ): ReadonlyArray<T> {
   return conversations.filter((conversation) => isTestConversation(conversation, options));
 }
+
+/** Calls on an existing agent: test mode also checks who owns it and where it lives. */
+export const AGENT_SCOPED = new Set([
+  "directory:rebind",
+  "directory:setState",
+  "registry:setProfile",
+]);
+
+/** The fields of a registry entry the agent check reads. */
+export interface PolicyAgent {
+  readonly owner?: { readonly name: string } | undefined;
+  readonly home?: { readonly machine: string } | undefined;
+}
+
+/**
+ * Test mode changes only test agents this instance made: owned by the post-as
+ * person and homed on the test machine. A `ta-` name alone isn't enough; another
+ * test instance's agents are off limits.
+ */
+export function ownTestAgentRefusal(
+  name: string,
+  entry: PolicyAgent | undefined,
+  options: TestModeOptions,
+): string | undefined {
+  if (!entry) return `test mode: @${name} isn't registered`;
+  if (!options.human || entry.owner?.name !== options.human) {
+    return `test mode: @${name} isn't owned by @${options.human ?? "(no post-as person)"}`;
+  }
+  if (!options.testMachine || entry.home?.machine !== options.testMachine) {
+    return `test mode: @${name} isn't homed on ${options.testMachine ?? "(no test machine)"}`;
+  }
+  return undefined;
+}
+
+/**
+ * What test mode lets a query return: lists trimmed to test conversations, and a
+ * conversation view only while it's still a test conversation (it's rechecked on
+ * every update, so a group renamed or given a real member stops streaming).
+ */
+export function shapeTestModeValue(
+  name: string,
+  value: unknown,
+  options: TestModeOptions,
+): { readonly value: unknown } | { readonly error: string } {
+  if (name === "conversations:list") {
+    const list = value as { conversations: ReadonlyArray<PolicyConversation> };
+    return {
+      value: { ...list, conversations: filterTestConversations(list.conversations, options) },
+    };
+  }
+  if (name === "conversations:view") {
+    const view = value as { conversation: PolicyConversation };
+    return isTestConversation(view.conversation, options)
+      ? { value }
+      : { error: "test mode: that conversation isn't a test conversation" };
+  }
+  return { value };
+}
+
+/**
+ * A comms failure for the page. A ConvexError carrying `{code, message}` is the
+ * server refusing on purpose (its `fail()`), so that text passes. Anything else is
+ * withheld: Convex error text can echo a call's arguments, the admin token among
+ * them (agent-comms packages/connector/src/server-api.ts describeFailure). The
+ * token is also scrubbed from whatever passes, as a backstop.
+ */
+export function describeCommsError(
+  error: unknown,
+  secret: string | undefined,
+): { readonly message: string; readonly code?: string } {
+  const scrub = (text: string) =>
+    (secret ? text.split(secret).join("[redacted]") : text).slice(0, 1_000);
+  const data = (error as { data?: unknown } | null)?.data;
+  if (data && typeof data === "object" && typeof (data as { code?: unknown }).code === "string") {
+    const { code, message } = data as { code: string; message?: unknown };
+    return { code, message: scrub(typeof message === "string" ? message : code) };
+  }
+  const text = error instanceof Error ? error.message : String(error);
+  const known =
+    /\b(ECONNREFUSED|ECONNRESET|ETIMEDOUT|ENOTFOUND|fetch failed|timed out|WebSocket|connection (?:lost|closed))\b/i.exec(
+      text,
+    );
+  return {
+    message: known
+      ? `comms server unavailable (${known[1]})`
+      : "comms server error (details withheld; they may echo arguments)",
+  };
+}

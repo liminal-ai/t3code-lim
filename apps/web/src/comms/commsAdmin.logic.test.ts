@@ -47,6 +47,7 @@ describe("presenceView", () => {
       presence: null,
     };
     expect(presenceView(person, seen, now).status).toBe("person");
+    expect(presenceView(agent("a", { presence: null }), seen, now).status).toBe("offline");
   });
 });
 

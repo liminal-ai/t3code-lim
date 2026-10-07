@@ -5,7 +5,12 @@
 // admin token. Ported from agent-comms' web view (apps/web/src/lib/backend.tsx).
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
-import { resolvePrimaryEnvironmentHttpUrl } from "~/environments/primary";
+import { readDesktopPrimaryBearerToken } from "~/environments/primary/desktopAuth";
+import { isSameOriginBrowserPrimary } from "~/environments/primary/httpLayer";
+import {
+  readPrimaryEnvironmentTarget,
+  resolvePrimaryEnvironmentHttpUrl,
+} from "~/environments/primary/target";
 
 import type { CommsConfig } from "./commsTypes";
 
@@ -34,7 +39,25 @@ interface Entry {
   readonly listeners: Set<() => void>;
 }
 
-const url = (path: string) => resolvePrimaryEnvironmentHttpUrl(`/api/comms${path}`);
+/**
+ * Comms always goes through the primary (local) environment's server, with the
+ * same credentials the environment HTTP transport uses (environments/primary/
+ * httpLayer.ts): the session cookie for a same-origin browser, the desktop
+ * bearer otherwise. Without a primary environment (desktop with its local server
+ * disabled) there is no comms.
+ */
+export const hasCommsServer = (): boolean => readPrimaryEnvironmentTarget() !== null;
+
+async function commsFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const target = resolvePrimaryEnvironmentHttpUrl(`/api/comms${path}`);
+  const headers = new Headers(init.headers);
+  if (isSameOriginBrowserPrimary()) {
+    return fetch(target, { ...init, headers, credentials: "include" });
+  }
+  const bearer = await readDesktopPrimaryBearerToken();
+  if (bearer) headers.set("authorization", `Bearer ${bearer}`);
+  return fetch(target, { ...init, headers, credentials: "omit" });
+}
 
 async function readError(response: Response): Promise<CommsError> {
   const body = (await response.json().catch(() => ({}))) as {
@@ -54,9 +77,8 @@ class CommsClient {
   private backoff = 250;
 
   async call(kind: "query" | "mutation", name: string, args: Args = {}): Promise<unknown> {
-    const response = await fetch(url("/call"), {
+    const response = await commsFetch("/call", {
       method: "POST",
-      credentials: "include",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ kind, name, args }),
     });
@@ -102,9 +124,8 @@ class CommsClient {
     this.stream = controller;
     const queries = live.map(([id, entry]) => ({ id, name: entry.name, args: entry.args }));
     try {
-      const response = await fetch(url("/watch"), {
+      const response = await commsFetch("/watch", {
         method: "POST",
-        credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ queries }),
         signal: controller.signal,
@@ -188,18 +209,46 @@ export function useCommsQuery<T>(
 
 let configPromise: Promise<CommsConfig> | undefined;
 let configValue: CommsConfig | undefined;
+let configRetry: ReturnType<typeof setTimeout> | undefined;
+let configBackoff = 2_000;
 const configListeners = new Set<() => void>();
 
 const DISABLED: CommsConfig = { enabled: false, testMode: false, postAs: null, homeMachine: null };
 
+function publishConfig(config: CommsConfig): void {
+  configValue = config;
+  for (const listener of configListeners) listener();
+}
+
+/**
+ * Only a 404 (comms not configured on this server) or no primary environment
+ * means disabled. Anything else (auth not ready, network, a restarting server)
+ * is retried with backoff, so a transient failure doesn't hide comms for the session.
+ */
 function loadConfig(): Promise<CommsConfig> {
-  configPromise ??= fetch(url("/config"), { credentials: "include" })
-    .then(async (response) => (response.ok ? ((await response.json()) as CommsConfig) : DISABLED))
-    .catch(() => DISABLED)
+  if (configPromise) return configPromise;
+  if (!hasCommsServer()) {
+    publishConfig(DISABLED);
+    configPromise = Promise.resolve(DISABLED);
+    return configPromise;
+  }
+  configPromise = commsFetch("/config")
+    .then(async (response) => {
+      if (response.ok) return (await response.json()) as CommsConfig;
+      if (response.status === 404) return DISABLED;
+      throw new CommsError(`comms config failed (${response.status})`, response.status);
+    })
     .then((config) => {
-      configValue = config;
-      for (const listener of configListeners) listener();
+      configBackoff = 2_000;
+      publishConfig(config);
       return config;
+    })
+    .catch(() => {
+      configPromise = undefined;
+      clearTimeout(configRetry);
+      configRetry = setTimeout(() => void loadConfig(), configBackoff);
+      configBackoff = Math.min(configBackoff * 2, 60_000);
+      return configValue ?? DISABLED;
     });
   return configPromise;
 }

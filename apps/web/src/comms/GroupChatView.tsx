@@ -225,7 +225,10 @@ export function GroupChatComposer(props: {
   });
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
 
-  const mention: MentionQuery | null = useMemo(() => mentionQueryAt(text, caret), [text, caret]);
+  // Escape hides the menu for the mention being typed; typing a new one shows it again.
+  const [dismissedAt, setDismissedAt] = useState<number | null>(null);
+  const typed: MentionQuery | null = useMemo(() => mentionQueryAt(text, caret), [text, caret]);
+  const mention = typed && typed.start !== dismissedAt ? typed : null;
   const options = useMemo(
     () => (mention ? mentionCandidates(candidates, mention.query) : []),
     [mention, candidates],
@@ -295,7 +298,7 @@ export function GroupChatComposer(props: {
       }
       if (event.key === "Escape") {
         event.preventDefault();
-        setCaret(-1);
+        setDismissedAt(mention.start);
         return;
       }
     }

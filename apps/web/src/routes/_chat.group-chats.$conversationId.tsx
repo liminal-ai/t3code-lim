@@ -24,6 +24,7 @@ import {
   wakeableMembers,
 } from "~/comms/groupChat.logic";
 import { markGroupChatSeen } from "~/comms/groupChatSeen";
+import { APP_BASE_NAME } from "~/branding";
 import { isElectron } from "~/env";
 
 const VIEW_LIMIT = 200;
@@ -84,8 +85,13 @@ function GroupChatRouteView() {
   );
 
   const title = view ? chatTitle(view.conversation) : "Group chat";
+  // The app title (DocumentTitleSync) comes back when the page closes.
   useEffect(() => {
-    document.title = `${title} · T3 Code`;
+    const appTitle = document.title;
+    document.title = `${title} · ${APP_BASE_NAME}`;
+    return () => {
+      document.title = appTitle;
+    };
   }, [title]);
 
   // Shown messages count as seen: the sidebar row's unread dot clears, and the

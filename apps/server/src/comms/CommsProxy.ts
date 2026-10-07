@@ -20,9 +20,11 @@
 import { AuthOrchestrationOperateScope, AuthOrchestrationReadScope } from "@t3tools/contracts";
 import { ConvexClient } from "convex/browser";
 import { makeFunctionReference } from "convex/server";
+import * as Context from "effect/Context";
 import * as Data from "effect/Data";
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Queue from "effect/Queue";
 import * as Schedule from "effect/Schedule";
@@ -31,11 +33,15 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 
 import { authenticateHttpRequestScope } from "./commsAuth.ts";
 import {
+  AGENT_SCOPED,
   COMMS_FUNCTIONS,
   CONVERSATION_SCOPED,
-  filterTestConversations,
+  describeCommsError,
   isTestConversation,
+  ownTestAgentRefusal,
+  type PolicyAgent,
   type PolicyConversation,
+  shapeTestModeValue,
   testModeRefusal,
 } from "./commsPolicy.ts";
 
@@ -43,7 +49,7 @@ export const COMMS_ROUTE_PREFIX = "/api/comms";
 const MAX_WATCH_QUERIES = 32;
 const HEARTBEAT = "20 seconds";
 
-interface CommsSettings {
+export interface CommsSettings {
   readonly convexUrl: string;
   readonly tokenFile: string;
   readonly postAs: string | undefined;
@@ -71,44 +77,76 @@ export function resolveCommsSettings(
   };
 }
 
-let sharedClient: { readonly url: string; readonly client: ConvexClient } | undefined;
+type Args = Record<string, unknown>;
 
-/** One Convex connection per server, shared by every call and watch. */
-function convexClient(url: string): ConvexClient {
-  if (sharedClient?.url !== url) {
-    void sharedClient?.client.close();
-    sharedClient = { url, client: new ConvexClient(url) };
-  }
-  return sharedClient.client;
+/** The comms deployment as the proxy sees it; tests provide a fake. */
+export interface CommsBackendShape {
+  /** Undefined when comms isn't configured on this server. */
+  readonly settings: CommsSettings | undefined;
+  /** The admin token, read now; empty when the file is missing or empty. */
+  readonly readToken: Effect.Effect<string>;
+  readonly query: (name: string, args: Args) => Promise<unknown>;
+  readonly mutation: (name: string, args: Args) => Promise<unknown>;
+  readonly subscribe: (
+    name: string,
+    args: Args,
+    onValue: (value: unknown) => void,
+    onError: (error: unknown) => void,
+  ) => () => void;
 }
 
-/** A function's error for the page: a ConvexError's data, else its message. Never the args. */
-export function describeCommsError(error: unknown): { message: string; data?: unknown } {
-  const data = (error as { data?: unknown } | null)?.data;
-  if (data !== undefined) {
-    const message =
-      typeof data === "object" &&
-      data &&
-      typeof (data as { message?: unknown }).message === "string"
-        ? (data as { message: string }).message
-        : JSON.stringify(data);
-    return { message: message.slice(0, 1_000), data };
-  }
-  return { message: String((error as Error | null)?.message ?? error).slice(0, 1_000) };
-}
+export class CommsBackend extends Context.Service<CommsBackend, CommsBackendShape>()(
+  "t3/comms/CommsProxy/CommsBackend",
+) {}
+
+/** The real backend: environment settings, the token file, one shared Convex connection. */
+export const layerCommsBackend = Layer.effect(
+  CommsBackend,
+  Effect.gen(function* () {
+    const fs = yield* FileSystem.FileSystem;
+    const settings = resolveCommsSettings();
+    let client: ConvexClient | undefined;
+    const convex = () => {
+      if (!settings) throw new Error("comms isn't configured");
+      client ??= new ConvexClient(settings.convexUrl);
+      return client;
+    };
+    yield* Effect.addFinalizer(() => Effect.promise(async () => client?.close()));
+    return {
+      settings,
+      readToken: settings
+        ? fs.readFileString(settings.tokenFile).pipe(
+            Effect.map((text) => text.trim()),
+            Effect.orElseSucceed(() => ""),
+          )
+        : Effect.succeed(""),
+      query: (name, args) => convex().query(makeFunctionReference<"query">(name), args),
+      mutation: (name, args) => convex().mutation(makeFunctionReference<"mutation">(name), args),
+      subscribe: (name, args, onValue, onError) => {
+        const unsubscribe = convex().onUpdate(
+          makeFunctionReference<"query">(name),
+          args,
+          onValue,
+          onError,
+        );
+        return () => unsubscribe();
+      },
+    } satisfies CommsBackendShape;
+  }),
+);
 
 class CommsCallError extends Data.TaggedError("CommsCallError")<{
   readonly status: number;
   readonly message: string;
-  readonly data?: unknown;
+  readonly code?: string;
 }> {}
 
-const callError = (status: number, message: string, data?: unknown): CommsCallError =>
-  new CommsCallError({ status, message, data });
+const callError = (status: number, message: string, code?: string): CommsCallError =>
+  new CommsCallError({ status, message, ...(code ? { code } : {}) });
 
-const errorResponse = (status: number, message: string, data?: unknown) =>
+const errorResponse = (status: number, message: string, code?: string) =>
   HttpServerResponse.jsonUnsafe(
-    { error: { message, ...(data !== undefined ? { data } : {}) } },
+    { error: { message, ...(code ? { data: { code } } : {}) } },
     { status },
   );
 
@@ -120,82 +158,76 @@ const readJsonObject = Effect.gen(function* () {
   if (typeof body !== "object" || body === null || Array.isArray(body)) {
     return yield* callError(400, "the body must be a JSON object");
   }
-  return body as Record<string, unknown>;
+  return body as Args;
 });
 
-const readToken = (settings: CommsSettings) =>
-  Effect.gen(function* () {
-    const fs = yield* FileSystem.FileSystem;
-    const token = yield* fs.readFileString(settings.tokenFile).pipe(
-      Effect.map((text) => text.trim()),
-      Effect.orElseSucceed(() => ""),
-    );
-    if (!token) return yield* callError(503, "comms admin token unavailable");
-    return token;
-  });
+const asArgs = (value: unknown): Args =>
+  typeof value === "object" && value !== null && !Array.isArray(value) ? (value as Args) : {};
 
-const asArgs = (value: unknown): Record<string, unknown> =>
-  typeof value === "object" && value !== null && !Array.isArray(value)
-    ? (value as Record<string, unknown>)
-    : {};
-
-const runQuery = (client: ConvexClient, name: string, args: Record<string, unknown>) =>
+/** One comms request, with its failure made safe to show (never echoing the token). */
+const run = (token: string, call: () => Promise<unknown>) =>
   Effect.tryPromise({
-    try: () => client.query(makeFunctionReference<"query">(name), args),
+    try: call,
     catch: (error) => {
-      const described = describeCommsError(error);
-      return callError(400, described.message, described.data);
+      const described = describeCommsError(error, token);
+      return callError(described.code ? 400 : 502, described.message, described.code);
     },
   });
 
+interface Session {
+  readonly backend: CommsBackendShape;
+  readonly settings: CommsSettings;
+  readonly token: string;
+}
+
+const openSession = (backend: CommsBackendShape, settings: CommsSettings) =>
+  Effect.gen(function* () {
+    const token = yield* backend.readToken;
+    if (!token) return yield* callError(503, "comms admin token unavailable");
+    return { backend, settings, token } satisfies Session;
+  });
+
+const query = (session: Session, name: string, args: Args) =>
+  run(session.token, () => session.backend.query(name, { ...args, adminToken: session.token }));
+
 /** Test mode: the conversation a scoped call names must be a test conversation. */
-const requireTestConversation = (
-  settings: CommsSettings,
-  client: ConvexClient,
-  token: string,
-  conversationId: unknown,
-) =>
+const requireTestConversation = (session: Session, conversationId: unknown) =>
   Effect.gen(function* () {
     if (typeof conversationId !== "string") {
       return yield* callError(400, "conversationId is required");
     }
-    const view = (yield* runQuery(client, "conversations:view", {
-      adminToken: token,
-      conversationId,
-      limit: 1,
-    })) as { conversation: PolicyConversation };
-    if (!isTestConversation(view.conversation, testOptions(settings))) {
+    const view = (yield* query(session, "conversations:view", { conversationId, limit: 1 })) as {
+      conversation: PolicyConversation;
+    };
+    if (!isTestConversation(view.conversation, testOptions(session.settings))) {
       return yield* callError(403, "test mode: that conversation isn't a test conversation");
     }
   });
 
-/** Test mode trims what a query returns to test conversations. */
-function shapeForTestMode(settings: CommsSettings, name: string, value: unknown): unknown {
-  if (name === "conversations:list") {
-    const list = value as { conversations: ReadonlyArray<PolicyConversation> };
-    return {
-      ...list,
-      conversations: filterTestConversations(list.conversations, testOptions(settings)),
-    };
-  }
-  return value;
-}
-
-const checkCall = (
-  settings: CommsSettings,
-  client: ConvexClient,
-  token: string,
-  name: string,
-  args: Record<string, unknown>,
-) =>
+/** Test mode: a call on an existing agent must target one this instance owns and homes. */
+const requireOwnTestAgent = (session: Session, name: unknown) =>
   Effect.gen(function* () {
-    if (!settings.testMode) return;
-    const refusal = testModeRefusal(name, args, testOptions(settings));
+    const target = typeof name === "string" ? name : "";
+    const registry = (yield* query(session, "registry:list", {})) as {
+      agents: ReadonlyArray<PolicyAgent & { readonly participant: { readonly name: string } }>;
+    };
+    const entry = registry.agents.find((agent) => agent.participant.name === target);
+    const refusal = ownTestAgentRefusal(target, entry, testOptions(session.settings));
     if (refusal) return yield* callError(403, refusal);
-    if (CONVERSATION_SCOPED.has(name)) {
-      yield* requireTestConversation(settings, client, token, args.conversationId);
-    }
   });
+
+const checkCall = (session: Session, name: string, args: Args) =>
+  Effect.gen(function* () {
+    if (!session.settings.testMode) return;
+    const refusal = testModeRefusal(name, args, testOptions(session.settings));
+    if (refusal) return yield* callError(403, refusal);
+    if (CONVERSATION_SCOPED.has(name)) yield* requireTestConversation(session, args.conversationId);
+    if (AGENT_SCOPED.has(name)) yield* requireOwnTestAgent(session, args.name);
+  });
+
+/** A query's value as the page may see it (test mode shapes and rechecks it). */
+const shape = (settings: CommsSettings, name: string, value: unknown) =>
+  settings.testMode ? shapeTestModeValue(name, value, testOptions(settings)) : { value };
 
 const resolveFunction = (name: unknown, kind?: unknown) => {
   if (typeof name !== "string" || !(name in COMMS_FUNCTIONS)) {
@@ -219,39 +251,34 @@ const configHandler = (settings: CommsSettings) =>
     });
   });
 
-const callHandler = (settings: CommsSettings) =>
+const callHandler = (backend: CommsBackendShape, settings: CommsSettings) =>
   Effect.gen(function* () {
     const body = yield* readJsonObject;
     const fn = yield* resolveFunction(body.name, body.kind);
     yield* authenticateHttpRequestScope(
       fn.kind === "mutation" ? AuthOrchestrationOperateScope : AuthOrchestrationReadScope,
     );
-    const token = yield* readToken(settings);
-    const client = convexClient(settings.convexUrl);
+    const session = yield* openSession(backend, settings);
     const args = asArgs(body.args);
-    yield* checkCall(settings, client, token, fn.name, args);
-    const withToken = { ...args, adminToken: token };
-    const value = yield* fn.kind === "mutation"
-      ? Effect.tryPromise({
-          try: () => client.mutation(makeFunctionReference<"mutation">(fn.name), withToken),
-          catch: (error) => {
-            const described = describeCommsError(error);
-            return callError(400, described.message, described.data);
-          },
-        })
-      : runQuery(client, fn.name, withToken);
-    return HttpServerResponse.jsonUnsafe({
-      value: settings.testMode ? shapeForTestMode(settings, fn.name, value) : value,
-    });
+    yield* checkCall(session, fn.name, args);
+    if (fn.kind === "mutation") {
+      const value = yield* run(session.token, () =>
+        backend.mutation(fn.name, { ...args, adminToken: session.token }),
+      );
+      return HttpServerResponse.jsonUnsafe({ value });
+    }
+    const shaped = shape(settings, fn.name, yield* query(session, fn.name, args));
+    if ("error" in shaped) return yield* callError(403, shaped.error);
+    return HttpServerResponse.jsonUnsafe({ value: shaped.value });
   });
 
 interface WatchQuery {
   readonly id: string;
   readonly name: string;
-  readonly args: Record<string, unknown>;
+  readonly args: Args;
 }
 
-const watchHandler = (settings: CommsSettings) =>
+const watchHandler = (backend: CommsBackendShape, settings: CommsSettings) =>
   Effect.gen(function* () {
     yield* authenticateHttpRequestScope(AuthOrchestrationReadScope);
     const body = yield* readJsonObject;
@@ -268,12 +295,11 @@ const watchHandler = (settings: CommsSettings) =>
       const fn = yield* resolveFunction(q.name, "query");
       queries.push({ id: q.id, name: fn.name, args: asArgs(q.args) });
     }
-    const token = yield* readToken(settings);
-    const client = convexClient(settings.convexUrl);
-    // Test mode checks each scoped query once, up front; a refused one streams its error.
+    const session = yield* openSession(backend, settings);
+    // Arguments are checked once, up front; values are rechecked on every update (shape).
     const refused = new Map<string, { message: string }>();
     for (const q of queries) {
-      const check = yield* Effect.result(checkCall(settings, client, token, q.name, q.args));
+      const check = yield* Effect.result(checkCall(session, q.name, q.args));
       if (check._tag === "Failure") refused.set(q.id, { message: check.failure.message });
     }
 
@@ -284,24 +310,30 @@ const watchHandler = (settings: CommsSettings) =>
         const offer = (line: unknown) => Queue.offerUnsafe(queue, frame(line));
         yield* Effect.acquireRelease(
           Effect.sync(() => {
-            const stops: Array<() => void> = [];
+            const stops = new Map<string, () => void>();
             for (const q of queries) {
               const refusal = refused.get(q.id);
               if (refusal) {
                 offer({ id: q.id, error: refusal });
                 continue;
               }
-              const unsubscribe = client.onUpdate(
-                makeFunctionReference<"query">(q.name),
-                { ...q.args, adminToken: token },
-                (value) =>
-                  offer({
-                    id: q.id,
-                    value: settings.testMode ? shapeForTestMode(settings, q.name, value) : value,
-                  }),
-                (error) => offer({ id: q.id, error: describeCommsError(error) }),
+              const stop = backend.subscribe(
+                q.name,
+                { ...q.args, adminToken: session.token },
+                (value) => {
+                  const shaped = shape(settings, q.name, value);
+                  if ("value" in shaped) {
+                    offer({ id: q.id, value: shaped.value });
+                    return;
+                  }
+                  // No longer allowed: say so once and stop following it.
+                  offer({ id: q.id, error: { message: shaped.error } });
+                  stops.get(q.id)?.();
+                  stops.delete(q.id);
+                },
+                (error) => offer({ id: q.id, error: describeCommsError(error, session.token) }),
               );
-              stops.push(() => unsubscribe());
+              stops.set(q.id, stop);
             }
             return stops;
           }),
@@ -324,25 +356,39 @@ const handler = Effect.gen(function* () {
   const request = yield* HttpServerRequest.HttpServerRequest;
   const url = HttpServerRequest.toURL(request);
   if (Option.isNone(url)) return HttpServerResponse.text("Bad Request", { status: 400 });
-  const settings = resolveCommsSettings();
+  const backend = yield* CommsBackend;
+  const settings = backend.settings;
   if (!settings) return errorResponse(404, "comms isn't configured on this server");
   const route = url.value.pathname.slice(COMMS_ROUTE_PREFIX.length);
   const method =
     route === "/config" ? "GET" : route === "/call" || route === "/watch" ? "POST" : null;
   if (!method) return errorResponse(404, "no such comms endpoint");
   if (request.method !== method) return errorResponse(405, `${method} only`);
-  const run =
+  const response =
     route === "/config"
       ? configHandler(settings)
       : route === "/call"
-        ? callHandler(settings)
-        : watchHandler(settings);
-  return yield* run.pipe(
+        ? callHandler(backend, settings)
+        : watchHandler(backend, settings);
+  return yield* response.pipe(
     Effect.catchTags({
       CommsCallError: (error) =>
-        Effect.succeed(errorResponse(error.status, error.message, error.data)),
+        Effect.succeed(errorResponse(error.status, error.message, error.code)),
     }),
   );
 });
 
-export const routeLayer = HttpRouter.add("*", `${COMMS_ROUTE_PREFIX}/*`, handler);
+/** The routes, built over a CommsBackend (tests provide a fake). */
+export const routeLayer = Layer.unwrap(
+  Effect.gen(function* () {
+    const backend = yield* CommsBackend;
+    return HttpRouter.add(
+      "*",
+      `${COMMS_ROUTE_PREFIX}/*`,
+      handler.pipe(Effect.provideService(CommsBackend, backend)),
+    );
+  }),
+);
+
+/** The routes over the real backend, as the server mounts them. */
+export const layer = routeLayer.pipe(Layer.provide(layerCommsBackend));

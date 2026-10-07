@@ -55,9 +55,9 @@ export function presenceView(
   if (entry.state === "paused") return { status: "paused", label: "paused" };
   const presence = entry.presence;
   if (!presence) {
-    return entry.participant.kind === "system"
-      ? { status: "system", label: "system" }
-      : { status: "person", label: "person" };
+    if (entry.participant.kind === "system") return { status: "system", label: "system" };
+    if (entry.participant.kind === "human") return { status: "person", label: "person" };
+    return { status: "offline", label: "offline (never connected)" };
   }
   const seen = entry.home ? machineSeen.get(entry.home.machine) : undefined;
   if (presence.stale || seen === undefined || now - seen >= PRESENCE_STALE_MS) {
