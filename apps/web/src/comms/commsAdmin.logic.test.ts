@@ -2,6 +2,9 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   filterRoster,
+  harnessLocator,
+  harnessOptions,
+  machineOptions,
   localThreadId,
   nameProblem,
   parseDuties,
@@ -84,5 +87,37 @@ describe("forms", () => {
 
   it("parses duties one per line", () => {
     expect(parseDuties(" a \n\n b\n")).toEqual(["a", "b"]);
+  });
+});
+
+describe("register on another machine", () => {
+  it("offers known harnesses plus any in use, never web", () => {
+    const options = harnessOptions([
+      agent("a", { home: { machine: "m", harness: "newh", locator: "x" } }),
+    ]);
+    expect(options).toContain("t3");
+    expect(options).toContain("newh");
+    expect(options).not.toContain("web");
+  });
+
+  it("uses the name as a Claude Code locator", () => {
+    expect(harnessLocator("claude-code", "ta-x", "ignored")).toBe("ta-x");
+    expect(harnessLocator("t3", "ta-x", " thr ")).toBe("thr");
+  });
+
+  it("lists machines most recently heard first", () => {
+    const list = machineOptions(
+      {
+        participants: [],
+        machines: [
+          { machineId: "old", lastSeenAt: now - 600_000 },
+          { machineId: "new", lastSeenAt: now - 5_000 },
+          { machineId: "never", lastSeenAt: null },
+        ],
+      },
+      now,
+    );
+    expect(list.map((m) => m.id)).toEqual(["new", "old", "never"]);
+    expect(list[0]!.label).toBe("heard 5s ago");
   });
 });

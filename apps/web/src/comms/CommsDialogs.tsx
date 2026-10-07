@@ -26,12 +26,20 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
+import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { useThreadShells } from "~/state/entities";
 import { usePrimaryEnvironmentId } from "~/state/environments";
 
 import { commsCall, useCommsConfig, useCommsQuery } from "./commsClient";
-import { nameProblem, parseDuties } from "./commsAdmin.logic";
-import type { ConversationView, RegistryEntry } from "./commsTypes";
+import {
+  HARNESS_HELP,
+  harnessLocator,
+  harnessOptions,
+  machineOptions,
+  nameProblem,
+  parseDuties,
+} from "./commsAdmin.logic";
+import type { ConversationView, DirectoryList, RegistryEntry } from "./commsTypes";
 
 const TEST_AGENT_PREFIX = "ta-";
 const TEST_GROUP_PREFIX = "tg-";
@@ -71,6 +79,7 @@ export function RegisterAgentDialog(props: {
 }) {
   const config = useCommsConfig();
   const registry = useRegistry();
+  const directory = useCommsQuery<DirectoryList>("directory:list", props.open ? {} : "skip");
   const environmentId = usePrimaryEnvironmentId();
   const threads = useThreadShells(props.open);
   const testMode = config?.testMode === true;
@@ -88,6 +97,8 @@ export function RegisterAgentDialog(props: {
         .map((e) => e.participant.name),
     [registry],
   );
+  const machines = useMemo(() => machineOptions(directory.data), [directory.data]);
+  const harnesses = useMemo(() => harnessOptions(registry), [registry]);
   const candidateThreads = useMemo(
     () =>
       threads
@@ -101,34 +112,42 @@ export function RegisterAgentDialog(props: {
     [environmentId, registeredThreads, threads],
   );
 
-  const [manual, setManual] = useState(false);
+  // "This T3" needs to know which comms machine this server is; without it, only Other machine.
+  const [source, setSource] = useState<"local" | "machine">(homeMachine ? "local" : "machine");
   const [threadId, setThreadId] = useState("");
   const [name, setName] = useState(testMode ? TEST_AGENT_PREFIX : "");
-  const [owner, setOwner] = useState(config?.postAs ?? "");
+  // The config can arrive after the dialog mounts: until a choice is made, the owner is the post-as person.
+  const [ownerChoice, setOwner] = useState("");
+  const owner = ownerChoice || config?.postAs || "";
   const [description, setDescription] = useState("");
-  const [harness, setHarness] = useState("");
   const [machine, setMachine] = useState("");
+  const [harness, setHarness] = useState("t3");
   const [locator, setLocator] = useState("");
   const submit = useSubmit();
 
-  const home = manual
-    ? { machine: machine.trim(), harness: harness.trim(), locator: locator.trim() }
-    : homeMachine && threadId
-      ? { machine: homeMachine, harness: "t3", locator: threadId }
-      : null;
+  const effectiveLocator = harnessLocator(harness, name, locator);
+  const home =
+    source === "local"
+      ? homeMachine && threadId
+        ? { machine: homeMachine, harness: "t3", locator: threadId }
+        : null
+      : machine && harness && effectiveLocator
+        ? { machine, harness, locator: effectiveLocator }
+        : null;
   const problem =
     nameProblem(name, taken) ??
     (!owner ? "Pick its owner (a person)." : undefined) ??
-    (!home || !home.machine || !home.harness || !home.locator
-      ? manual
-        ? "Give its harness, machine and locator."
-        : homeMachine
-          ? "Pick the T3 thread it lives in."
-          : "This server has no home machine configured; use Manual."
+    (!home
+      ? source === "local"
+        ? "Pick the T3 thread it lives in."
+        : !machine
+          ? "Pick the machine it lives on."
+          : `Give its ${HARNESS_HELP[harness]?.label ?? "locator"}.`
       : undefined);
 
   const reset = () => {
     setThreadId("");
+    setLocator("");
     setName(testMode ? TEST_AGENT_PREFIX : "");
     setDescription("");
     submit.clearError();
@@ -149,6 +168,7 @@ export function RegisterAgentDialog(props: {
       props.onOpenChange(false);
     }
   };
+  const help = HARNESS_HELP[harness];
 
   return (
     <Dialog open={props.open} onOpenChange={props.onOpenChange}>
@@ -156,10 +176,9 @@ export function RegisterAgentDialog(props: {
         <DialogHeader>
           <DialogTitle>Register an agent</DialogTitle>
           <DialogDescription>
-            Put an agent on the comms network. Its connector wakes it when a message names it.
-            {testMode
-              ? " Test mode: names start with ta- and live on " + (homeMachine ?? "?") + "."
-              : ""}
+            Put an agent on the comms network. Its machine's connector wakes it when a message names
+            it.
+            {testMode ? ` Test mode: names start with ta- and live on ${homeMachine ?? "?"}.` : ""}
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>
@@ -170,44 +189,26 @@ export function RegisterAgentDialog(props: {
               void save();
             }}
           >
-            {manual ? (
-              <div className="grid grid-cols-3 gap-2">
-                <div className="grid gap-1.5">
-                  <Label htmlFor="comms-register-harness">Harness</Label>
-                  <Input
-                    id="comms-register-harness"
-                    placeholder="t3"
-                    value={harness}
-                    onChange={(e) => setHarness(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="comms-register-machine">Machine</Label>
-                  <Input
-                    id="comms-register-machine"
-                    value={machine}
-                    onChange={(e) => setMachine(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-1.5">
-                  <Label htmlFor="comms-register-locator">Locator</Label>
-                  <Input
-                    id="comms-register-locator"
-                    placeholder="thread id"
-                    value={locator}
-                    onChange={(e) => setLocator(e.target.value)}
-                  />
-                </div>
-              </div>
-            ) : (
+            <ToggleGroup
+              aria-label="Where the agent lives"
+              variant="segmented"
+              value={[source]}
+              onValueChange={(next) => {
+                const value = next[0];
+                if (value === "local" || value === "machine") setSource(value);
+              }}
+            >
+              <Toggle value="local" disabled={!homeMachine}>
+                This T3{homeMachine ? ` (${homeMachine})` : ""}
+              </Toggle>
+              <Toggle value="machine">Another machine</Toggle>
+            </ToggleGroup>
+            {source === "local" ? (
               <div className="grid gap-1.5">
-                <Label>T3 thread on this server</Label>
+                <Label>T3 thread</Label>
                 <Select
                   value={threadId}
-                  onValueChange={(value) => {
-                    const next = String(value ?? "");
-                    setThreadId(next);
-                  }}
+                  onValueChange={(value) => setThreadId(String(value ?? ""))}
                 >
                   <SelectTrigger aria-label="T3 thread">
                     <SelectValue>
@@ -226,6 +227,61 @@ export function RegisterAgentDialog(props: {
                   Threads already registered aren't listed.
                 </p>
               </div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="grid gap-1.5">
+                    <Label>Machine</Label>
+                    <Select
+                      value={machine}
+                      onValueChange={(value) => setMachine(String(value ?? ""))}
+                    >
+                      <SelectTrigger aria-label="Machine">
+                        <SelectValue>{machine || "Pick a machine"}</SelectValue>
+                      </SelectTrigger>
+                      <SelectPopup>
+                        {machines.map((m) => (
+                          <SelectItem key={m.id} value={m.id}>
+                            {m.id}
+                            <span className="ml-2 text-xs text-muted-foreground">{m.label}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectPopup>
+                    </Select>
+                  </div>
+                  <div className="grid gap-1.5">
+                    <Label>Harness</Label>
+                    <Select
+                      value={harness}
+                      onValueChange={(value) => setHarness(String(value ?? ""))}
+                    >
+                      <SelectTrigger aria-label="Harness">
+                        <SelectValue>{HARNESS_HELP[harness]?.name ?? harness}</SelectValue>
+                      </SelectTrigger>
+                      <SelectPopup>
+                        {harnesses.map((h) => (
+                          <SelectItem key={h} value={h}>
+                            {HARNESS_HELP[h]?.name ?? h}
+                          </SelectItem>
+                        ))}
+                      </SelectPopup>
+                    </Select>
+                  </div>
+                </div>
+                {help?.fromName ? (
+                  <p className="text-xs text-muted-foreground">{help.hint}</p>
+                ) : (
+                  <div className="grid gap-1.5">
+                    <Label htmlFor="comms-register-locator">{help?.label ?? "Locator"}</Label>
+                    <Input
+                      id="comms-register-locator"
+                      value={locator}
+                      onChange={(e) => setLocator(e.target.value)}
+                    />
+                    {help ? <p className="text-xs text-muted-foreground">{help.hint}</p> : null}
+                  </div>
+                )}
+              </>
             )}
             <div className="grid grid-cols-2 gap-2">
               <div className="grid gap-1.5">
@@ -264,9 +320,6 @@ export function RegisterAgentDialog(props: {
           </form>
         </DialogPanel>
         <DialogFooter variant="bare">
-          <Button variant="ghost" onClick={() => setManual((value) => !value)}>
-            {manual ? "From a T3 thread" : "Manual"}
-          </Button>
           <Button variant="outline" onClick={() => props.onOpenChange(false)}>
             Cancel
           </Button>

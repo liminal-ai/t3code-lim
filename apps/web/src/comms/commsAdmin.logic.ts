@@ -126,3 +126,61 @@ export function parseDuties(text: string): ReadonlyArray<string> {
     .map((line) => line.trim())
     .filter(Boolean);
 }
+
+/**
+ * The harnesses agent-comms knows (protocol `Harness` in packages/protocol/src/model.ts),
+ * with what each one's locator is. Harnesses already in use are offered too, so a harness
+ * added to comms appears here once one agent uses it.
+ */
+export const HARNESS_HELP: Readonly<
+  Record<
+    string,
+    {
+      readonly name: string;
+      readonly label: string;
+      readonly hint: string;
+      readonly fromName?: true;
+    }
+  >
+> = {
+  t3: {
+    name: "T3",
+    label: "T3 thread id",
+    hint: "The thread's id on that machine's T3 (the last part of its URL).",
+  },
+  "claude-code": {
+    name: "Claude Code",
+    label: "Terminal name",
+    hint: "A Claude Code session's locator is its comms name; the session connects with that name.",
+    fromName: true,
+  },
+  oaidot: {
+    name: "ChatGPT (oaidot)",
+    label: "Parent binding",
+    hint: "The parent binding configured for the oaidot courier on that machine.",
+  },
+  muse: { name: "Muse", label: "Muse locator", hint: "The locator Muse's own connector expects." },
+};
+
+export function harnessOptions(registry: ReadonlyArray<RegistryEntry>): ReadonlyArray<string> {
+  const inUse = registry.flatMap((e) => (e.home?.harness ? [e.home.harness] : []));
+  return [...new Set([...Object.keys(HARNESS_HELP), ...inUse])].filter((h) => h !== "web");
+}
+
+/** The locator sent for a harness: Claude Code's is the agent's name. */
+export function harnessLocator(harness: string, name: string, typed: string): string {
+  return HARNESS_HELP[harness]?.fromName ? name : typed.trim();
+}
+
+/** Registered machines, most recently heard first, labelled with when. */
+export function machineOptions(
+  directory: DirectoryList | undefined,
+  now = Date.now(),
+): ReadonlyArray<{ readonly id: string; readonly label: string }> {
+  return [...(directory?.machines ?? [])]
+    .sort((a, b) => (b.lastSeenAt ?? 0) - (a.lastSeenAt ?? 0))
+    .map((m) => ({
+      id: m.machineId,
+      label: m.lastSeenAt === null ? "never connected" : `heard ${span(now - m.lastSeenAt)} ago`,
+    }));
+}
