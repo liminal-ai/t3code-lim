@@ -491,7 +491,9 @@ export function ManageMembersDialog(props: {
   const addable = joinable.filter(
     (e) =>
       !members.has(e.participant.name) &&
-      (!testMode || e.participant.name.startsWith(TEST_AGENT_PREFIX)),
+      (!testMode ||
+        e.participant.name.startsWith(TEST_AGENT_PREFIX) ||
+        e.participant.name === config?.postAs),
   );
   const [adding, setAdding] = useState("");
   const submit = useSubmit();
