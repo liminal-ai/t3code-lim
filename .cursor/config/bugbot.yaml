@@ -10,4 +10,4 @@ prSummary:
   mode: disabled            # Copilot already posts an overview; avoid multiple summaries
   riskScore: false
 autofix:
-  mode: disabled            # keep agents in control of fixes
+  mode: existingBranch      # apply autofixes to the existing PR branch
