@@ -18,13 +18,25 @@ The exact baseline is recorded in [upstream.json](upstream.json). Preserve histo
 2. Create a worktree under `~/lim/wt/t3code-lim/<task>` with an update branch.
 3. Merge the selected upstream release tag into that branch. Keep the existing small patch and resolve conflicts explicitly.
 4. Update upstream.json and the README baseline. Review new upstream workflows before enabling any in this private fork.
-5. Open a PR into main. Run checks, build candidate artifacts and qualify staging before promoting the same artifact to prod.
+5. Open a PR into main. Run checks, build an untagged candidate and qualify staging with an independent tester before Lee reviews functional changes. Tag only after that review.
 
 Upstream workflows remain in source to reduce merge churn, but are disabled in this repository's Actions settings. Only `lim-ci.yml` and `lim-release.yml` are enabled here. Upstream deployment workflows depend on upstream's secrets and infrastructure and must not be enabled here.
 
 ## Releases
 
 Tag format: `<upstream-tag>-lim.<revision>`, for example `v0.0.46-nightly.20261003.2632-lim.2`. The tag is immutable; fixes get a new revision. upstream.json records the corresponding tag, commit and patch revision. Package versions are aligned during the build.
+
+Before tagging, dispatch `lim-release.yml` against the candidate branch with `candidate=true`
+and leave `tag` empty. It runs the same native builds and packaged server smoke tests,
+uploads artifacts and checksums to the workflow run, and skips release publication.
+Candidate versions include the workflow run ID and attempt. Record the commit, run and
+artifact checksum used for staging. Back up staging config, data and data-lhc before
+starting the candidate, since database migrations run on startup.
+
+After independent testing and Lee's staging review, tag the reviewed commit with the
+version in upstream.json. The tag workflow rebuilds with release version metadata;
+these artifacts are not byte-identical to the candidate. Packaged smoke checks must
+pass again on the tagged artifacts before publication and rollout.
 
 The Liminal release workflow builds on native GitHub-hosted runners:
 

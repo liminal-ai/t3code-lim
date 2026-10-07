@@ -9,7 +9,7 @@ permissions:
 jobs:
   check:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
         with:
@@ -23,7 +23,11 @@ jobs:
           node-version: "24.18.0"
           run-install: false
       - run: vp install --frozen-lockfile --filter=t3... --filter=@t3tools/desktop... --filter=@t3tools/web... --filter=@t3tools/scripts...
-      - run: vp run --filter t3 --filter @t3tools/desktop typecheck
+      - run: vp run --filter t3 --filter @t3tools/desktop --filter @t3tools/web typecheck
+      - name: Server regression suite
+        run: vp test run apps/server
+      - name: Web regression suite
+        run: vp test run apps/web --project unit
       - name: Provider and packaging regressions
         run: vp test run apps/server/src/provider/Drivers/ClaudeLhcSidecar.test.ts apps/server/src/provider/Drivers/ClaudeLhcDriver.test.ts apps/desktop/src/backend/DesktopBackendConfiguration.test.ts scripts/build-desktop-artifact.test.ts
       - name: Runtime branding regressions

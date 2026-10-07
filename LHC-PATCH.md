@@ -1,10 +1,13 @@
-# LHC patch on T3 V2 (v0.0.46-nightly.20261003.2632)
+# LHC patch on T3 V2
 
-Branch `lhc-provider-v2` on the pin `f391794a` (re-pinned from `8ed276c2`: `validation/v2-port/repin-2632/`). One addition: the `claude-lhc` provider driver, which
-runs the stock Claude runtime through the npm `claude-lhc` sidecar (long-horizon context). Ported
-from `lhc-provider` on v0.0.44 (`/srv/agents/hazel/t3code-v044`, its own `LHC-PATCH.md`). Review with
-`git diff v0.0.46-nightly.20261003.2632 lhc-provider-v2`. Evidence: `validation/v2-port/` (each step's failing tests
-first) and `validation/v2-port/live/` (the LHC lane on 13977).
+Current upstream: `v0.0.46-nightly.20261006.2752`; exact source and patch revision are
+in `fork/upstream.json`. The `claude-lhc` provider runs the stock Claude adapter
+through the pinned npm `claude-lhc` sidecar for compaction and durable recall.
+Compare the current fork with that upstream tag to inspect the carried patch.
+
+The original port and its historical evidence are in `validation/v2-port/`.
+Those records describe the old 2632 test installation, not current deployment paths.
+Use [fork/README.md](fork/README.md) for packaged builds and installations.
 
 ## Files changed
 
@@ -43,7 +46,7 @@ Web
 - `apps/web/src/components/settings/providerDriverMeta.ts` (+`providerDriverMeta.lhc.test.ts`):
   Claude LHC in Settings with `ClaudeLhcSettings`.
 - `customModelEditor.logic.ts`, `ProviderModelsSection.tsx`: Claude's model options and default model.
-- `chat/TraitsPicker.tsx`, `usage/UsageLimits.tsx`, `onboarding/providerReadiness.logic.ts`:
+- `usage/UsageLimits.tsx`, `onboarding/providerReadiness.logic.ts`:
   `isClaudeDriverKind`. `chat/ProviderInstanceIcon.tsx`: Claude's icon.
 - `components/ChatView.logic.ts` (+test): a draft asking for Claude LHC never falls back to another
   kind; a vanished custom instance falls back to nothing.
@@ -54,15 +57,13 @@ Sidecar (`lhc/`)
   `sidecar/package-lock.json` (committed lock), `stage-sidecar.sh` (npm ci into `lhc/.sidecar`,
   checks the pin, prints the entry), `.gitignore`.
 
-## Running it (the LHC lane)
+## Running it
 
-- Build per the pin's own task: `cd apps/server && vp run build` (web, then server: `dist/bin.mjs`,
-  `dist/client`). Stage the sidecar: `lhc/stage-sidecar.sh`.
-- `/srv/work/t3code-v2-baseline/lhc/server` is a wrapper (`validation/v2-port/live/lhc-server-wrapper.sh`)
-  that sets `CLAUDE_LHC_SIDECAR` and runs `node dist/bin.mjs` with all arguments. Roll back by
-  restoring the symlink in `backups/lhc-20261003T031336Z/server-path.txt`.
-- Add the instance in Settings (or `server.updateSettings`, `providerInstanceMutation: create`,
-  driver `claude-lhc`).
+Use the packaged server or desktop build described in [fork/README.md](fork/README.md).
+Release builds stage the pinned sidecar with `node scripts/lim-stage-sidecar.mjs`.
+Add a Claude LHC instance in Settings (or `server.updateSettings`,
+`providerInstanceMutation: create`, driver `claude-lhc`). The sidecar stores its data
+beside the T3 home in `<T3 home>-lhc`; keep both together when backing up or rolling back.
 
 ## Context window
 
@@ -70,8 +71,7 @@ T3's bundled model manifest gives Sonnet (4.6 and 5/5.5) a 200k context window b
 an option; Opus 5.5 and Fable default to 1M. A thread's `modelSelection` carries the choice
 (`options: [{ id: "contextWindow", value: "1m" }]`), and the sidecar fits the compaction windows to
 it. Settings can only set the new-thread default (`defaultModelSelection`, one instance, environment
-or per project); threads created over the API (onboarding and test scripts, wherever agent threads are created) must pass the option themselves; the comms adapter only dispatches into existing threads, so it needs nothing. On the LHC lane the
-default is Claude LHC, Sonnet 5.5, 1M.
+or per project); threads created over the API (onboarding and test scripts, wherever agent threads are created) must pass the option themselves; the comms adapter only dispatches into existing threads, so it needs nothing. Defaults remain installation-specific configuration.
 
 ## Known limits
 
@@ -92,4 +92,4 @@ default is Claude LHC, Sonnet 5.5, 1M.
 
 Existing upstream files: 267 edited lines (+232/-35) in 18 files; the rest is new files (the
 sidecar seam, the LHC driver, the kind module, tests, `lhc/`). Measured with
-`git diff --numstat --diff-filter=M v0.0.46-nightly.20261003.2632 -- apps packages ':!*.test.ts'`.
+`git diff --numstat --diff-filter=M v0.0.46-nightly.20261006.2752 -- apps packages ':!*.test.ts'`.
