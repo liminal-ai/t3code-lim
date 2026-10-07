@@ -104,21 +104,24 @@ function GroupChatPage(props: { readonly conversationId: string }) {
     };
   }, [title]);
 
-  // Shown messages count as seen: the sidebar row's unread dot clears, and the
-  // poster's comms inbox items for this chat are marked read.
+  // Follow new messages while the reader sits at the bottom; leave them alone otherwise.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const stickToBottom = useRef(true);
+  // Whether the reader can see the newest message; it decides when messages count as read.
+  const [atBottom, setAtBottom] = useState(true);
+
+  // Messages count as seen once the reader is at the bottom: the sidebar row's unread
+  // dot clears and the poster's comms inbox items for this chat are marked read. A new
+  // message that arrives while they're scrolled up waits until they scroll down to it.
   // Only a new message counts: delivery-state updates re-send the view without one.
   const lastSeq = view?.conversation.lastSeq ?? 0;
   useEffect(() => {
-    if (lastSeq === 0) return;
+    if (lastSeq === 0 || !atBottom) return;
     markGroupChatSeen(conversationId, lastSeq);
     if (self) {
       void commsCall("inbox:markRead", { human: self, conversationId }).catch(() => undefined);
     }
-  }, [conversationId, lastSeq, self]);
-
-  // Follow new messages while the reader sits at the bottom; leave them alone otherwise.
-  const scrollRef = useRef<HTMLDivElement | null>(null);
-  const stickToBottom = useRef(true);
+  }, [atBottom, conversationId, lastSeq, self]);
   const rowCount = messages.length + working.length;
   useEffect(() => {
     const element = scrollRef.current;
@@ -159,6 +162,7 @@ function GroupChatPage(props: { readonly conversationId: string }) {
             const element = event.currentTarget;
             stickToBottom.current =
               element.scrollHeight - element.scrollTop - element.clientHeight < 48;
+            if (stickToBottom.current !== atBottom) setAtBottom(stickToBottom.current);
           }}
         >
           {error && !view ? (

@@ -94,10 +94,7 @@ function GroupChatRow(props: {
           ) : null}
         </span>
         {working.length ? (
-          <span
-            aria-hidden
-            className="size-1.5 shrink-0 animate-status-pulse rounded-full bg-info"
-          />
+          <span aria-hidden className="size-1.5 shrink-0 rounded-full bg-info" />
         ) : props.unseen ? (
           <span aria-label="new messages" className="size-1.5 shrink-0 rounded-full bg-primary" />
         ) : (

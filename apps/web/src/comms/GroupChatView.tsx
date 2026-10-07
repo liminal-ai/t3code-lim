@@ -4,7 +4,7 @@
 // state of every delivery it woke, and a working row per member still on one.
 // The composer has one checkbox per member (who to wake), @-autocomplete, and a
 // preview of who the post wakes.
-import { SendIcon } from "lucide-react";
+import { HourglassIcon, SendIcon } from "lucide-react";
 import { type KeyboardEvent, type ReactNode, useCallback, useMemo, useRef, useState } from "react";
 
 import { cn } from "~/lib/utils";
@@ -28,7 +28,8 @@ import {
 } from "./groupChat.logic";
 
 const WORKING_TEXT_CLASS = "text-info";
-const WORKING_DOT_CLASS = "bg-info animate-status-pulse";
+// Static on purpose: no continuously repainting animations (AGENTS.md).
+const WORKING_DOT_CLASS = "bg-info";
 
 /** Header strip: every member, with a live dot while they're working and red when their last wake failed. */
 export function GroupChatMemberStrip(props: {
@@ -194,7 +195,7 @@ export function GroupChatTranscript(props: {
               WORKING_TEXT_CLASS,
             )}
           >
-            <Spinner />
+            <HourglassIcon aria-hidden className="size-3.5" />
             <span>@{name} is working</span>
           </div>
         </li>

@@ -414,4 +414,26 @@ describe("comms proxy", () => {
     expect((await next()).error?.message).toMatch(/isn't a test conversation/);
     await reader.cancel();
   });
+  it("coalesces a slow client's frames to the latest value per query", async () => {
+    const { handler, subscriptions } = fixture({
+      settings: { ...settings, testMode: false },
+      query: () => ({ n: 0 }),
+    });
+    const { next, reader } = await openWatch(handler, [
+      { id: "d", name: "directory:list", args: {} },
+    ]);
+    expect((await next()).value).toEqual({ n: 0 });
+    // A burst the client hasn't read: only the newest survives.
+    const directory = subscriptions.find((s) => s.name === "directory:list")!;
+    for (let n = 1; n <= 1000; n++) directory.push({ n });
+    const seen: unknown[] = [];
+    while (seen.length < 4) {
+      const frame = await next();
+      seen.push(frame.value);
+      if ((frame.value as { n: number }).n === 1000) break;
+    }
+    expect(seen.at(-1)).toEqual({ n: 1000 });
+    expect(seen.length).toBeLessThanOrEqual(3);
+    await reader.cancel();
+  });
 });

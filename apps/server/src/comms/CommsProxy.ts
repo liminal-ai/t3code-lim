@@ -24,6 +24,8 @@ import {
   COMMS_MAX_WATCH_QUERIES,
   CommsCallRequest,
   type CommsConfig,
+  type CommsWatchFrame,
+  type CommsWireError,
   CommsWatchRequest,
   isCommsFunctionName,
 } from "@t3tools/contracts";
@@ -144,6 +146,14 @@ export const layerCommsBackend = Layer.effect(
     } satisfies CommsBackendShape;
   }),
 );
+
+/** A comms failure in the wire's error shape (a refusal keeps its code in `data`). */
+const wireError = (error: unknown, token: string): CommsWireError => {
+  const described = describeCommsError(error, token);
+  return described.code
+    ? { message: described.message, data: { code: described.code } }
+    : { message: described.message };
+};
 
 class CommsCallError extends Data.TaggedError("CommsCallError")<{
   readonly status: number;
@@ -359,9 +369,19 @@ const watchHandler = (backend: CommsBackendShape, settings: CommsSettings) =>
 
     const encoder = new TextEncoder();
     const frame = (line: unknown) => encoder.encode(`${JSON.stringify(line)}\n`);
-    const frames = Stream.callback<Uint8Array>((queue) =>
+    // Frames are coalesced per query: while the client hasn't read a query's last
+    // frame, a newer one replaces it. The queue holds at most one key per query (plus
+    // the heartbeat), so a slow client costs at most one pending frame per query.
+    const pending = new Map<string, unknown>();
+    const keys = Stream.callback<string>((queue) =>
       Effect.gen(function* () {
-        const offer = (line: unknown) => Queue.offerUnsafe(queue, frame(line));
+        const offerAs = (key: string, line: unknown) => {
+          const queued = pending.has(key);
+          pending.set(key, line);
+          if (!queued) Queue.offerUnsafe(queue, key);
+        };
+        // Query frames key as `q:<id>` and the heartbeat as `h`, so no client id can collide.
+        const offer = (line: CommsWatchFrame) => offerAs("id" in line ? `q:${line.id}` : "h", line);
         yield* Effect.acquireRelease(
           Effect.sync(() => {
             const stops = new Map<string, () => void>();
@@ -418,7 +438,7 @@ const watchHandler = (backend: CommsBackendShape, settings: CommsSettings) =>
                   q.name,
                   { ...q.args, adminToken: session.token },
                   (value) => forward(q, value),
-                  (error) => offer({ id: q.id, error: describeCommsError(error, session.token) }),
+                  (error) => offer({ id: q.id, error: wireError(error, session.token) }),
                 );
                 stops.set(q.id, stop);
               }
@@ -435,6 +455,13 @@ const watchHandler = (backend: CommsBackendShape, settings: CommsSettings) =>
           Effect.repeat(Schedule.spaced(HEARTBEAT)),
           Effect.forkScoped,
         );
+      }),
+    );
+    const frames = keys.pipe(
+      Stream.map((key) => {
+        const line = pending.get(key);
+        pending.delete(key);
+        return frame(line);
       }),
     );
     return HttpServerResponse.stream(frames, {

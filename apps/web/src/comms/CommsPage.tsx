@@ -40,7 +40,8 @@ import { chatTitle } from "./groupChat.logic";
 export type CommsTab = "agents" | "groups";
 
 const DOT_CLASS: Record<PresenceStatus, string> = {
-  busy: "bg-info animate-status-pulse",
+  // Static on purpose: no continuously repainting animations (AGENTS.md).
+  busy: "bg-info",
   idle: "bg-success",
   offline: "bg-muted-foreground/40",
   stale: "bg-warning",
