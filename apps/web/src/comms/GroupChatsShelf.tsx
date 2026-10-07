@@ -128,6 +128,9 @@ export function GroupChatsShelf(props: { readonly className?: string }) {
   const isUnread = (chat: ConversationSummary) =>
     chat.id !== activeId && chat.lastSeq > readGroupChatSeen(chat.id);
   const unread = chats.filter(isUnread);
+  // Newest activity first; the open chat stays listed even past the cut.
+  const shown = chats.filter((chat, index) => index < visibleCount || chat.id === activeId);
+  const hiddenCount = chats.length - shown.length;
   return (
     <li className={cn("list-none", props.className)} data-testid="sidebar-group-chats-shelf">
       <div className="mx-0.5 flex h-8 items-center gap-0.5">
@@ -158,32 +161,29 @@ export function GroupChatsShelf(props: { readonly className?: string }) {
           <p className="px-2.5 py-1 text-xs text-sidebar-muted-foreground/60">No group chats yet</p>
         ) : (
           <ul role="presentation" className="flex flex-col gap-px">
-            {/* Newest activity first; the open chat stays listed even past the cut. */}
-            {chats
-              .filter((chat, index) => index < visibleCount || chat.id === activeId)
-              .map((chat, index) => (
-                <GroupChatRow
-                  key={chat.id}
-                  chat={chat}
-                  active={chat.id === activeId}
-                  unseen={isUnread(chat)}
-                  watch={index < ACTIVITY_WATCH_LIMIT}
-                  onOpen={() =>
-                    void navigate({
-                      to: "/group-chats/$conversationId",
-                      params: { conversationId: chat.id },
-                    })
-                  }
-                />
-              ))}
-            {chats.length > visibleCount ? (
+            {shown.map((chat, index) => (
+              <GroupChatRow
+                key={chat.id}
+                chat={chat}
+                active={chat.id === activeId}
+                unseen={isUnread(chat)}
+                watch={index < ACTIVITY_WATCH_LIMIT}
+                onOpen={() =>
+                  void navigate({
+                    to: "/group-chats/$conversationId",
+                    params: { conversationId: chat.id },
+                  })
+                }
+              />
+            ))}
+            {hiddenCount > 0 ? (
               <li className="list-none">
                 <button
                   type="button"
                   onClick={() => setVisibleCount((count) => count + SHELF_PAGE_COUNT)}
                   className="flex h-8 w-full cursor-pointer items-center gap-2.5 rounded-md px-2.5 text-left text-xs text-sidebar-muted-foreground/60 hover:bg-sidebar-row-hover hover:text-sidebar-foreground"
                 >
-                  Show {Math.min(chats.length - visibleCount, SHELF_PAGE_COUNT)} more
+                  Show {Math.min(hiddenCount, SHELF_PAGE_COUNT)} more
                 </button>
               </li>
             ) : null}
