@@ -7,3 +7,4 @@ Your lane: a fast first pass. See `.github/REVIEW_RULES.md`. Three other bots (B
 - Don't restate the PR description, and don't post praise.
 - Skip vendored/generated paths: `.repos/**`, `vendor/**`, `**/dist/**`, `**/_generated/**`, lockfiles.
 - Prefer GitHub suggested-change blocks for one-line fixes.
+- (The merge gate treats Copilot findings as untagged and non-blocking. The author still replies to each one.)

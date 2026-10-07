@@ -18,6 +18,7 @@ Repo-specific focus (T3 Code):
 Rules for every reviewer:
 - Report only issues you'd block a merge on, or that will clearly cause a bug or incident. Skip style, naming, formatting, and lint (CI covers those).
 - Before you comment, read the PR's existing review comments. If someone already flagged the issue, skip it, or reply in that thread only to add new evidence.
+- **Start every finding with its severity tag:** `[P0]`, `[P1]` or `[P2]` (`.liminal/standards/BASE-CODING.md` §1). Never post nits. The merge gate parses this tag, and untagged findings are treated as non-blocking.
 - Each finding needs file:line, a concrete failure scenario (inputs → wrong outcome), and a suggested fix.
 - These PRs are often large. Spend most of your effort on behavior changes; skip generated, vendored, or lock files.
 - Skip docs, lockfiles, and vendored code: `**/*.md`, `docs/**`, `**/pnpm-lock.yaml`, `.repos/**`, `vendor/**`, `**/dist/**`, `**/_generated/**`.
