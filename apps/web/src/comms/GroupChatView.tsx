@@ -229,6 +229,8 @@ export function GroupChatComposer(props: {
   const [dismissedAt, setDismissedAt] = useState<number | null>(null);
   const typed: MentionQuery | null = useMemo(() => mentionQueryAt(text, caret), [text, caret]);
   const mention = typed && typed.start !== dismissedAt ? typed : null;
+  // A dismissal lasts only while that mention is being typed.
+  if (dismissedAt !== null && typed?.start !== dismissedAt) setDismissedAt(null);
   const options = useMemo(
     () => (mention ? mentionCandidates(candidates, mention.query) : []),
     [mention, candidates],

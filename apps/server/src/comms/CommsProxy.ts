@@ -33,15 +33,16 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 
 import { authenticateHttpRequestScope } from "./commsAuth.ts";
 import {
-  AGENT_SCOPED,
   COMMS_FUNCTIONS,
   CONVERSATION_SCOPED,
   describeCommsError,
   isTestConversation,
+  namedTestAgents,
   ownTestAgentRefusal,
   type PolicyAgent,
   type PolicyConversation,
   shapeTestModeValue,
+  TEST_AGENT_PREFIX,
   testModeRefusal,
 } from "./commsPolicy.ts";
 
@@ -190,7 +191,10 @@ const openSession = (backend: CommsBackendShape, settings: CommsSettings) =>
 const query = (session: Session, name: string, args: Args) =>
   run(session.token, () => session.backend.query(name, { ...args, adminToken: session.token }));
 
-/** Test mode: the conversation a scoped call names must be a test conversation. */
+/**
+ * Test mode: the conversation a scoped call names must be a test conversation.
+ * Returns its test agents, which must be this instance's own too.
+ */
 const requireTestConversation = (session: Session, conversationId: unknown) =>
   Effect.gen(function* () {
     if (typeof conversationId !== "string") {
@@ -202,18 +206,23 @@ const requireTestConversation = (session: Session, conversationId: unknown) =>
     if (!isTestConversation(view.conversation, testOptions(session.settings))) {
       return yield* callError(403, "test mode: that conversation isn't a test conversation");
     }
+    return view.conversation.members
+      .map((member) => member.name)
+      .filter((name) => name.startsWith(TEST_AGENT_PREFIX));
   });
 
-/** Test mode: a call on an existing agent must target one this instance owns and homes. */
-const requireOwnTestAgent = (session: Session, name: unknown) =>
+/** Test mode: every test agent a call touches must be one this instance owns and homes. */
+const requireOwnTestAgents = (session: Session, names: ReadonlyArray<string>) =>
   Effect.gen(function* () {
-    const target = typeof name === "string" ? name : "";
+    if (names.length === 0) return;
     const registry = (yield* query(session, "registry:list", {})) as {
       agents: ReadonlyArray<PolicyAgent & { readonly participant: { readonly name: string } }>;
     };
-    const entry = registry.agents.find((agent) => agent.participant.name === target);
-    const refusal = ownTestAgentRefusal(target, entry, testOptions(session.settings));
-    if (refusal) return yield* callError(403, refusal);
+    for (const target of names) {
+      const entry = registry.agents.find((agent) => agent.participant.name === target);
+      const refusal = ownTestAgentRefusal(target, entry, testOptions(session.settings));
+      if (refusal) return yield* callError(403, refusal);
+    }
   });
 
 const checkCall = (session: Session, name: string, args: Args) =>
@@ -221,8 +230,12 @@ const checkCall = (session: Session, name: string, args: Args) =>
     if (!session.settings.testMode) return;
     const refusal = testModeRefusal(name, args, testOptions(session.settings));
     if (refusal) return yield* callError(403, refusal);
-    if (CONVERSATION_SCOPED.has(name)) yield* requireTestConversation(session, args.conversationId);
-    if (AGENT_SCOPED.has(name)) yield* requireOwnTestAgent(session, args.name);
+    const members = CONVERSATION_SCOPED.has(name)
+      ? yield* requireTestConversation(session, args.conversationId)
+      : [];
+    yield* requireOwnTestAgents(session, [
+      ...new Set([...namedTestAgents(name, args), ...members]),
+    ]);
   });
 
 /** A query's value as the page may see it (test mode shapes and rechecks it). */
@@ -287,11 +300,14 @@ const watchHandler = (backend: CommsBackendShape, settings: CommsSettings) =>
       return yield* callError(400, `"queries" must list 1-${MAX_WATCH_QUERIES} queries`);
     }
     const queries: WatchQuery[] = [];
+    const ids = new Set<string>();
     for (const entry of raw) {
       const q = asArgs(entry);
       if (typeof q.id !== "string" || q.id.length > 512) {
         return yield* callError(400, "each query needs a string id");
       }
+      if (ids.has(q.id)) return yield* callError(400, `query id ${q.id} appears twice`);
+      ids.add(q.id);
       const fn = yield* resolveFunction(q.name, "query");
       queries.push({ id: q.id, name: fn.name, args: asArgs(q.args) });
     }
@@ -311,29 +327,35 @@ const watchHandler = (backend: CommsBackendShape, settings: CommsSettings) =>
         yield* Effect.acquireRelease(
           Effect.sync(() => {
             const stops = new Map<string, () => void>();
-            for (const q of queries) {
-              const refusal = refused.get(q.id);
-              if (refusal) {
-                offer({ id: q.id, error: refusal });
-                continue;
+            // A subscription that throws while starting releases the ones already open.
+            try {
+              for (const q of queries) {
+                const refusal = refused.get(q.id);
+                if (refusal) {
+                  offer({ id: q.id, error: refusal });
+                  continue;
+                }
+                const stop = backend.subscribe(
+                  q.name,
+                  { ...q.args, adminToken: session.token },
+                  (value) => {
+                    const shaped = shape(settings, q.name, value);
+                    if ("value" in shaped) {
+                      offer({ id: q.id, value: shaped.value });
+                      return;
+                    }
+                    // No longer allowed: say so once and stop following it.
+                    offer({ id: q.id, error: { message: shaped.error } });
+                    stops.get(q.id)?.();
+                    stops.delete(q.id);
+                  },
+                  (error) => offer({ id: q.id, error: describeCommsError(error, session.token) }),
+                );
+                stops.set(q.id, stop);
               }
-              const stop = backend.subscribe(
-                q.name,
-                { ...q.args, adminToken: session.token },
-                (value) => {
-                  const shaped = shape(settings, q.name, value);
-                  if ("value" in shaped) {
-                    offer({ id: q.id, value: shaped.value });
-                    return;
-                  }
-                  // No longer allowed: say so once and stop following it.
-                  offer({ id: q.id, error: { message: shaped.error } });
-                  stops.get(q.id)?.();
-                  stops.delete(q.id);
-                },
-                (error) => offer({ id: q.id, error: describeCommsError(error, session.token) }),
-              );
-              stops.set(q.id, stop);
+            } catch (cause) {
+              stops.forEach((stop) => stop());
+              throw cause;
             }
             return stops;
           }),

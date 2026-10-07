@@ -265,3 +265,24 @@ export function describeCommsError(
       : "comms server error (details withheld; they may echo arguments)",
   };
 }
+
+/**
+ * The test agents a call names, which test mode checks against this instance's
+ * own agents (`ownTestAgentRefusal`): a `ta-` prefix alone would let a test group
+ * include, or a post wake, another instance's test agent.
+ */
+export function namedTestAgents(name: string, args: Args): ReadonlyArray<string> {
+  const names = (value: unknown): string[] =>
+    Array.isArray(value) ? value.map(str) : [str(value)];
+  const named =
+    name === "conversations:createGroup"
+      ? names(args.members)
+      : name === "conversations:postAs"
+        ? names(args.to)
+        : name === "conversations:openDm"
+          ? [str(args.a), str(args.b)]
+          : name === "conversations:addMember" || AGENT_SCOPED.has(name)
+            ? [str(args.name)]
+            : [];
+  return [...new Set(named.filter((n) => n.startsWith(TEST_AGENT_PREFIX)))];
+}

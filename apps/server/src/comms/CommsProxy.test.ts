@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 import {
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
@@ -204,7 +204,18 @@ describe("comms proxy", () => {
   it("test mode: stops a watched view once it isn't a test conversation", async () => {
     let conversation = testGroup;
     const { handler, subscriptions } = fixture({
-      query: () => ({ conversation, members: [], messages: [] }),
+      query: (name) =>
+        name === "registry:list"
+          ? {
+              agents: [
+                {
+                  participant: { name: "ta-ash" },
+                  owner: { name: "lee" },
+                  home: { machine: "test-box" },
+                },
+              ],
+            }
+          : { conversation, members: [], messages: [] },
     });
     const response = await handler(
       new Request("http://t3.test/api/comms/watch", {
@@ -257,7 +268,51 @@ describe("comms proxy", () => {
     const reader = response.body!.getReader();
     await reader.read();
     await reader.cancel();
-    await Effect.runPromise(Effect.sleep("20 millis"));
-    expect(subscriptions.map((s) => s.stopped)).toEqual([true, true]);
+    await vi.waitFor(() => expect(subscriptions.map((s) => s.stopped)).toEqual([true, true]));
+  });
+  it("test mode: a group can't include, or a post wake, another instance's test agent", async () => {
+    const registry = {
+      agents: [
+        { participant: { name: "ta-ash" }, owner: { name: "lee" }, home: { machine: "test-box" } },
+        { participant: { name: "ta-far" }, owner: { name: "lee" }, home: { machine: "m5" } },
+      ],
+    };
+    const { call, calls } = fixture({
+      query: (name) =>
+        name === "registry:list"
+          ? registry
+          : { conversation: testGroup, members: [], messages: [] },
+    });
+    expect(
+      (await call("conversations:createGroup", { title: "tg-x", members: ["lee", "ta-far"] }))
+        .status,
+    ).toBe(403);
+    expect(
+      (await call("conversations:addMember", { conversationId: "g1", name: "ta-far" })).status,
+    ).toBe(403);
+    const post = { as: "lee", conversationId: "g1", text: "hi" };
+    expect((await call("conversations:postAs", { ...post, to: ["ta-far"] })).status).toBe(403);
+    expect((await call("conversations:postAs", { ...post, to: ["ta-ash"] })).status).toBe(200);
+    expect(calls.filter((c) => c.kind === "mutation").map((c) => c.name)).toEqual([
+      "conversations:postAs",
+    ]);
+  });
+
+  it("refuses a watch that names the same query id twice", async () => {
+    const { handler, calls } = fixture();
+    const response = await handler(
+      new Request("http://t3.test/api/comms/watch", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          queries: [
+            { id: "a", name: "directory:list", args: {} },
+            { id: "a", name: "registry:list", args: {} },
+          ],
+        }),
+      }),
+    );
+    expect(response.status).toBe(400);
+    expect(calls).toEqual([]);
   });
 });
