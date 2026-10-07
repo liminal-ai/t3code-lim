@@ -1,7 +1,7 @@
 // Fork-only (agent comms): pure logic for the Comms admin page. Presence
 // follows the comms web view (apps/web/src/lib/view.ts in agent-comms): a stale
 // machine's presence can't be trusted, so it never reads as idle.
-import type { DirectoryList, RegistryEntry } from "./commsTypes";
+import type { CommsConfig, DirectoryList, RegistryEntry } from "./commsTypes";
 
 /** agent-comms PRESENCE_STALE_MS: a machine unheard for this long is stale. */
 export const PRESENCE_STALE_MS = 90_000;
@@ -183,4 +183,21 @@ export function machineOptions(
       id: m.machineId,
       label: m.lastSeenAt === null ? "never connected" : `heard ${span(now - m.lastSeenAt)} ago`,
     }));
+}
+
+/**
+ * Test mode offers only what the server will accept: this instance's own test
+ * agents (owned by the post-as person, homed on the home machine) and that person.
+ */
+export function isOwnTestParticipant(
+  entry: RegistryEntry,
+  config: CommsConfig | undefined,
+): boolean {
+  const name = entry.participant.name;
+  if (name === config?.postAs) return true;
+  return (
+    name.startsWith("ta-") &&
+    entry.owner?.name === config?.postAs &&
+    entry.home?.machine === config?.homeMachine
+  );
 }

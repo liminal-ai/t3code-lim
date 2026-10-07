@@ -190,7 +190,8 @@ export function GroupChatsShelf(props: { readonly className?: string }) {
           </ul>
         )
       ) : null}
-      <CreateGroupDialog open={creating} onOpenChange={setCreating} />
+      {/* Mounted only while open: it watches the whole registry. */}
+      {creating ? <CreateGroupDialog open onOpenChange={setCreating} /> : null}
     </li>
   );
 }

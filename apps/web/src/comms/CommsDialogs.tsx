@@ -33,13 +33,14 @@ import { usePrimaryEnvironmentId } from "~/state/environments";
 import { commsCall, useCommsConfig, useCommsQuery } from "./commsClient";
 import {
   HARNESS_HELP,
+  isOwnTestParticipant,
   harnessLocator,
   harnessOptions,
   machineOptions,
   nameProblem,
   parseDuties,
 } from "./commsAdmin.logic";
-import type { CommsConfig, ConversationView, DirectoryList, RegistryEntry } from "./commsTypes";
+import type { ConversationView, DirectoryList, RegistryEntry } from "./commsTypes";
 
 const TEST_AGENT_PREFIX = "ta-";
 const TEST_GROUP_PREFIX = "tg-";
@@ -332,20 +333,6 @@ export function RegisterAgentDialog(props: {
         </DialogFooter>
       </DialogPopup>
     </Dialog>
-  );
-}
-
-/**
- * Test mode offers only what the server will accept: this instance's own test
- * agents (owned by the post-as person, homed on the home machine) and that person.
- */
-function isOwnTestParticipant(entry: RegistryEntry, config: CommsConfig | undefined): boolean {
-  const name = entry.participant.name;
-  if (name === config?.postAs) return true;
-  return (
-    name.startsWith(TEST_AGENT_PREFIX) &&
-    entry.owner?.name === config?.postAs &&
-    entry.home?.machine === config?.homeMachine
   );
 }
 

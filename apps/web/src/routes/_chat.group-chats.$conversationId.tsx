@@ -37,8 +37,18 @@ function readStored(key: string): string | null {
   }
 }
 
+/**
+ * Switching chats keeps this route mounted, so the page is keyed by chat: the
+ * draft, checked recipients, scroll position and dialogs never carry over (a
+ * half-typed draft must not go to, and wake, another group).
+ */
 function GroupChatRouteView() {
   const { conversationId } = Route.useParams();
+  return <GroupChatPage key={conversationId} conversationId={conversationId} />;
+}
+
+function GroupChatPage(props: { readonly conversationId: string }) {
+  const { conversationId } = props;
   const config = useCommsConfig();
   const [managing, setManaging] = useState(false);
   const self = config?.postAs ?? null;

@@ -21,6 +21,7 @@ import { usePrimaryEnvironmentId } from "~/state/environments";
 import { commsCall, useCommsConfig, useCommsQuery } from "./commsClient";
 import {
   filterRoster,
+  isOwnTestParticipant,
   localThreadId,
   machineSeenMap,
   presenceView,
@@ -223,18 +224,20 @@ function AgentsTab() {
                 entry={entry}
                 presence={presenceView(entry, seen, now)}
                 threadId={localThreadId(entry, homeMachine)}
-                canWrite={!testMode || entry.participant.name.startsWith("ta-")}
+                canWrite={!testMode || isOwnTestParticipant(entry, config)}
               />
             ))}
           </ul>
         )}
       </ScrollArea>
-      <RegisterAgentDialog open={registering} onOpenChange={setRegistering} />
+      {/* Mounted only while open, once the config is known: the form starts from it. */}
+      {registering && config ? <RegisterAgentDialog open onOpenChange={setRegistering} /> : null}
     </div>
   );
 }
 
 function GroupsTab() {
+  const config = useCommsConfig();
   const navigate = useNavigate();
   const { data, error } = useCommsQuery<{ conversations: ReadonlyArray<ConversationSummary> }>(
     "conversations:list",
@@ -299,7 +302,7 @@ function GroupsTab() {
           </ul>
         )}
       </ScrollArea>
-      <CreateGroupDialog open={creating} onOpenChange={setCreating} />
+      {creating && config ? <CreateGroupDialog open onOpenChange={setCreating} /> : null}
       {managing ? (
         <ManageMembersDialog
           conversationId={managing}

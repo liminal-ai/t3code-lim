@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   filterRoster,
+  isOwnTestParticipant,
   harnessLocator,
   harnessOptions,
   machineOptions,
@@ -120,5 +121,26 @@ describe("register on another machine", () => {
     );
     expect(list.map((m) => m.id)).toEqual(["new", "old", "never"]);
     expect(list[0]!.label).toBe("heard 5s ago");
+  });
+});
+
+describe("test-mode ownership", () => {
+  const config = { enabled: true, testMode: true, postAs: "lee", homeMachine: "m" };
+  it("offers only own test agents and the post-as person", () => {
+    const lee: RegistryEntry = {
+      participant: { id: "lee", name: "lee", kind: "human" },
+      state: "active",
+      presence: null,
+    };
+    const own = agent("ta-own", { owner: { id: "lee", name: "lee", kind: "human" } });
+    const elsewhere = agent("ta-far", {
+      owner: { id: "lee", name: "lee", kind: "human" },
+      home: { machine: "m5", harness: "t3", locator: "x" },
+    });
+    const real = agent("kit", { owner: { id: "lee", name: "lee", kind: "human" } });
+    expect(isOwnTestParticipant(lee, config)).toBe(true);
+    expect(isOwnTestParticipant(own, config)).toBe(true);
+    expect(isOwnTestParticipant(elsewhere, config)).toBe(false);
+    expect(isOwnTestParticipant(real, config)).toBe(false);
   });
 });
