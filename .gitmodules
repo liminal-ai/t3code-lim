@@ -1,0 +1,12 @@
+# Vendored reference trees contain gitlinks. Root mappings let Git and checkout
+# traverse them; these reference-only repositories are not needed for builds.
+[submodule "reference-distilled"]
+	path = .repos/alchemy-effect/submodules/distilled
+	url = https://github.com/alchemy-run/distilled.git
+	update = none
+	ignore = all
+[submodule "reference-floci"]
+	path = .repos/alchemy-effect/submodules/floci
+	url = https://github.com/alchemy-run/floci.git
+	update = none
+	ignore = all
