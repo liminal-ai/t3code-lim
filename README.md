@@ -4,7 +4,7 @@ This is Liminal's fork of [T3 Code](https://github.com/pingdotgg/t3code), based 
 
 - Adds the **Claude-LHC provider** alongside upstream providers.
 - Ships versioned server/web and Electron builds for Linux x64, macOS arm64, Windows arm64 and Windows x64.
-- Keeps comms/control-plane integration outside T3, through its API.
+- Can include agent-comms chat and administrative UI; comms server and connector code generally stays outside T3.
 - Preserves upstream Git history; upstream updates arrive as reviewed merge PRs.
 
 See [fork documentation](fork/README.md) for differences, releases, upstream updates and deployment. Download **this fork** from [Liminal releases](https://github.com/liminal-ai/t3code-lim/releases); the upstream installation instructions below install upstream T3 instead.

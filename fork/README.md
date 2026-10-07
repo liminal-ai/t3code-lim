@@ -7,13 +7,13 @@ This private repository preserves upstream T3 Code history and the deployed Clau
 - Claude-LHC provider: pinned `claude-lhc@0.1.1`, compaction and durable recall, selectable beside normal Claude and Codex. The detailed implementation inventory is in [LHC-PATCH.md](../LHC-PATCH.md).
 - Release packaging: bundles the LHC sidecar, Node runtime for standalone servers, and native runtime dependencies. Packaged Electron locates its bundled sidecar automatically. Desktop identity is `ai.liminal.t3code`, displayed as T3 Code Lim; update metadata targets this repository, never upstream.
 - Fork release/CI workflows and this documentation.
-- Agent comms group chats: see [Agent comms UI](#agent-comms-ui).
+- Agent comms: chat and administrative UI for agent comms can live in this fork. Comms server and connector code should generally stay outside T3; the connector reaches T3 through the orchestration API. (Source: Lee, 2026-10-07.) See [Agent comms UI](#agent-comms-ui).
 
-The LHC provider has the same existing limitations documented in LHC-PATCH.md. Model context choice remains configuration. Product changes should stay at the provider boundary; do not rewrite orchestration to accommodate the fork.
+The LHC provider has the same existing limitations documented in LHC-PATCH.md. Model context choice remains configuration. LHC changes should stay at the provider boundary; do not rewrite orchestration to accommodate the LHC patch. Fork UI features such as views, settings and sidebar sections are in scope (source: Lee, 2026-10-07). Where practical, keep them in their own files so upstream merges stay cheap.
 
 ## Agent comms UI
 
-Chat and admin UI for the agent comms server (source: Lee, 2026-10-07: chat and administrative UI may live in this fork; comms server and connector code stays outside T3). Everything fork-only is in `apps/server/src/comms/` and `apps/web/src/comms/`, plus the page route `apps/web/src/routes/_chat.group-chats.$conversationId.tsx`.
+Chat and admin UI for the agent comms server (source: Lee, 2026-10-07: chat and administrative UI may live in this fork; comms server and connector code should generally stay outside T3). Everything fork-only is in `apps/server/src/comms/` and `apps/web/src/comms/`, plus the page route `apps/web/src/routes/_chat.group-chats.$conversationId.tsx`.
 
 - **Server proxy** (`CommsProxy.ts`, registered in `server.ts`): `GET /api/comms/config`, `POST /api/comms/call`, `POST /api/comms/watch` (NDJSON live queries over Convex subscriptions). The browser authenticates with its T3 session (read scope for queries, operate for mutations); the server adds the comms admin token, read per request from a file. No browser holds the token. Only the admin functions listed in `commsPolicy.ts` are reachable; never `connector:*`.
 - **Configuration** (environment; without the first two the routes answer 404 and the UI hides): `COMMS_CONVEX_URL`, `COMMS_ADMIN_TOKEN_FILE`, `COMMS_POST_AS` (the person the UI posts as), `COMMS_HOME_MACHINE` (the comms machine whose connector drives this T3), `COMMS_TEST_MODE=1`.
