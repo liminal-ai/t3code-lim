@@ -33,12 +33,21 @@ const testGroup = {
   members: [{ name: "lee" }, { name: "ta-ash" }],
 };
 
+const ownRegistry = {
+  agents: [
+    { participant: { name: "ta-ash" }, owner: { name: "lee" }, home: { machine: "test-box" } },
+    { participant: { name: "ta-far" }, owner: { name: "lee" }, home: { machine: "m5" } },
+  ],
+};
+
 interface Fixture {
   readonly settings?: CommsProxy.CommsSettings | undefined;
   readonly scopes?: ReadonlyArray<AuthEnvironmentScope>;
   readonly token?: string;
   readonly query?: (name: string, args: Record<string, unknown>) => unknown;
   readonly mutation?: (name: string, args: Record<string, unknown>) => unknown;
+  /** A subscription to this function throws while starting. */
+  readonly failSubscribe?: string;
 }
 
 const fixture = (options: Fixture = {}) => {
@@ -60,6 +69,7 @@ const fixture = (options: Fixture = {}) => {
       return options.mutation ? options.mutation(name, args) : {};
     },
     subscribe: (name, args, onValue) => {
+      if (name === options.failSubscribe) throw new Error("subscribe failed");
       calls.push({ kind: "subscribe", name, args });
       const subscription = { name, push: onValue, stopped: false };
       subscriptions.push(subscription);
@@ -201,57 +211,84 @@ describe("comms proxy", () => {
     expect(calls.filter((c) => c.kind === "mutation").map((c) => c.args.name)).toEqual(["ta-mine"]);
   });
 
-  it("test mode: stops a watched view once it isn't a test conversation", async () => {
-    let conversation = testGroup;
-    const { handler, subscriptions } = fixture({
-      query: (name) =>
-        name === "registry:list"
-          ? {
-              agents: [
-                {
-                  participant: { name: "ta-ash" },
-                  owner: { name: "lee" },
-                  home: { machine: "test-box" },
-                },
-              ],
-            }
-          : { conversation, members: [], messages: [] },
-    });
+  const openWatch = async (handler: (request: Request) => Promise<Response>, queries: unknown) => {
     const response = await handler(
       new Request("http://t3.test/api/comms/watch", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          queries: [{ id: "v", name: "conversations:view", args: { conversationId: "g1" } }],
-        }),
+        body: JSON.stringify({ queries }),
       }),
     );
     expect(response.status).toBe(200);
     const reader = response.body!.pipeThrough(new TextDecoderStream()).getReader();
-    const frames: Array<{ id?: string; value?: unknown; error?: { message: string } }> = [];
-    const next = async () => {
+    let buffer = "";
+    const next = async (): Promise<{
+      id: string;
+      value?: unknown;
+      error?: { message: string };
+    }> => {
       for (;;) {
-        const { value } = await reader.read();
-        for (const line of (value ?? "").split("\n").filter(Boolean)) {
-          const parsed = JSON.parse(line) as (typeof frames)[number];
-          if (parsed.id) {
-            frames.push(parsed);
-            return parsed;
-          }
+        const newline = buffer.indexOf("\n");
+        if (newline >= 0) {
+          const line = buffer.slice(0, newline);
+          buffer = buffer.slice(newline + 1);
+          const parsed = JSON.parse(line) as { id?: string };
+          if (parsed.id) return parsed as Awaited<ReturnType<typeof next>>;
+          continue;
         }
+        const { value } = await reader.read();
+        buffer += value ?? "";
       }
     };
+    return { next, reader };
+  };
+
+  it.each([
+    ["a non-test member is added", { name: "kit" }],
+    ["another machine's test agent is added", { name: "ta-far" }],
+  ])("test mode: stops a watched view once %s", async (_label, added) => {
+    let conversation = testGroup;
+    const { handler, subscriptions } = fixture({
+      query: (name) =>
+        name === "registry:list" ? ownRegistry : { conversation, members: [], messages: [] },
+    });
+    const { next, reader } = await openWatch(handler, [
+      { id: "v", name: "conversations:view", args: { conversationId: "g1" } },
+    ]);
     expect((await next()).value).toBeDefined();
-    conversation = { ...testGroup, members: [...testGroup.members, { name: "kit" }] };
-    subscriptions[0]!.push({ conversation, members: [], messages: [] });
+    conversation = { ...testGroup, members: [...testGroup.members, added] };
+    const view = subscriptions.find((s) => s.name === "conversations:view")!;
+    view.push({ conversation, members: [], messages: [] });
     expect((await next()).error?.message).toMatch(/isn't a test conversation/);
-    expect(subscriptions[0]!.stopped).toBe(true);
+    expect(view.stopped).toBe(true);
+    await reader.cancel();
+  });
+
+  it("test mode: stops a watched view when a member is rebound to another machine", async () => {
+    const { handler, subscriptions } = fixture({
+      query: (name) =>
+        name === "registry:list"
+          ? ownRegistry
+          : { conversation: testGroup, members: [], messages: [] },
+    });
+    const { next, reader } = await openWatch(handler, [
+      { id: "v", name: "conversations:view", args: { conversationId: "g1" } },
+    ]);
+    expect((await next()).value).toBeDefined();
+    const registry = subscriptions.find((s) => s.name === "registry:list")!;
+    registry.push({
+      agents: [
+        { participant: { name: "ta-ash" }, owner: { name: "lee" }, home: { machine: "m5" } },
+      ],
+    });
+    expect((await next()).error?.message).toMatch(/isn't a test conversation/);
+    expect(subscriptions.find((s) => s.name === "conversations:view")!.stopped).toBe(true);
     await reader.cancel();
   });
 
   it("releases every subscription when the client goes away", async () => {
     const { handler, subscriptions } = fixture({
-      query: () => ({ conversations: [testGroup] }),
+      query: (name) => (name === "registry:list" ? ownRegistry : { conversations: [testGroup] }),
     });
     const response = await handler(
       new Request("http://t3.test/api/comms/watch", {
@@ -268,7 +305,10 @@ describe("comms proxy", () => {
     const reader = response.body!.getReader();
     await reader.read();
     await reader.cancel();
-    await vi.waitFor(() => expect(subscriptions.map((s) => s.stopped)).toEqual([true, true]));
+    await vi.waitFor(() =>
+      expect(subscriptions.map((s) => s.stopped)).toEqual(subscriptions.map(() => true)),
+    );
+    expect(subscriptions.length).toBeGreaterThanOrEqual(2);
   });
   it("test mode: a group can't include, or a post wake, another instance's test agent", async () => {
     const registry = {
@@ -314,5 +354,28 @@ describe("comms proxy", () => {
     );
     expect(response.status).toBe(400);
     expect(calls).toEqual([]);
+  });
+  it("releases the subscriptions already started when a later one fails to start", async () => {
+    const { handler, subscriptions } = fixture({
+      settings: { ...settings, testMode: false },
+      failSubscribe: "registry:list",
+    });
+    const response = await handler(
+      new Request("http://t3.test/api/comms/watch", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          queries: [
+            { id: "a", name: "directory:list", args: {} },
+            { id: "b", name: "registry:list", args: {} },
+          ],
+        }),
+      }),
+    );
+    // Start reading so the stream sets up; the failed start ends it.
+    const reader = response.body!.getReader();
+    void reader.read().catch(() => undefined);
+    await vi.waitFor(() => expect(subscriptions.map((s) => s.stopped)).toEqual([true]));
+    await reader.cancel().catch(() => undefined);
   });
 });

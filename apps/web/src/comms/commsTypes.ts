@@ -86,14 +86,7 @@ export interface ConversationView {
   readonly messages: ReadonlyArray<ConversationMessage>;
 }
 
-export interface CommsConfig {
-  readonly enabled: boolean;
-  readonly testMode: boolean;
-  /** The person this UI posts as; null when unset (read-only). */
-  readonly postAs: string | null;
-  /** The comms machine whose connector drives this T3; null when unset. */
-  readonly homeMachine: string | null;
-}
+export type { CommsConfig } from "@t3tools/contracts";
 
 export interface RegistryEntry {
   readonly participant: ParticipantRef;

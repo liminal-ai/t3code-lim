@@ -3,6 +3,16 @@
 // (/api/comms/watch, NDJSON frames), reopened whenever the watched set
 // changes. The T3 session cookie is the credential; the server adds the comms
 // admin token. Ported from agent-comms' web view (apps/web/src/lib/backend.tsx).
+import {
+  type CommsArgs,
+  CommsCallResponse,
+  CommsConfig,
+  type CommsMutationName,
+  type CommsQueryName,
+  CommsWatchFrame,
+  type CommsWireError,
+} from "@t3tools/contracts";
+import * as Schema from "effect/Schema";
 import { useCallback, useEffect, useMemo, useSyncExternalStore } from "react";
 
 import { readDesktopPrimaryBearerToken } from "~/environments/primary/desktopAuth";
@@ -11,8 +21,6 @@ import {
   readPrimaryEnvironmentTarget,
   resolvePrimaryEnvironmentHttpUrl,
 } from "~/environments/primary/target";
-
-import type { CommsConfig } from "./commsTypes";
 
 export class CommsError extends Error {
   readonly status: number;
@@ -59,15 +67,18 @@ async function commsFetch(path: string, init: RequestInit = {}): Promise<Respons
   return fetch(target, { ...init, headers, credentials: "omit" });
 }
 
+const decodeCallResponse = Schema.decodeUnknownOption(CommsCallResponse);
+const decodeWatchFrame = Schema.decodeUnknownOption(CommsWatchFrame);
+const decodeConfig = Schema.decodeUnknownOption(CommsConfig);
+
+const wireError = (error: CommsWireError, status: number) =>
+  new CommsError(error.message, status, error.data);
+
 async function readError(response: Response): Promise<CommsError> {
-  const body = (await response.json().catch(() => ({}))) as {
-    error?: { message?: string; data?: unknown };
-  };
-  return new CommsError(
-    body.error?.message ?? `comms request failed (${response.status})`,
-    response.status,
-    body.error?.data,
-  );
+  const body = decodeCallResponse(await response.json().catch(() => null));
+  return body._tag === "Some" && "error" in body.value
+    ? wireError(body.value.error, response.status)
+    : new CommsError(`comms request failed (${response.status})`, response.status);
 }
 
 class CommsClient {
@@ -83,7 +94,10 @@ class CommsClient {
       body: JSON.stringify({ kind, name, args }),
     });
     if (!response.ok) throw await readError(response);
-    return ((await response.json()) as { value?: unknown }).value;
+    const body = decodeCallResponse(await response.json());
+    if (body._tag === "None") throw new CommsError("comms answered in an unknown shape", 502);
+    if ("error" in body.value) throw wireError(body.value.error, response.status);
+    return body.value.value;
   }
 
   entry(key: string, name: string, args: Args): Entry {
@@ -142,7 +156,8 @@ class CommsClient {
         while ((newline = buffer.indexOf("\n")) >= 0) {
           const line = buffer.slice(0, newline);
           buffer = buffer.slice(newline + 1);
-          if (line) this.deliver(JSON.parse(line) as WatchFrame);
+          const frame = line ? decodeWatchFrame(JSON.parse(line)) : undefined;
+          if (frame?._tag === "Some") this.deliver(frame.value);
         }
       }
     } catch (error) {
@@ -159,15 +174,13 @@ class CommsClient {
     }
   }
 
-  private deliver(frame: WatchFrame): void {
-    if (!frame.id) return; // heartbeat
+  private deliver(frame: CommsWatchFrame): void {
+    if (!("id" in frame)) return; // heartbeat
     const entry = this.entries.get(frame.id);
     if (!entry) return;
     this.set(
       entry,
-      frame.error
-        ? { error: new CommsError(frame.error.message, 400, frame.error.data) }
-        : { value: frame.value },
+      "error" in frame ? { error: wireError(frame.error, 400) } : { value: frame.value },
     );
   }
 
@@ -177,19 +190,14 @@ class CommsClient {
   }
 }
 
-interface WatchFrame {
-  readonly id?: string;
-  readonly value?: unknown;
-  readonly error?: { readonly message: string; readonly data?: unknown };
-}
-
 const client = new CommsClient();
 
-export const commsCall = (name: string, args?: Args) => client.call("mutation", name, args);
+export const commsCall = (name: CommsMutationName, args?: CommsArgs) =>
+  client.call("mutation", name, args);
 
 /** A live comms query. `undefined` while loading; `skip` watches nothing. */
 export function useCommsQuery<T>(
-  name: string,
+  name: CommsQueryName,
   args: Args | "skip" = {},
 ): { readonly data: T | undefined; readonly error: Error | undefined } {
   const skip = args === "skip";
@@ -234,7 +242,11 @@ function loadConfig(): Promise<CommsConfig> {
   }
   configPromise = commsFetch("/config")
     .then(async (response) => {
-      if (response.ok) return (await response.json()) as CommsConfig;
+      if (response.ok) {
+        const config = decodeConfig(await response.json());
+        if (config._tag === "Some") return config.value;
+        throw new CommsError("comms config in an unknown shape", 502);
+      }
       if (response.status === 404) return DISABLED;
       throw new CommsError(`comms config failed (${response.status})`, response.status);
     })

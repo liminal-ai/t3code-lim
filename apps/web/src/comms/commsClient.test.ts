@@ -35,7 +35,7 @@ describe("comms client transport", { concurrent: false }, () => {
     vi.stubGlobal("fetch", fetchMock);
     Object.defineProperty(globalThis, "window", { configurable: true, value: desktopWindow({}) });
     const { commsCall } = await import("./commsClient");
-    await commsCall("directory:list");
+    await commsCall("inbox:markRead");
     const request = new Request(fetchMock.mock.calls[0]?.[0], fetchMock.mock.calls[0]?.[1]);
     expect(request.url).toBe("http://127.0.0.1:3773/api/comms/call");
     expect(request.credentials).not.toBe("include");
@@ -64,7 +64,7 @@ describe("comms client transport", { concurrent: false }, () => {
       value: { location: { origin: "http://127.0.0.1:3773", href: "http://127.0.0.1:3773/" } },
     });
     const { commsCall } = await import("./commsClient");
-    await commsCall("directory:list");
+    await commsCall("inbox:markRead");
     const request = new Request(fetchMock.mock.calls[0]?.[0], fetchMock.mock.calls[0]?.[1]);
     expect(request.credentials).toBe("include");
     expect(request.headers.get("authorization")).toBeNull();

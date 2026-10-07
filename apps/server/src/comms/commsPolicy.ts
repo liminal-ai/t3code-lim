@@ -7,34 +7,7 @@
 // The person in test conversations is the configured post-as person (Lee is
 // the only human; no test people).
 
-export type CommsFunctionKind = "query" | "mutation";
-
-/** The comms server's admin functions the T3 UI uses; never `connector:*`. */
-export const COMMS_FUNCTIONS: Readonly<Record<string, CommsFunctionKind>> = {
-  "directory:list": "query",
-  "registry:list": "query",
-  "conversations:list": "query",
-  "conversations:view": "query",
-  "inbox:list": "query",
-  "inbox:unreadCount": "query",
-  "reminders:list": "query",
-  "reminders:get": "query",
-  "alerts:list": "query",
-  "alerts:config": "query",
-  "directory:promote": "mutation",
-  "directory:setState": "mutation",
-  "directory:rebind": "mutation",
-  "registry:setProfile": "mutation",
-  "conversations:createGroup": "mutation",
-  "conversations:openDm": "mutation",
-  "conversations:addMember": "mutation",
-  "conversations:removeMember": "mutation",
-  "conversations:postAs": "mutation",
-  "inbox:markRead": "mutation",
-  "reminders:create": "mutation",
-  "reminders:update": "mutation",
-  "alerts:setConfig": "mutation",
-};
+export { COMMS_FUNCTIONS } from "@t3tools/contracts";
 
 export const TEST_AGENT_PREFIX = "ta-";
 export const TEST_GROUP_PREFIX = "tg-";
@@ -44,11 +17,17 @@ export interface TestModeOptions {
   readonly testMachine: string | undefined;
   /** The one person allowed in test conversations: the UI's post-as person. */
   readonly human: string | undefined;
+  /**
+   * This instance's own test agents (`ownTestAgents`). When given, a `ta-` name
+   * counts only if it's one of them; the proxy passes it wherever it has the registry.
+   */
+  readonly ownAgents?: ReadonlySet<string> | undefined;
 }
 
-/** A `ta-` agent, or the configured person. */
+/** A `ta-` agent (one of this instance's, when known), or the configured person. */
 export const isTestParticipant = (name: string, options: TestModeOptions): boolean =>
-  name.startsWith(TEST_AGENT_PREFIX) || (options.human !== undefined && name === options.human);
+  (name.startsWith(TEST_AGENT_PREFIX) && (!options.ownAgents || options.ownAgents.has(name))) ||
+  (options.human !== undefined && name === options.human);
 
 /** The fields of a conversation summary the rules read. */
 export interface PolicyConversation {
@@ -285,4 +264,20 @@ export function namedTestAgents(name: string, args: Args): ReadonlyArray<string>
             ? [str(args.name)]
             : [];
   return [...new Set(named.filter((n) => n.startsWith(TEST_AGENT_PREFIX)))];
+}
+
+/** The names of the registry's test agents this instance owns and homes. */
+export function ownTestAgents(
+  agents: ReadonlyArray<PolicyAgent & { readonly participant: { readonly name: string } }>,
+  options: TestModeOptions,
+): ReadonlySet<string> {
+  return new Set(
+    agents
+      .filter(
+        (agent) =>
+          agent.participant.name.startsWith(TEST_AGENT_PREFIX) &&
+          ownTestAgentRefusal(agent.participant.name, agent, options) === undefined,
+      )
+      .map((agent) => agent.participant.name),
+  );
 }
