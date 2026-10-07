@@ -1,0 +1,58 @@
+name: Claude review (Opus 5.5)
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, labeled]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "**/pnpm-lock.yaml"
+      - ".repos/**"
+
+concurrency:
+  group: claude-review-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  review:
+    # Once per PR when it's ready; re-run by adding the `ai-rereview` label.
+    # Skip forks (no secrets), opt-outs, and when the Anthropic secret is not set.
+    if: >-
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      !contains(github.event.pull_request.labels.*.name, 'skip-ai-review') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'ai-rereview') &&
+      secrets.ANTHROPIC_API_KEY != ''
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write   # lets the already-installed Claude GitHub App mint its token
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      # Optional: give Copilot/Bugbot a head start so their comments exist to dedupe against.
+      - name: Stagger start for dedupe
+        run: sleep 240
+
+      - name: Claude review
+        uses: anthropics/claude-code-action@6fed3ca145920b639991cb756090506e1bcaf515 # v1.0.245
+        with:
+          anthropic_api_key: ${{ secrets.ANTHROPIC_API_KEY }}
+          # Alternative: bills a Claude plan token instead of the API key:
+          # claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          use_sticky_comment: true
+          prompt: |
+            REPO: ${{ github.repository }}  PR: #${{ github.event.pull_request.number }}
+            Read .github/REVIEW_RULES.md and follow it. You are the Claude reviewer. Your lane is security, secrets/PII in logs,
+            auth, concurrency/races, data integrity, and cross-module contracts (especially provider drivers and orchestration).
+            1. Read the diff and surrounding context you need.
+            2. Read existing review comments via the GitHub API and do NOT repeat anything already flagged.
+            3. Post at most 5 inline comments for real issues in your lane.
+            4. Put a 1-3 line verdict in the sticky comment. If you found nothing, say "Claude: no issues in lane".
+          claude_args: |
+            --model claude-opus-5-5
+            --max-turns 30
