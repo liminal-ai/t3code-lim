@@ -269,6 +269,9 @@ const shape = (
     ? shapeTestModeValue(name, value, { ...testOptions(settings), ownAgents })
     : { value };
 
+const sameNames = (a: ReadonlySet<string>, b: ReadonlySet<string>) =>
+  a.size === b.size && [...a].every((name) => b.has(name));
+
 /** Queries whose values test mode filters by conversation membership. */
 const MEMBERSHIP_SHAPED = new Set(["conversations:list", "conversations:view"]);
 
@@ -362,6 +365,11 @@ const watchHandler = (backend: CommsBackendShape, settings: CommsSettings) =>
         yield* Effect.acquireRelease(
           Effect.sync(() => {
             const stops = new Map<string, () => void>();
+            let stopRegistry: (() => void) | undefined;
+            const stopAll = () => {
+              stopRegistry?.();
+              stops.forEach((stop) => stop());
+            };
             const latest = new Map<string, unknown>();
             const forward = (q: WatchQuery, value: unknown) => {
               latest.set(q.id, value);
@@ -379,24 +387,25 @@ const watchHandler = (backend: CommsBackendShape, settings: CommsSettings) =>
             // A subscription that throws while starting releases the ones already open.
             try {
               if (followRegistry) {
-                stops.set(
-                  "\u0000registry",
-                  backend.subscribe(
-                    "registry:list",
-                    { adminToken: session.token },
-                    (registry) => {
-                      ownAgents = ownTestAgents(
-                        (registry as { agents: RegistryAgents }).agents,
-                        testOptions(settings),
-                      );
-                      for (const q of queries) {
-                        if (MEMBERSHIP_SHAPED.has(q.name) && latest.has(q.id)) {
-                          forward(q, latest.get(q.id));
-                        }
+                // Kept apart from the client's query ids, which can be any string.
+                stopRegistry = backend.subscribe(
+                  "registry:list",
+                  { adminToken: session.token },
+                  (registry) => {
+                    const next = ownTestAgents(
+                      (registry as { agents: RegistryAgents }).agents,
+                      testOptions(settings),
+                    );
+                    // Most registry updates (presence) don't change who's ours: resend nothing.
+                    if (ownAgents && sameNames(ownAgents, next)) return;
+                    ownAgents = next;
+                    for (const q of queries) {
+                      if (MEMBERSHIP_SHAPED.has(q.name) && latest.has(q.id)) {
+                        forward(q, latest.get(q.id));
                       }
-                    },
-                    () => undefined,
-                  ),
+                    }
+                  },
+                  () => undefined,
                 );
               }
               for (const q of queries) {
@@ -414,12 +423,12 @@ const watchHandler = (backend: CommsBackendShape, settings: CommsSettings) =>
                 stops.set(q.id, stop);
               }
             } catch (cause) {
-              stops.forEach((stop) => stop());
+              stopAll();
               throw cause;
             }
-            return stops;
+            return stopAll;
           }),
-          (stops) => Effect.sync(() => stops.forEach((stop) => stop())),
+          (stopAll) => Effect.sync(stopAll),
         );
         // Heartbeats keep idle streams open through proxies.
         yield* Effect.sync(() => offer({})).pipe(

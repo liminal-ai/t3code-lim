@@ -378,4 +378,40 @@ describe("comms proxy", () => {
     await vi.waitFor(() => expect(subscriptions.map((s) => s.stopped)).toEqual([true]));
     await reader.cancel().catch(() => undefined);
   });
+  it("keeps its registry subscription apart from client query ids", async () => {
+    const { handler, subscriptions } = fixture({
+      query: (name) => (name === "registry:list" ? ownRegistry : { conversations: [testGroup] }),
+    });
+    const { next, reader } = await openWatch(handler, [
+      { id: "\u0000registry", name: "conversations:list", args: {} },
+    ]);
+    expect((await next()).id).toBe("\u0000registry");
+    await reader.cancel();
+    await vi.waitFor(() =>
+      expect(subscriptions.map((s) => s.stopped)).toEqual(subscriptions.map(() => true)),
+    );
+    expect(subscriptions.map((s) => s.name).toSorted()).toEqual([
+      "conversations:list",
+      "registry:list",
+    ]);
+  });
+
+  it("doesn't resend views when a registry update leaves its own agents unchanged", async () => {
+    const { handler, subscriptions } = fixture({
+      query: (name) =>
+        name === "registry:list"
+          ? ownRegistry
+          : { conversation: testGroup, members: [], messages: [] },
+    });
+    const { next, reader } = await openWatch(handler, [
+      { id: "v", name: "conversations:view", args: { conversationId: "g1" } },
+    ]);
+    expect((await next()).id).toBe("v");
+    const registry = subscriptions.find((s) => s.name === "registry:list")!;
+    registry.push(ownRegistry);
+    // A real change comes next; it must be the very next frame.
+    registry.push({ agents: [] });
+    expect((await next()).error?.message).toMatch(/isn't a test conversation/);
+    await reader.cancel();
+  });
 });
