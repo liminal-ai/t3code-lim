@@ -26,20 +26,26 @@ const PIN: SidecarPin = { package: "claude-lhc", version: "9.9.9", integrity: "s
 const BASE_DIR = NodePath.join(NodeOS.tmpdir(), "t3-home-under-test");
 
 // A fake sidecar: echoes each user prompt back as an assistant message, asks for
-// tool approval on the first prompt, answers setModel, and reports control
+// tool approval unless permissions are bypassed, answers controls, and reports control
 // activity through result messages. Node so the test does not need bun.
 const FAKE_SIDECAR = `
 const readline = require("node:readline");
 const write = (frame) => process.stdout.write(JSON.stringify(frame) + "\\n");
 let model = "unset";
+let permissionMode = "default";
 let reqId = 0;
 const pending = new Map();
 readline.createInterface({ input: process.stdin }).on("line", (line) => {
   const frame = JSON.parse(line);
   if (frame.type === "start") {
+    permissionMode = frame.options.permissionMode ?? "default";
     write({ type: "msg", message: { type: "system", subtype: "init", session_id: frame.options.sessionId, model: frame.options.model, has_callbacks: typeof frame.options.canUseTool, env_marker: frame.options.env && frame.options.env.SIDECAR_TEST_MARKER, settings: frame.options.settings, lhc_home: process.env.T3CODE_LHC_HOME } });
   } else if (frame.type === "user") {
     const text = frame.message.message.content[0].text;
+    if (permissionMode === "bypassPermissions") {
+      write({ type: "msg", message: { type: "assistant", session_id: "s", approval: { behavior: "allow" }, echo: text, model } });
+      return;
+    }
     const id = ++reqId;
     pending.set(id, text);
     write({ type: "req", id, method: "canUseTool", params: { toolName: "Read", input: { file_path: text }, toolUseID: "toolu_" + id } });
@@ -48,6 +54,7 @@ readline.createInterface({ input: process.stdin }).on("line", (line) => {
     write({ type: "msg", message: { type: "assistant", session_id: "s", approval: frame.ok ? frame.value : { error: frame.error }, echo: text, model } });
   } else if (frame.type === "req") {
     if (frame.method === "setModel") model = frame.params.model;
+    if (frame.method === "setPermissionMode") permissionMode = frame.params.mode;
     write({ type: "res", id: frame.id, ok: true, value: null });
     if (frame.method === "interrupt") write({ type: "msg", message: { type: "system", subtype: "control", method: frame.method } });
   }
@@ -285,5 +292,61 @@ describe("ClaudeLhcSidecar", () => {
     releasePrompt?.();
     const done = await iterator.next();
     expect(done.done).toBe(true);
+  });
+
+  it("applies a permission mode change to the next prompt in the same sidecar session", async () => {
+    const createQuery = makeClaudeLhcCreateQuery({
+      environment: { ...process.env, CLAUDE_LHC_SIDECAR: makeFakeSidecar() },
+      baseDir: BASE_DIR,
+      pin: PIN,
+    });
+    const nextPrompt = Promise.withResolvers<void>();
+    const promptsDone = Promise.withResolvers<void>();
+    const approvals: string[] = [];
+    const prompts = (async function* () {
+      for (const text of ["before", "after"]) {
+        if (text === "after") await nextPrompt.promise;
+        yield {
+          type: "user" as const,
+          message: { role: "user" as const, content: [{ type: "text" as const, text }] },
+          parent_tool_use_id: null,
+          session_id: "",
+        };
+      }
+      await promptsDone.promise;
+    })();
+    const runtime = createQuery({
+      prompt: prompts,
+      options: {
+        sessionId: "permission-session",
+        model: "claude-sonnet-5",
+        permissionMode: "default",
+        canUseTool: async (_toolName, input) => {
+          approvals.push(String(input.file_path));
+          return { behavior: "deny", message: "Approval declined" };
+        },
+      },
+    });
+    try {
+      const iterator = runtime[Symbol.asyncIterator]();
+      expect((await iterator.next()).value).toMatchObject({ subtype: "init" });
+      expect((await iterator.next()).value).toMatchObject({
+        echo: "before",
+        approval: { behavior: "deny", message: "Approval declined" },
+      });
+
+      await runtime.setPermissionMode("bypassPermissions");
+      nextPrompt.resolve();
+
+      expect((await iterator.next()).value).toMatchObject({
+        echo: "after",
+        approval: { behavior: "allow" },
+      });
+      expect(approvals).toEqual(["before"]);
+    } finally {
+      runtime.close();
+      nextPrompt.resolve();
+      promptsDone.resolve();
+    }
   });
 });
