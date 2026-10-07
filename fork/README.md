@@ -1,6 +1,6 @@
 # Maintaining T3 Code Lim
 
-This private repository preserves upstream T3 Code history and the deployed Claude-LHC patch. `origin` is `liminal-ai/t3code-lim`; `upstream` is `pingdotgg/t3code`. It is an independent repository rather than a GitHub public-fork network member so it can remain private.
+This repository preserves upstream T3 Code history and the deployed Claude-LHC patch. `origin` is `liminal-ai/t3code-lim`; `upstream` is `pingdotgg/t3code`.
 
 ## Differences
 
@@ -17,7 +17,7 @@ The exact baseline is recorded in [upstream.json](upstream.json). Preserve histo
 1. Fetch upstream tags: `git fetch upstream --tags`.
 2. Create a worktree under `~/lim/wt/t3code-lim/<task>` with an update branch.
 3. Merge the selected upstream release tag into that branch. Keep the existing small patch and resolve conflicts explicitly.
-4. Update upstream.json and the README baseline. Review new upstream workflows before enabling any in this private fork.
+4. Update upstream.json and the README baseline. Review new upstream workflows before enabling any in this fork.
 5. Open a PR into main. Run checks, build an untagged candidate and qualify staging with an independent tester before Lee reviews functional changes. Tag only after that review.
 
 Upstream workflows remain in source to reduce merge churn, but are disabled in this repository's Actions settings. Only `lim-ci.yml` and `lim-release.yml` are enabled here. Upstream deployment workflows depend on upstream's secrets and infrastructure and must not be enabled here.
