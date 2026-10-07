@@ -64,9 +64,12 @@ describe("mentions", () => {
 });
 
 describe("memberActivity", () => {
-  const message = (states: Record<string, string>): ConversationMessage =>
+  const message = (
+    states: Record<string, string>,
+    kind: ConversationMessage["message"]["kind"] = "request",
+  ): ConversationMessage =>
     ({
-      message: {} as ConversationMessage["message"],
+      message: { kind } as ConversationMessage["message"],
       deliveries: Object.entries(states).map(([recipient, state]) => ({
         id: recipient,
         recipient,
@@ -89,5 +92,12 @@ describe("memberActivity", () => {
         "ta-ash",
       ),
     ).toBe("working");
+    // A delivered answer is finished, not work.
+    expect(
+      memberActivity([
+        message({ "ta-ash": "delivered" }, "answer"),
+        message({ "ta-ash": "replied" }),
+      ]).get("ta-ash"),
+    ).toBe("idle");
   });
 });

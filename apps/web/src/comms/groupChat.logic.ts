@@ -132,7 +132,8 @@ export type MemberActivity = "working" | "failed" | "idle";
 
 /**
  * Each member's activity from the deliveries addressed to them in the loaded
- * messages: working while any is still in flight (overlapping requests), else
+ * messages: working while any request to them is still in flight (overlapping
+ * requests; answers and notices end at `delivered`), else
  * failed when the latest ended without an answer, else idle.
  */
 export function memberActivity(
@@ -140,9 +141,12 @@ export function memberActivity(
 ): ReadonlyMap<string, MemberActivity> {
   const latest = new Map<string, MemberActivity>();
   const working = new Set<string>();
-  for (const { deliveries } of messages) {
+  for (const { message, deliveries } of messages) {
     for (const delivery of deliveries) {
-      if (IN_FLIGHT.has(delivery.state)) working.add(delivery.recipient);
+      // Only a request is work: an answer or notice ends at `delivered`.
+      if (message.kind === "request" && IN_FLIGHT.has(delivery.state)) {
+        working.add(delivery.recipient);
+      }
       latest.set(delivery.recipient, FAILED.has(delivery.state) ? "failed" : "idle");
     }
   }
