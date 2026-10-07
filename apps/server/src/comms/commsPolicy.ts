@@ -1,0 +1,179 @@
+// Fork-only (agent comms): which comms server functions the browser may reach
+// through this T3 server, and the test-mode rules that keep a development
+// instance on clearly marked test participants. Pure: the proxy supplies the
+// conversation lookups.
+//
+// Test naming (Lee, 2026-10-07): test agents start `ta-`, test groups `tg-`.
+// The person in test conversations is the configured post-as person (Lee is
+// the only human; no test people).
+
+export type CommsFunctionKind = "query" | "mutation";
+
+/** The comms server's admin functions the T3 UI uses; never `connector:*`. */
+export const COMMS_FUNCTIONS: Readonly<Record<string, CommsFunctionKind>> = {
+  "directory:list": "query",
+  "registry:list": "query",
+  "conversations:list": "query",
+  "conversations:view": "query",
+  "inbox:list": "query",
+  "inbox:unreadCount": "query",
+  "reminders:list": "query",
+  "reminders:get": "query",
+  "alerts:list": "query",
+  "alerts:config": "query",
+  "directory:promote": "mutation",
+  "directory:setState": "mutation",
+  "directory:rebind": "mutation",
+  "registry:setProfile": "mutation",
+  "conversations:createGroup": "mutation",
+  "conversations:openDm": "mutation",
+  "conversations:addMember": "mutation",
+  "conversations:removeMember": "mutation",
+  "conversations:postAs": "mutation",
+  "inbox:markRead": "mutation",
+  "reminders:create": "mutation",
+  "reminders:update": "mutation",
+  "alerts:setConfig": "mutation",
+};
+
+export const TEST_AGENT_PREFIX = "ta-";
+export const TEST_GROUP_PREFIX = "tg-";
+
+export interface TestModeOptions {
+  /** The only machine test agents may be homed on, e.g. `lim-builder-jess`. */
+  readonly testMachine: string | undefined;
+  /** The one person allowed in test conversations: the UI's post-as person. */
+  readonly human: string | undefined;
+}
+
+/** A `ta-` agent, or the configured person. */
+export const isTestParticipant = (name: string, options: TestModeOptions): boolean =>
+  name.startsWith(TEST_AGENT_PREFIX) || (options.human !== undefined && name === options.human);
+
+/** The fields of a conversation summary the rules read. */
+export interface PolicyConversation {
+  readonly kind: string;
+  readonly title?: string | undefined;
+  readonly members: ReadonlyArray<{ readonly name: string }>;
+}
+
+/** A test conversation: a `tg-` group, or a DM, whose members are all test participants. */
+export const isTestConversation = (
+  conversation: PolicyConversation,
+  options: TestModeOptions,
+): boolean =>
+  (conversation.kind !== "group" || (conversation.title ?? "").startsWith(TEST_GROUP_PREFIX)) &&
+  conversation.members.length > 0 &&
+  conversation.members.every((member) => isTestParticipant(member.name, options));
+
+/** Test mode refuses these outright: they reach beyond test participants. */
+const TEST_MODE_REFUSED = new Set([
+  "reminders:create",
+  "reminders:update",
+  "alerts:setConfig",
+  "inbox:list",
+  "inbox:unreadCount",
+  "reminders:list",
+  "reminders:get",
+  "alerts:list",
+  "alerts:config",
+]);
+
+/** Calls whose `conversationId` must name a test conversation (checked by the proxy). */
+export const CONVERSATION_SCOPED = new Set([
+  "conversations:view",
+  "conversations:addMember",
+  "conversations:removeMember",
+  "conversations:postAs",
+  "inbox:markRead",
+]);
+
+type Args = Readonly<Record<string, unknown>>;
+
+const str = (value: unknown): string => (typeof value === "string" ? value : "");
+
+/**
+ * The test-mode refusal for a call's own arguments, or undefined when allowed.
+ * Conversation-scoped calls also need `isTestConversation` on the target.
+ */
+export function testModeRefusal(
+  name: string,
+  args: Args,
+  options: TestModeOptions,
+): string | undefined {
+  if (TEST_MODE_REFUSED.has(name)) return `${name} is unavailable in test mode`;
+  const needTest = (field: string, value: unknown): string | undefined =>
+    isTestParticipant(str(value), options)
+      ? undefined
+      : `test mode: ${field} must be a ${TEST_AGENT_PREFIX}* agent or @${options.human ?? "(no post-as person)"}`;
+  const needAgent = (field: string, value: unknown): string | undefined =>
+    str(value).startsWith(TEST_AGENT_PREFIX)
+      ? undefined
+      : `test mode: ${field} must be a ${TEST_AGENT_PREFIX}* agent`;
+  switch (name) {
+    case "directory:promote": {
+      if (str(args.kind) !== "agent") return "test mode: only test agents can be registered";
+      if (!str(args.name).startsWith(TEST_AGENT_PREFIX)) {
+        return `test mode: a test agent is named ${TEST_AGENT_PREFIX}*`;
+      }
+      if (!options.human || str(args.owner) !== options.human) {
+        return `test mode: a test agent's owner is @${options.human ?? "(no post-as person)"}`;
+      }
+      return homeRefusal(args.home, options);
+    }
+    case "directory:rebind":
+      return needAgent("name", args.name) ?? homeRefusal(args.home, options);
+    case "directory:setState":
+    case "registry:setProfile":
+      return needAgent("name", args.name);
+    case "conversations:createGroup": {
+      if (!str(args.title).startsWith(TEST_GROUP_PREFIX)) {
+        return `test mode: a test group's title starts ${TEST_GROUP_PREFIX}`;
+      }
+      const members = Array.isArray(args.members) ? args.members : [];
+      return members.every((member) => isTestParticipant(str(member), options))
+        ? undefined
+        : "test mode: every member must be a test participant";
+    }
+    case "conversations:openDm":
+      return needTest("a", args.a) ?? needTest("b", args.b);
+    case "conversations:addMember":
+    case "conversations:removeMember":
+      return needTest("name", args.name);
+    case "conversations:postAs": {
+      if (!options.human || str(args.as) !== options.human) {
+        return `test mode: post as @${options.human ?? "(no post-as person)"}`;
+      }
+      const to = Array.isArray(args.to) ? args.to : [];
+      return to.every((recipient) => isTestParticipant(str(recipient), options))
+        ? undefined
+        : "test mode: every recipient must be a test participant";
+    }
+    case "inbox:markRead":
+      // Opening a test chat clears the person's inbox items for it; nothing wider.
+      if (!options.human || str(args.human) !== options.human) {
+        return `test mode: only @${options.human ?? "(no post-as person)"}'s inbox`;
+      }
+      return typeof args.conversationId === "string" && !args.messageIds && !args.all
+        ? undefined
+        : "test mode: mark read one test conversation at a time";
+    default:
+      return undefined;
+  }
+}
+
+function homeRefusal(home: unknown, options: TestModeOptions): string | undefined {
+  const machine = str((home as { machine?: unknown } | undefined)?.machine);
+  if (!options.testMachine) return "test mode: no test machine is configured";
+  return machine === options.testMachine
+    ? undefined
+    : `test mode: test agents are homed on ${options.testMachine}`;
+}
+
+/** Test mode lists only test conversations. */
+export function filterTestConversations<T extends PolicyConversation>(
+  conversations: ReadonlyArray<T>,
+  options: TestModeOptions,
+): ReadonlyArray<T> {
+  return conversations.filter((conversation) => isTestConversation(conversation, options));
+}

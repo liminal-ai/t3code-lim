@@ -39,6 +39,7 @@
     "@opencode/client": "2.0.23",
     "@opencode/protocol": "2.0.23",
     "@opencode/schema": "2.0.23",
+    "convex": "1.46.0",
     "diff": "8.0.3",
     "effect": "catalog:",
     "jose": "catalog:",
