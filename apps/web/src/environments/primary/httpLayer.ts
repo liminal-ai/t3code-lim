@@ -6,7 +6,8 @@ import { FetchHttpClient, HttpClient, HttpClientRequest } from "effect/http";
 import { readDesktopPrimaryBearerToken } from "./desktopAuth";
 import { resolvePrimaryEnvironmentHttpUrl } from "./target";
 
-function isSameOriginBrowserPrimary(): boolean {
+// Exported for the fork's comms client (agent comms), which streams over fetch.
+export function isSameOriginBrowserPrimary(): boolean {
   if (
     typeof window === "undefined" ||
     window.desktopBridge !== undefined ||
