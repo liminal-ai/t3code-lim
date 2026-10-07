@@ -29,30 +29,29 @@ jobs:
       pull-requests: write
       id-token: write   # lets the already-installed Claude GitHub App mint its token
     env:
-      ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
     steps:
       - name: Secret not configured — skip
-        if: ${{ env.ANTHROPIC_API_KEY == '' }}
+        if: ${{ env.CLAUDE_CODE_OAUTH_TOKEN == '' }}
         run: |
-          echo "Skipping Claude review: ANTHROPIC_API_KEY is not set." >> "$GITHUB_STEP_SUMMARY"
+          echo "Skipping Claude review: CLAUDE_CODE_OAUTH_TOKEN is not set." >> "$GITHUB_STEP_SUMMARY"
 
       - uses: actions/checkout@v4
-        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+        if: ${{ env.CLAUDE_CODE_OAUTH_TOKEN != '' }}
         with:
           fetch-depth: 1
 
       # Optional: give Copilot/Bugbot a head start so their comments exist to dedupe against.
       - name: Stagger start for dedupe
-        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+        if: ${{ env.CLAUDE_CODE_OAUTH_TOKEN != '' }}
         run: sleep 240
 
       - name: Claude review
-        if: ${{ env.ANTHROPIC_API_KEY != '' }}
+        if: ${{ env.CLAUDE_CODE_OAUTH_TOKEN != '' }}
         uses: anthropics/claude-code-action@6fed3ca145920b639991cb756090506e1bcaf515 # v1.0.245
         with:
-          anthropic_api_key: ${{ env.ANTHROPIC_API_KEY }}
-          # Alternative: bills a Claude plan token instead of the API key:
-          # claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          claude_code_oauth_token: ${{ env.CLAUDE_CODE_OAUTH_TOKEN }}
+          classify_inline_comments: 'false'
           use_sticky_comment: true
           prompt: |
             REPO: ${{ github.repository }}  PR: #${{ github.event.pull_request.number }}

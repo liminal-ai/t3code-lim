@@ -161,3 +161,10 @@ Architecture and its constraints: `docs/internals/overview.md`. Glossary: `docs/
 
 - Don't verify with browsers or computer use unless the user explicitly agrees or requests it.
 - Security is important, but should not be over-indexed on, especially for dev mode/maintainer-only features.
+
+## Code Review Rules
+
+- Report only P0/P1 correctness bugs and missing tests for changed behavior. No style or nits.
+- Start each finding with exactly `[P0]` or `[P1]`. Never cap P0s.
+- Don't repeat findings that Copilot, Bugbot or Claude already posted.
+- Follow `.github/REVIEW_RULES.md` and `.liminal/standards/LOCAL.md` if present.
