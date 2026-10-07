@@ -16,33 +16,42 @@ concurrency:
 jobs:
   codex:
     # Run once per PR when ready; re-run on `ai-rereview` label.
-    # Skip forks, opt-outs, and when the OpenAI secret is not set.
+    # Skip forks and opt-outs. Secret gating happens at step level (secrets are not allowed in job.if).
     if: >-
       github.event.pull_request.draft == false &&
       github.event.pull_request.head.repo.full_name == github.repository &&
       !contains(github.event.pull_request.labels.*.name, 'skip-ai-review') &&
-      (github.event.action != 'labeled' || github.event.label.name == 'ai-rereview') &&
-      secrets.OPENAI_API_KEY != ''
+      (github.event.action != 'labeled' || github.event.label.name == 'ai-rereview')
     runs-on: ubuntu-24.04
     timeout-minutes: 25
     permissions:
       contents: read
       pull-requests: read
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     outputs:
       final_message: ${{ steps.run_codex.outputs.final-message }}
     steps:
+      - name: Secret not configured — skip
+        if: ${{ env.OPENAI_API_KEY == '' }}
+        run: |
+          echo "Skipping Codex review: OPENAI_API_KEY is not set." >> "$GITHUB_STEP_SUMMARY"
+
       - uses: actions/checkout@v4
+        if: ${{ env.OPENAI_API_KEY != '' }}
         with:
           ref: refs/pull/${{ github.event.pull_request.number }}/merge
           persist-credentials: false
 
       - name: Fetch base/head refs
+        if: ${{ env.OPENAI_API_KEY != '' }}
         env:
           PR_BASE_REF: ${{ github.event.pull_request.base.ref }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
         run: git fetch --no-tags origin "$PR_BASE_REF" "+refs/pull/$PR_NUMBER/head"
 
       - name: Wait for faster bots, then snapshot their comments (for dedupe)
+        if: ${{ env.OPENAI_API_KEY != '' }}
         env:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -54,10 +63,11 @@ jobs:
             > .ai-review/prior-comments.txt || true
 
       - name: Run Codex
+        if: ${{ env.OPENAI_API_KEY != '' }}
         id: run_codex
         uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
         with:
-          openai-api-key: ${{ secrets.OPENAI_API_KEY }}
+          openai-api-key: ${{ env.OPENAI_API_KEY }}
           model: gpt-6.1-sol
           effort: high
           permission-profile: ":read-only"
