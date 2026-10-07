@@ -5,9 +5,13 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing Liminal release tag
-        required: true
+        description: Existing Liminal release tag (leave empty for a candidate)
+        required: false
         type: string
+      candidate:
+        description: Build an untagged candidate from the selected branch without publishing
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -41,11 +45,22 @@ jobs:
             /*
             !/.repos/
           sparse-checkout-cone-mode: false
-      - name: Validate release identity
+      - name: Resolve build identity
         env:
           TAG: ${{ inputs.tag || github.ref_name }}
+          CANDIDATE: ${{ inputs.candidate || false }}
+          REQUESTED_TAG: ${{ inputs.tag }}
         run: |
-          node --input-type=module -e 'import fs from "node:fs"; const p=JSON.parse(fs.readFileSync("fork/upstream.json")); const expected=p.tag+"-lim."+p.patchRevision; if(process.env.TAG!==expected) throw Error("Expected "+expected); fs.appendFileSync(process.env.GITHUB_ENV,"VERSION="+expected.slice(1)+"\n");'
+          node --input-type=module <<'JS'
+          import fs from "node:fs";
+          const pin = JSON.parse(fs.readFileSync("fork/upstream.json"));
+          const expected = pin.tag + "-lim." + pin.patchRevision;
+          const candidate = process.env.CANDIDATE === "true";
+          if (candidate && process.env.REQUESTED_TAG) throw Error("Candidate builds use the selected branch, not a release tag");
+          if (!candidate && process.env.TAG !== expected) throw Error("Expected " + expected);
+          const version = expected.slice(1) + (candidate ? ".candidate." + process.env.GITHUB_RUN_ID + "." + process.env.GITHUB_RUN_ATTEMPT : "");
+          fs.appendFileSync(process.env.GITHUB_ENV, "VERSION=" + version + "\n");
+          JS
       - uses: voidzero-dev/setup-vp@v1
         with:
           node-version: "24.18.0"
@@ -83,6 +98,10 @@ jobs:
       - name: Collect Electron installers
         run: |
           node --input-type=module -e 'import fs from "node:fs"; const files=fs.readdirSync("release").filter(x=>/\.(dmg|exe|AppImage|zip)$/.test(x)); if(!files.some(x=>/\.(dmg|exe|AppImage)$/.test(x))) throw Error("No installer"); for(const f of files) fs.copyFileSync("release/"+f,"release-lim/"+f);'
+      - name: Record artifact checksums
+        run: |
+          cd release-lim
+          sha256sum * > SHA256SUMS-${{ matrix.platform }}-${{ matrix.arch }}
       - uses: actions/upload-artifact@v4
         with:
           name: lim-${{ matrix.platform }}-${{ matrix.arch }}
@@ -90,6 +109,7 @@ jobs:
           if-no-files-found: error
           retention-days: 14
   publish:
+    if: ${{ !inputs.candidate }}
     needs: build
     runs-on: ubuntu-24.04
     permissions:
