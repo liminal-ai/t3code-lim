@@ -278,7 +278,10 @@ export function RegisterAgentDialog(props: {
                       value={locator}
                       onChange={(e) => setLocator(e.target.value)}
                     />
-                    {help ? <p className="text-xs text-muted-foreground">{help.hint}</p> : null}
+                    <p className="text-xs text-muted-foreground">
+                      {help?.hint ??
+                        "What this harness's connector uses to find the agent; ask the agent's owner."}
+                    </p>
                   </div>
                 )}
               </>
