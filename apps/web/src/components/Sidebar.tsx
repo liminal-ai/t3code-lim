@@ -5436,6 +5436,13 @@ export default function Sidebar() {
               )}
             </div>
           ) : null}
+          {/* Fork seam (agent comms): with no thread list there's no Settled header to sit above,
+              so Group Chats shows at the bottom on its own. */}
+          {!isSearchingThreads && sidebarListItems.length === 0 ? (
+            <ul role="presentation" className="mt-auto">
+              <GroupChatsShelf key="group-chats-shelf-empty" />
+            </ul>
+          ) : null}
         </SidebarGroup>
       </SidebarContent>
       <SidebarChromeFooter />
