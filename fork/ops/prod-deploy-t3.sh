@@ -398,8 +398,11 @@ cmd_resume() {
     *) echo "unknown flag $1" >&2; exit 2 ;;
   esac; done
   [[ -n "$checks" ]] || { echo "--checks-done \"<who checked, link>\" is required" >&2; exit 2; }
-  check_target resume-deliveries || exit 1; check_latest resume-deliveries || exit 1
+  # Target first (the lock lives in the target's prod dir), then the lock, then freshness and current-state
+  # checks under it, so nothing can change between the check and the action (Macroscope, #22).
+  check_target resume-deliveries || exit 1
   take_lock resume-deliveries || exit 1
+  check_latest resume-deliveries || exit 1
   local result want accept=0; result=$(receipt_get result)
   case $result in
     installed*) want="releases/$(receipt_get new_release)" ;;
@@ -440,6 +443,9 @@ cmd_resume() {
 cmd_verify_identity() { # T-9: every provider row keeps its pre-deploy native ref; no fresh-session fallback
   RECEIPT=$1; [[ -f "$RECEIPT/native-refs-before.json" ]] || { echo "no native-refs-before.json in $RECEIPT" >&2; exit 2; }
   check_target verify-identity || exit 1
+  # Evidence from a finished operation only: not while a deploy or rollback runs, not from an old receipt (Codex, #22).
+  take_lock verify-identity || exit 1
+  check_latest verify-identity || exit 1
   native_refs > "$RECEIPT/native-refs-after.json"
   local changed fallbacks since
   changed=$(python3 -I - "$RECEIPT/native-refs-before.json" "$RECEIPT/native-refs-after.json" <<'EOF2'
@@ -481,8 +487,9 @@ EOF2
 
 cmd_restart_unchanged() { # shepherd's step after a failure before install: start the same old release again
   RECEIPT=$1; [[ -f "$RECEIPT/receipt.json" ]] || { echo "no receipt in ${1:-}" >&2; exit 2; }
-  check_target restart-unchanged || exit 1; check_latest restart-unchanged || exit 1
+  check_target restart-unchanged || exit 1
   take_lock restart-unchanged || exit 1
+  check_latest restart-unchanged || exit 1
   OLD_RELEASE=$(receipt_get old_release); MIG_BEFORE=$(receipt_get migrations_before)
   [[ "$(readlink "$PROD/current")" == "$OLD_RELEASE" ]] || { log "refusing restart-unchanged: current is not $OLD_RELEASE; use rollback"; exit 1; }
   [[ "$(migrations)" == "$MIG_BEFORE" ]] || { log "refusing restart-unchanged: migrations differ from the pre-deploy set; use rollback"; exit 1; }
@@ -499,6 +506,13 @@ cmd_close_receipt() { # shepherd: mark a deploy closed after a manual recovery, 
   # A receipt folder whose receipt.json is missing still counts as open, so it must be closable (Quinn, #22).
   [[ -f "$RECEIPT/receipt.json" || ( -d "$RECEIPT" && "$(basename "$RECEIPT")" == [0-9]*Z ) ]] || { echo "no receipt in ${RECEIPT:-}" >&2; exit 2; }
   [[ "${1:-}" == --decision && -n "${2:-}" ]] || { echo "close-receipt <receipt-dir> --decision \"<who decided, link>\" is required" >&2; exit 2; }
+  # A receipt that records a target must match this shell's; one that doesn't (pre-#22, or no receipt.json)
+  # may only be closed from this shell's own receipts folder (Macroscope, Codex, #22).
+  if [[ -n "$(receipt_get target 2>/dev/null || true)" ]]; then
+    check_target close-receipt || exit 1
+  elif [[ "$(dirname "$RECEIPT")" != "$(readlink -f "$RECEIPTS")" ]]; then
+    echo "refusing close-receipt: $RECEIPT records no target and isn't in this shell's receipts folder ($RECEIPTS); nothing changed" >&2; exit 1
+  fi
   take_lock close-receipt || exit 1
   local was; was="$(receipt_get result 2>/dev/null || echo '(no receipt.json)'); deliveries: $(receipt_get deliveries 2>/dev/null || echo -)"
   state closed "$2"; log "closed by the shepherd: $2 (state was: $was)"
@@ -517,11 +531,15 @@ cmd_rollback_run() {
   RECEIPT=$1; [[ -f "$RECEIPT/receipt.json" ]] || { echo "no receipt in $RECEIPT" >&2; exit 2; }
   # The shepherd already saw 'started'; a refusal here goes into the receipt and an alert (Quinn, #22).
   local refusal
-  if ! refusal=$({ check_target rollback-run && check_latest rollback-run; } 2>&1); then
-    state rollback "refused, nothing changed: $refusal"; log "rollback refused, nothing changed: $refusal"
-    alert "Rollback of $RECEIPT refused, nothing changed: $refusal"; exit 1
-  fi
-  take_lock rollback-run || { state rollback "refused, nothing changed: lock taken"; log "rollback refused: lock taken"; alert "Rollback of $RECEIPT refused, nothing changed: another prod-deploy operation holds the lock"; exit 1; }
+  refuse_rollback() { state rollback "refused, nothing changed: $1"; log "rollback refused, nothing changed: $1"; alert "Rollback of $RECEIPT refused, nothing changed: $1"; exit 1; }
+  refusal=$(check_target rollback-run 2>&1) || refuse_rollback "$refusal"
+  take_lock rollback-run 2>/dev/null || refuse_rollback "another prod-deploy operation holds the lock"
+  # Under the lock: still the newest receipt, and current is this deploy's release (new, or old if the
+  # failure came before the repoint), not something installed since, by hand or otherwise (Codex, #22).
+  refusal=$(check_latest rollback-run 2>&1) || refuse_rollback "$refusal"
+  local cur; cur=$(readlink "$PROD/current")
+  [[ "$cur" == "releases/$(receipt_get new_release)" || "$cur" == "$(receipt_get old_release)" ]] \
+    || refuse_rollback "current is $cur, which is neither this deploy's new release nor its old one"
   log "rollback by hand, running in cgroup: $(cut -d: -f3 /proc/$$/cgroup)"
   not_in_prod_cgroup || { log "refusing: rollback-run is inside $UNIT's cgroup and would be killed with it; use rollback"; exit 1; }
   OLD_RELEASE=$(receipt_get old_release); MIG_BEFORE=$(receipt_get migrations_before)

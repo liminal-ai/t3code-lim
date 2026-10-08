@@ -118,7 +118,8 @@ report() { # report <case> <port>
 invoke_from_prod() { # invoke_from_prod <case> <command...>: run a command inside the fake prod's cgroup
   local c=$1; shift
   { echo 'echo "invoker cgroup: $(cut -d: -f3 /proc/$$/cgroup)"'
-    for v in UNIT CONNECTOR_UNIT PROD PORT BACKUPS RECEIPTS HEALTH_TIMEOUT CANDIDATE_RUN RELEASE_NAME ARTIFACT EXPECTED_COMMIT EXPECTED_SHA256; do
+    # ALERT_* too, so a failure path inside the fake prod never alerts the real issue or agents (Macroscope, #22).
+    for v in UNIT CONNECTOR_UNIT PROD PORT BACKUPS RECEIPTS HEALTH_TIMEOUT ATTACH_TIMEOUT CANDIDATE_RUN RELEASE_NAME ARTIFACT EXPECTED_COMMIT EXPECTED_SHA256 ALERT_ISSUE ALERT_TO; do
       printf 'export %s=%q\n' "$v" "${!v}"; done
     printf '%q ' "$@"; echo; echo 'echo "invoker finished, exit $?"'; } > "$ROOT/$c/trigger"
   systemctl --user restart "jess-fake-prod-$c"
@@ -224,6 +225,8 @@ run_case() {
       flock -n -o "$ROOT/$c/prod/.prod-deploy.lock" sleep 30 & holder=$!; sleep 0.5
       run_rc "$DEPLOY" launch --approved "isolated test lock" --heads-up-sent
       check "launch while locked refused" "$RC $OUT" "1 *refusing launch: another deploy*"
+      run_rc "$DEPLOY" verify-identity "$R"
+      check "verify-identity while locked refused" "$RC $OUT" "1 *refusing verify-identity: another deploy*"
       kill $holder; wait $holder 2>/dev/null || true
       echo "-- verify-identity:"; run_rc "$DEPLOY" verify-identity "$R"
       check "verify-identity exit" "$RC" "0"
@@ -276,6 +279,12 @@ run_case() {
       echo "-- resume-deliveries without a decision is refused:"; run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test"
       check "resume without decision refused" "$RC" "1"
       check "connector still paused" "$(active_of jess-fake-connector-$c)" "inactive"
+      # A rollback refuses when current is no longer this deploy's release (e.g. repointed by hand) (Codex, #22).
+      mkdir -p "$ROOT/$c/prod/releases/manual"; ln -sfn releases/manual "$ROOT/$c/prod/current"
+      run_rc "$DEPLOY" rollback-run "$R"
+      check "rollback over a release installed since refused" "$RC $(receipt_of rollback)" "1 refused, nothing changed: current is releases/manual*"
+      check "nothing restored" "$(setaside_of $c) $(active_of jess-fake-prod-$c)" "0 active"
+      ln -sfn "releases/$NEW" "$ROOT/$c/prod/current"
       rollback_by_hand migration-missing; report migration-missing 18903
       check "result after rollback" "$(result_of)" "rolled back by hand"
       check "prod after rollback" "$(active_of jess-fake-prod-$c) $(http_of 18903) $(current_of $c) $(mig_of $c)" "active 200 releases/$OLD 56"
@@ -327,6 +336,11 @@ run_case() {
       check "launch over ROLLBACK FAILED refused" "$RC $OUT" "1 *refusing launch: previous deploy * is still open (result: ROLLBACK FAILED*"
       run_rc "$DEPLOY" close-receipt "$R"
       check "close-receipt needs a decision" "$RC" "2"
+      run_rc env UNIT=jess-fake-prod-elsewhere PROD="$ROOT/elsewhere" "$DEPLOY" close-receipt "$R" --decision "test"
+      check "close-receipt from another target refused" "$RC $OUT $(receipt_of closed)" "1 *refusing close-receipt: receipt targets* "
+      mkdir -p "$ROOT/$c/elsewhere-receipts/20261008T000000000Z"
+      run_rc "$DEPLOY" close-receipt "$ROOT/$c/elsewhere-receipts/20261008T000000000Z" --decision "test"
+      check "closing a no-target receipt outside this shell's folder refused" "$RC $OUT" "1 *isn't in this shell's receipts folder*"
       run_rc "$DEPLOY" close-receipt "$R" --decision "test: recovered by hand"
       check "close-receipt" "$RC $(receipt_of closed)" "0 test: recovered by hand"
       check "connector untouched by close-receipt" "$(active_of jess-fake-connector-$c)" "inactive"
