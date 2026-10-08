@@ -30,7 +30,7 @@ import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { useThreadShells } from "~/state/entities";
 
 import { commsCall, useCommsQuery } from "./commsClient";
-import { useCommsConfig, useCommsEnvironmentId } from "./useCommsConfig";
+import { useCloseOnCommsRetarget, useCommsConfig, useCommsEnvironmentId } from "./useCommsConfig";
 import {
   HARNESS_HELP,
   isOwnTestParticipant,
@@ -79,6 +79,7 @@ export function RegisterAgentDialog(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }) {
+  useCloseOnCommsRetarget(props.open, props.onOpenChange);
   const config = useCommsConfig();
   const registry = useRegistry();
   const directory = useCommsQuery<DirectoryList>("directory:list", props.open ? {} : "skip");
@@ -381,6 +382,7 @@ export function CreateGroupDialog(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }) {
+  useCloseOnCommsRetarget(props.open, props.onOpenChange);
   const config = useCommsConfig();
   const navigate = useNavigate();
   const joinable = useJoinable();
@@ -480,6 +482,7 @@ export function ManageMembersDialog(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }) {
+  useCloseOnCommsRetarget(props.open, props.onOpenChange);
   const config = useCommsConfig();
   const joinable = useJoinable();
   const { data: view } = useCommsQuery<ConversationView>(
@@ -571,6 +574,7 @@ export function EditProfileDialog(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }) {
+  useCloseOnCommsRetarget(props.open, props.onOpenChange);
   const [description, setDescription] = useState(props.entry.description ?? "");
   const [duties, setDuties] = useState((props.entry.duties ?? []).join("\n"));
   const submit = useSubmit();

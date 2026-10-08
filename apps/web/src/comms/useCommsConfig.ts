@@ -2,11 +2,12 @@
 // the connected environments, so whichever comms surface is on screen (button,
 // shelf, page, chat) keeps comms routed to the T3 that serves it.
 import type { CommsConfig, EnvironmentId } from "@t3tools/contracts";
+import { useEffect, useRef } from "react";
 
 import { usePrimaryEnvironmentId } from "~/state/environments";
 
 import { useCommsConfigSnapshot, useCommsRouteSnapshot } from "./commsClient";
-import { routeEnvironmentId } from "./commsRoute.logic";
+import { closesOnRetarget, routeEnvironmentId } from "./commsRoute.logic";
 import { useCommsEnvironmentRouting } from "./useCommsEnvironmentRouting";
 
 export function useCommsConfig(): CommsConfig | undefined {
@@ -21,4 +22,21 @@ export function useCommsConfig(): CommsConfig | undefined {
 export function useCommsEnvironmentId(): EnvironmentId | null {
   const primaryId = usePrimaryEnvironmentId();
   return routeEnvironmentId(useCommsRouteSnapshot(), primaryId) as EnvironmentId | null;
+}
+
+/**
+ * Closes an open comms dialog when comms moves to another T3: its form (picked
+ * members, thread, owner) belongs to the old server. Dialogs mount only while
+ * open, so closing also resets them.
+ */
+export function useCloseOnCommsRetarget(
+  open: boolean,
+  onOpenChange: (open: boolean) => void,
+): void {
+  const key = JSON.stringify(useCommsRouteSnapshot().route);
+  const openedOn = useRef(key);
+  useEffect(() => {
+    if (closesOnRetarget(open, openedOn.current, key)) onOpenChange(false);
+    else if (!open) openedOn.current = key;
+  }, [key, onOpenChange, open]);
 }

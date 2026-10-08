@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   chooseRoute,
+  closesOnRetarget,
   routeEnvironmentId,
   type CommsRoute,
   environmentRoute,
@@ -146,5 +147,16 @@ describe("routeEnvironmentId", () => {
 
   it("acts on nothing once routing has run and no route is chosen (a remote just dropped)", () => {
     expect(routeEnvironmentId({ route: null, chosen: true }, "local")).toBeNull();
+  });
+});
+
+describe("closesOnRetarget", () => {
+  it("closes an open dialog when comms moved to another T3 since it opened", () => {
+    expect(closesOnRetarget(true, "primary", "staging")).toBe(true);
+  });
+
+  it("leaves it open on the same route, and ignores closed dialogs", () => {
+    expect(closesOnRetarget(true, "staging", "staging")).toBe(false);
+    expect(closesOnRetarget(false, "primary", "staging")).toBe(false);
   });
 });

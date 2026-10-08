@@ -129,3 +129,7 @@ export async function chooseRoute<C>(
   }
   return { route: null, config: null, retry: failed.length > 0, failed };
 }
+
+/** An open dialog closes when the route changed since it opened. */
+export const closesOnRetarget = (open: boolean, openedOnKey: string, currentKey: string): boolean =>
+  open && openedOnKey !== currentKey;
