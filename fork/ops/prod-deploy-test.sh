@@ -140,7 +140,9 @@ run_case() {
     identity-changed) # a native ref changed after the deploy (the 2026-10-08 fallback) -> verify-identity FAILs
       setup identity-changed 18909 yes; deploy identity-changed 18909
       python3 -I -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.execute(\"update orchestration_v2_projection_provider_threads set payload_json=replace(payload_json,'native-b','native-b-REPLACED') where provider_thread_id='pt-b'\");c.commit()" "$ROOT/identity-changed/prod/data/userdata/statev2.sqlite"
-      echo "== identity-changed"; echo "-- verify-identity:"; "$DEPLOY" verify-identity "$R" 2>&1 | sed 's/^[0-9TZ:-]* /  /' || true ;;
+      echo "== identity-changed"; echo "-- verify-identity (native id changed):"; "$DEPLOY" verify-identity "$R" 2>&1 | sed 's/^[0-9TZ:-]* /  /' || true
+      python3 -I -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.execute(\"update orchestration_v2_projection_provider_threads set payload_json=replace(replace(payload_json,'native-b-REPLACED','native-b'),'strong','weak') where provider_thread_id='pt-b'\");c.commit()" "$ROOT/identity-changed/prod/data/userdata/statev2.sqlite"
+      echo "-- verify-identity (same id, strong -> weak):"; "$DEPLOY" verify-identity "$R" 2>&1 | sed 's/^[0-9TZ:-]* /  /' || true ;;
     backup-fails)     # error during backup, after prod was stopped -> FAILED, prod left stopped, nothing restarted
       setup backup-fails 18902 yes; deploy backup-fails 18902 backup_fails; report backup-fails 18902; frozen backup-fails
       echo "-- shepherd: restart-unchanged, then resume-deliveries:"

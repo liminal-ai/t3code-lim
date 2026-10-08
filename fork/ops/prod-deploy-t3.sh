@@ -375,8 +375,10 @@ cmd_verify_identity() { # T-9: every provider row keeps its pre-deploy native re
 import json, sys
 a, b = (json.load(open(x)) for x in sys.argv[1:])
 for k, v in sorted(a.items()):
-    if v[1] and (k not in b or b[k][1] != v[1]):
-        print(f"{v[0]} {v[1]} -> {b.get(k, [None, 'MISSING'])[1]}")
+    # Native id and strength both count: strong -> weak changes later failures to fallbacks.
+    if v[1] and (k not in b or b[k][1:] != v[1:]):
+        after = b.get(k, [None, "MISSING", None])
+        print(f"{v[0]} {v[1]}/{v[2]} -> {after[1]}/{after[2]}")
 EOF2
 )
   since=$(receipt_get started_at); [[ -n "$since" ]] || since=$(receipt_get started)

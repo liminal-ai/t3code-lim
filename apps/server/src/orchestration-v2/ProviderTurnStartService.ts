@@ -694,8 +694,18 @@ export const layer: Layer.Layer<
         // switches, weak or missing refs and uncertain history delivery (an
         // earlier history injection into this session may or may not have
         // landed; open question on #22 whether that should fail too).
+        // The ref must have been used by this instance on this row before: a
+        // queued `restart_and_resume` copies another instance's ref into the
+        // target row (Orchestrator.ts), and that is a provider switch.
+        const usedHereBefore = projection.runs.some(
+          (candidate) =>
+            candidate.id !== run.id &&
+            candidate.providerThreadId === providerThread.id &&
+            candidate.providerInstanceId === run.providerInstanceId,
+        );
         const keepsBinding =
           !uncertainDelivery &&
+          usedHereBefore &&
           providerThread.nativeThreadRef !== null &&
           ProviderResumeFailure.keepsNativeBinding(providerThread, run.providerInstanceId);
         if (keepsBinding && providerThread.nativeThreadRef !== null) {

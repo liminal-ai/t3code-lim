@@ -168,6 +168,8 @@ function makeLocalCommandHarness(input: {
   readonly historyReadFailureAfterFallback?: unknown;
   /** Fork-only (#21): resumes a strong native ref, and resume fails with this cause. */
   readonly resumeFailure?: unknown;
+  /** Fork-only (#21): the ref was copied from another instance (no earlier run on this row). */
+  readonly copiedFromOtherInstance?: boolean;
   readonly interruptOpen?: boolean;
   readonly interruptRunBeforeOpenFailure?: boolean;
   readonly writeFailure?: unknown;
@@ -357,6 +359,19 @@ function makeLocalCommandHarness(input: {
       providerThreads: projection.providerThreads.map((candidate) =>
         candidate.id === providerThreadId ? { ...candidate, nativeThreadRef } : candidate,
       ),
+      // Fork-only (#21): a ref this instance used on this row before.
+      runs:
+        "resumeFailure" in input && input.copiedFromOtherInstance !== true
+          ? [
+              {
+                ...run,
+                id: RunId.make("earlier-same-instance-run"),
+                ordinal: 1,
+                status: "completed" as const,
+              },
+              ...projection.runs,
+            ]
+          : projection.runs,
     };
   }
   const events: Array<OrchestrationV2DomainEvent> = [];
@@ -946,5 +961,23 @@ effectIt.effect("retries a native session another writer still holds", () =>
     expect(error._tag).toBe("ProviderTurnStartError");
     expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
     expect(harness.projection().runs.at(-1)?.status).toBe("starting");
+  }),
+);
+
+// Fork-only (#21, Codex review of #22): a queued restart_and_resume copies
+// another instance's strong ref into the target row. That is a provider
+// switch, so upstream's fallback still applies.
+effectIt.effect("falls back for a strong ref copied from another instance", () =>
+  Effect.gen(function* () {
+    const harness = makeLocalCommandHarness({
+      text: "Continue",
+      resumeFailure: "thread not found: native-resume-thread",
+      copiedFromOtherInstance: true,
+    });
+
+    yield* Effect.ignore(harness.start);
+
+    expect(harness.fallbackEnsureThread).toHaveBeenCalled();
+    expect(JSON.stringify(harness.events)).not.toContain("Native session resume failed");
   }),
 );
