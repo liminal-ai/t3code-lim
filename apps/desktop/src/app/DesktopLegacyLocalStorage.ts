@@ -82,8 +82,9 @@ const make = Effect.gen(function* () {
   });
 
   const load = Effect.fn("desktop.legacyLocalStorage.load")(function* (userDataPath: string) {
-    // Development already shares its profile between versions.
-    if (environment.isDevelopment) return;
+    // Development already shares its profile between versions. A dedicated profile
+    // (fork-only, T3CODE_DESKTOP_USER_DATA_DIR) must not read the installed app's V1 profile.
+    if (environment.isDevelopment || environment.userDataDirOverride !== undefined) return;
     const marker = path.join(userDataPath, MARKER_FILE_NAME);
     if (yield* fs.exists(marker).pipe(Effect.orElseSucceed(() => true))) return;
     yield* Ref.set(markerPath, Option.some(marker));

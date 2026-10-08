@@ -10,6 +10,8 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
 import * as Path from "effect/Path";
+import * as Schema from "effect/Schema";
+import * as SchemaIssue from "effect/SchemaIssue";
 
 import * as DesktopAppSettings from "../settings/DesktopAppSettings.ts";
 import * as DesktopConfig from "./DesktopConfig.ts";
@@ -44,6 +46,8 @@ export class DesktopEnvironment extends Context.Service<
     readonly resourcesPath: string;
     readonly homeDirectory: string;
     readonly appDataDirectory: string;
+    /** Fork-only: absolute Electron profile directory from T3CODE_DESKTOP_USER_DATA_DIR. */
+    readonly userDataDirOverride?: string | undefined;
     readonly baseDir: string;
     readonly stateDir: string;
     readonly desktopSettingsPath: string;
@@ -153,6 +157,20 @@ const make = Effect.fn("desktop.environment.make")(function* (
 ): Effect.fn.Return<DesktopEnvironment["Service"], Config.ConfigError, Path.Path> {
   const path = yield* Path.Path;
   const config = yield* DesktopConfig.DesktopConfig;
+  // Fork-only: a dedicated profile alone would still run on the default T3 home (live
+  // threads, settings and pairings), so it refuses to start without T3CODE_HOME.
+  if (Option.isSome(config.userDataDirOverride) && Option.isNone(config.t3Home)) {
+    return yield* Effect.fail(
+      new Config.ConfigError(
+        new Schema.SchemaError(
+          new SchemaIssue.InvalidValue({
+            message:
+              "T3CODE_DESKTOP_USER_DATA_DIR requires T3CODE_HOME: set both, so neither the default profile nor the default T3 home is used.",
+          }),
+        ),
+      ),
+    );
+  }
   const homeDirectory = input.homeDirectory;
   const devServerUrl = config.devServerUrl;
   const isDevelopment = Option.isSome(devServerUrl);
@@ -204,6 +222,9 @@ const make = Effect.fn("desktop.environment.make")(function* (
     resourcesPath,
     homeDirectory,
     appDataDirectory,
+    userDataDirOverride: Option.getOrUndefined(
+      Option.map(config.userDataDirOverride, (directory) => path.resolve(directory)),
+    ),
     baseDir,
     stateDir,
     desktopSettingsPath: path.join(stateDir, "desktop-settings.json"),

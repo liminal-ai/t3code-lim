@@ -71,3 +71,29 @@ it.effect.each(["t3code", "T3 Code (Alpha)"])(
       );
     }).pipe(Effect.scoped, Effect.provide(NodeServices.layer)),
 );
+
+// Fork-only: T3CODE_DESKTOP_USER_DATA_DIR (see fork/README.md).
+it.effect.each(["darwin", "linux", "win32"] as const)(
+  "uses a dedicated profile on %s without touching the default profiles",
+  (platform) =>
+    Effect.gen(function* () {
+      const touched: Array<string> = [];
+      const userDataPath = yield* resolveUserDataPath({
+        appDataDirectory: "/Users/lee/Library/Application Support",
+        isDevelopment: false,
+        platform,
+        userDataDirOverride: "/tmp/t3-candidate/profile",
+      }).pipe(
+        Effect.provideService(
+          FileSystem.FileSystem,
+          FileSystem.makeNoop({
+            exists: (path) => Effect.sync(() => (touched.push(path), true)),
+            readFileString: (path) => Effect.sync(() => (touched.push(path), "")),
+          }),
+        ),
+        Effect.provide(NodeServices.layer),
+      );
+      assert.equal(userDataPath, "/tmp/t3-candidate/profile");
+      assert.deepEqual(touched, []);
+    }),
+);
