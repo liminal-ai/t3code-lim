@@ -74,7 +74,8 @@ function AgentRow(props: {
   const name = entry.participant.name;
   const isAgent = entry.participant.kind === "agent";
   const setState = (state: "active" | "paused" | "retired") => {
-    // Pause and retire act as the configured poster (e.g. @lee), so both confirm first.
+    // Pause and retire are the disruptive actions taken as the configured poster (e.g. @lee),
+    // so both confirm first.
     const question =
       state === "retired"
         ? `Retire @${name}? Retired names stay reserved; there's no undo.`
