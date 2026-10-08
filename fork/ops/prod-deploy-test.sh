@@ -230,9 +230,21 @@ run_case() {
       kill $holder; wait $holder 2>/dev/null || true
       echo "-- verify-identity:"; run_rc "$DEPLOY" verify-identity "$R"
       check "verify-identity exit" "$RC" "0"
-      check "verify-identity says PASS" "$OUT" "*identity check PASS: 2 native refs unchanged*" ;;
+      check "verify-identity says PASS" "$OUT" "*identity check PASS: 2 native refs unchanged*"
+      echo "-- rollback after deliveries resumed needs an explicit decision (Codex, #22):"
+      run_rc "$DEPLOY" rollback "$R"
+      check "rollback after resume refused" "$RC $OUT" "1 *refusing rollback: deliveries resumed*"
+      run_rc "$DEPLOY" rollback-run "$R"
+      check "rollback-run after resume refused (the worker's own check)" "$RC $(receipt_of rollback)" "1 refused, nothing changed: refusing rollback-run: deliveries resumed*"
+      rm -f "$R/ALERT.txt"
+      run_rc "$DEPLOY" rollback "$R" --after-resume "test: roll back anyway"; wait_result_change 90
+      check "rollback with --after-resume" "$RC $CHANGED $(result_of) $(receipt_of rollback_after_resume)" "0 yes rolled back by hand test: roll back anyway"
+      check "prod after" "$(current_of $c) $(mig_of $c) $(active_of jess-fake-connector-$c)" "releases/t3code-lim-fake-old-linux-x64 56 inactive" ;;
     identity-changed) # a native ref changed after the deploy (the 2026-10-08 fallback) -> verify-identity FAILs
       setup identity-changed 18909 yes; deploy identity-changed 18909
+      run_rc "$DEPLOY" verify-identity "$R"
+      check "verify-identity before resume refused" "$RC $OUT" "1 *refusing verify-identity: deliveries haven't resumed*"
+      run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test"; check "resume-deliveries exit" "$RC" "0"
       python3 -I -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.execute(\"update orchestration_v2_projection_provider_threads set payload_json=replace(payload_json,'native-b','native-b-REPLACED') where provider_thread_id='pt-b'\");c.commit()" "$ROOT/identity-changed/prod/data/userdata/statev2.sqlite"
       echo "== identity-changed"; echo "-- verify-identity (native id changed):"; run_rc "$DEPLOY" verify-identity "$R"
       check "verify-identity exit (id changed)" "$RC" "1"

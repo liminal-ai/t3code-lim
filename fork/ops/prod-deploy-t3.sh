@@ -446,6 +446,8 @@ cmd_verify_identity() { # T-9: every provider row keeps its pre-deploy native re
   # Evidence from a finished operation only: not while a deploy or rollback runs, not from an old receipt (Codex, #22).
   take_lock verify-identity || exit 1
   check_latest verify-identity || exit 1
+  # T-9 checks what happened once agents woke, so it needs deliveries resumed first (Codex, #22).
+  [[ "$(receipt_get deliveries)" == resumed* ]] || { echo "refusing verify-identity: deliveries haven't resumed ($(receipt_get deliveries)); run it after resume-deliveries" >&2; exit 1; }
   native_refs > "$RECEIPT/native-refs-after.json"
   local changed fallbacks since
   changed=$(python3 -I - "$RECEIPT/native-refs-before.json" "$RECEIPT/native-refs-after.json" <<'EOF2'
@@ -517,13 +519,23 @@ cmd_close_receipt() { # shepherd: mark a deploy closed after a manual recovery, 
   local was; was="$(receipt_get result 2>/dev/null || echo '(no receipt.json)'); deliveries: $(receipt_get deliveries 2>/dev/null || echo -)"
   state closed "$2"; log "closed by the shepherd: $2 (state was: $was)"
 }
+resumed_guard() { # resumed_guard <command> [decision]: refuse rolling back a deploy whose deliveries resumed
+  # Restoring the backup then also discards everything written since the resume, so it takes an explicit
+  # --after-resume decision. The worker re-checks under the lock, so a resume landing in the gap between
+  # launcher and worker is caught there (Codex, #22).
+  [[ "$(receipt_get deliveries)" == resumed* && -z "${2:-}" ]] || return 0
+  echo "refusing $1: deliveries resumed ($(receipt_get deliveries)); rolling back now discards everything since. Pass --after-resume \"<who decided, link>\" if that's the decision; nothing changed" >&2
+  return 1
+}
 cmd_rollback() { # starts rollback-run in its own unit, so it survives stopping prod; then exits
   local receipt; receipt=$(readlink -f "${1:-}")
   [[ -f "$receipt/receipt.json" ]] || { echo "no receipt in ${1:-}" >&2; exit 2; }
+  local after_resume=""; [[ "${2:-}" == --after-resume && -n "${3:-}" ]] && after_resume=$3
   RECEIPT=$receipt; check_target rollback || exit 1; check_latest rollback || exit 1
+  resumed_guard rollback "$after_resume" || exit 1
   take_lock rollback || exit 1; exec 9>&-
   local ts unit; ts=$(date -u +%Y%m%dT%H%M%S%NZ); unit=jess-prod-rollback-${ts:0:19}Z
-  own_unit "$unit" rollback-run "$receipt"
+  own_unit "$unit" rollback-run "$receipt" ${after_resume:+--after-resume "$after_resume"}
   echo "started $unit; log: $receipt/receipt.log (follow: journalctl --user -u $unit -f)"
 }
 
@@ -537,6 +549,9 @@ cmd_rollback_run() {
   # Under the lock: still the newest receipt, and current is this deploy's release (new, or old if the
   # failure came before the repoint), not something installed since, by hand or otherwise (Codex, #22).
   refusal=$(check_latest rollback-run 2>&1) || refuse_rollback "$refusal"
+  local after_resume=""; [[ "${2:-}" == --after-resume && -n "${3:-}" ]] && after_resume=$3
+  refusal=$(resumed_guard rollback-run "$after_resume" 2>&1) || refuse_rollback "$refusal"
+  [[ -z "$after_resume" ]] || { state rollback_after_resume "$after_resume"; log "rolling back after deliveries resumed, on decision: $after_resume"; }
   local cur; cur=$(readlink "$PROD/current")
   [[ "$cur" == "releases/$(receipt_get new_release)" || "$cur" == "$(receipt_get old_release)" ]] \
     || refuse_rollback "current is $cur, which is neither this deploy's new release nor its old one"
@@ -561,5 +576,5 @@ case ${1:-plan} in
   restart-unchanged) shift; cmd_restart_unchanged "$@" ;;
   close-receipt) shift; cmd_close_receipt "$@" ;;
   verify-identity) shift; cmd_verify_identity "$@" ;;
-  *) echo "usage: $0 plan | launch --approved <ref> --heads-up-sent [--apply-comms] | resume-deliveries <receipt-dir> --checks-done <ref> [--decision <ref>] | rollback <receipt-dir> | restart-unchanged <receipt-dir> | close-receipt <receipt-dir> --decision <ref> | verify-identity <receipt-dir>" >&2; exit 2 ;;
+  *) echo "usage: $0 plan | launch --approved <ref> --heads-up-sent [--apply-comms] | resume-deliveries <receipt-dir> --checks-done <ref> [--decision <ref>] | rollback <receipt-dir> [--after-resume <ref>] | restart-unchanged <receipt-dir> | close-receipt <receipt-dir> --decision <ref> | verify-identity <receipt-dir>" >&2; exit 2 ;;
 esac
