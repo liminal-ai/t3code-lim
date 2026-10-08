@@ -141,4 +141,77 @@ describe("comms client transport", { concurrent: false }, () => {
     await commsCall("inbox:markRead");
     expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe("http://127.0.0.1:3773/api/comms/call");
   });
+
+  it("stops using a remote that disconnected, even while the rest are failing", async () => {
+    const fetchMock = respond({
+      "https://lim-builder.example:8463/api/comms/": 200,
+      "http://127.0.0.1:3773/api/comms/": 500,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(globalThis, "window", { configurable: true, value: desktopWindow({}) });
+    const { commsCall, setCommsEnvironments } = await import("./commsClient");
+    setCommsEnvironments({ activeId: "staging", list: [staging] });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0)); // staging is now the route
+    setCommsEnvironments({ activeId: null, list: [] });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await commsCall("inbox:markRead").catch(() => {});
+    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe("http://127.0.0.1:3773/api/comms/call");
+  });
+
+  it("moves back to the preferred remote once it recovers", async () => {
+    vi.useFakeTimers();
+    try {
+      let stagingStatus = 500;
+      const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+        const url = String(input);
+        const status = url.startsWith("https://lim-builder.example:8463/") ? stagingStatus : 200;
+        if (status !== 200) return new Response("{}", { status });
+        return new Response(
+          JSON.stringify(url.endsWith("/config") ? enabledConfig : { value: 1 }),
+          { status: 200 },
+        );
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      Object.defineProperty(globalThis, "window", { configurable: true, value: desktopWindow({}) });
+      const { commsCall, setCommsEnvironments } = await import("./commsClient");
+      setCommsEnvironments({ activeId: "staging", list: [staging] });
+      await vi.advanceTimersByTimeAsync(10);
+      await commsCall("inbox:markRead");
+      expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe("http://127.0.0.1:3773/api/comms/call");
+      stagingStatus = 200;
+      await vi.advanceTimersByTimeAsync(2_100); // the retry after a preferred candidate failed
+      await commsCall("inbox:markRead");
+      expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe(
+        "https://lim-builder.example:8463/api/comms/call",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("ignores a probe that a newer environment change superseded", async () => {
+    let releaseStaging: (() => void) | undefined;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url === "https://lim-builder.example:8463/api/comms/config") {
+        await new Promise<void>((resolve) => (releaseStaging = resolve));
+      }
+      return new Response(JSON.stringify(url.endsWith("/config") ? enabledConfig : { value: 1 }), {
+        status: 200,
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(globalThis, "window", { configurable: true, value: desktopWindow({}) });
+    const { commsCall, setCommsEnvironments } = await import("./commsClient");
+    setCommsEnvironments({ activeId: "staging", list: [staging] });
+    await vi.waitFor(() => expect(releaseStaging).toBeDefined());
+    setCommsEnvironments({ activeId: null, list: [] }); // staging disconnected mid-probe
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    releaseStaging?.();
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await commsCall("inbox:markRead");
+    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe("http://127.0.0.1:3773/api/comms/call");
+  });
 });

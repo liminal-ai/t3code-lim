@@ -1,7 +1,6 @@
 import { ArrowLeftIcon, ChartNoAxesColumnIcon, RadioTowerIcon, SettingsIcon } from "lucide-react";
 // Fork-only (agent comms): the Comms button reads whether comms is configured.
-import { useCommsConfig } from "~/comms/commsClient";
-import { useCommsEnvironmentRouting } from "~/comms/useCommsEnvironmentRouting";
+import { useCommsConfig } from "~/comms/useCommsConfig";
 import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
@@ -167,10 +166,8 @@ function SidebarUtilityItem({
   );
 }
 
-// Fork-only (agent comms): the Comms button. Always mounted, so it also keeps
-// comms routed to whichever connected T3 serves it.
+// Fork-only (agent comms): the Comms button.
 function CommsSidebarItem(props: { readonly onNavigate: () => void }) {
-  useCommsEnvironmentRouting();
   const config = useCommsConfig();
   const navigate = useNavigate();
   if (!config?.enabled) return null;

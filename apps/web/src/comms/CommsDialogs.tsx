@@ -28,9 +28,9 @@ import {
 import { Textarea } from "~/components/ui/textarea";
 import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { useThreadShells } from "~/state/entities";
-import { usePrimaryEnvironmentId } from "~/state/environments";
 
-import { commsCall, useCommsConfig, useCommsQuery } from "./commsClient";
+import { commsCall, useCommsQuery } from "./commsClient";
+import { useCommsConfig, useCommsEnvironmentId } from "./useCommsConfig";
 import {
   HARNESS_HELP,
   isOwnTestParticipant,
@@ -81,7 +81,7 @@ export function RegisterAgentDialog(props: {
   const config = useCommsConfig();
   const registry = useRegistry();
   const directory = useCommsQuery<DirectoryList>("directory:list", props.open ? {} : "skip");
-  const environmentId = usePrimaryEnvironmentId();
+  const environmentId = useCommsEnvironmentId();
   const threads = useThreadShells(props.open);
   const testMode = config?.testMode === true;
   const homeMachine = config?.homeMachine ?? null;

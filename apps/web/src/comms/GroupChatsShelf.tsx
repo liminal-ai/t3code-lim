@@ -12,7 +12,8 @@ import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { cn } from "~/lib/utils";
 
 import { CreateGroupDialog } from "./CommsDialogs";
-import { useCommsConfig, useCommsQuery } from "./commsClient";
+import { useCommsQuery } from "./commsClient";
+import { useCommsConfig } from "./useCommsConfig";
 import type { ConversationSummary, ConversationView } from "./commsTypes";
 import { chatTitle, groupChats, memberActivity } from "./groupChat.logic";
 import { readGroupChatSeen, useGroupChatSeenVersion } from "./groupChatSeen";

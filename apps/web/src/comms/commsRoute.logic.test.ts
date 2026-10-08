@@ -2,6 +2,7 @@ import { describe, expect, it } from "vite-plus/test";
 
 import {
   chooseRoute,
+  routeEnvironmentId,
   type CommsRoute,
   environmentRoute,
   orderRoutes,
@@ -103,5 +104,22 @@ describe("chooseRoute", () => {
       config: null,
       retry: false,
     });
+  });
+});
+
+describe("routeEnvironmentId", () => {
+  it("acts on the remote environment when comms comes from it", () => {
+    expect(
+      routeEnvironmentId(
+        { kind: "environment", id: "staging", baseUrl: "https://s", bearer: "t" },
+        "local",
+      ),
+    ).toBe("staging");
+  });
+
+  it("acts on the primary for the primary route, or before a route is chosen", () => {
+    expect(routeEnvironmentId({ kind: "primary" }, "local")).toBe("local");
+    expect(routeEnvironmentId(null, "local")).toBe("local");
+    expect(routeEnvironmentId(null, null)).toBeNull();
   });
 });

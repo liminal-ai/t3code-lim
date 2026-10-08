@@ -9,7 +9,8 @@ import { SidebarInset } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { ManageMembersDialog } from "~/comms/CommsDialogs";
-import { commsCall, useCommsConfig, useCommsQuery } from "~/comms/commsClient";
+import { commsCall, useCommsQuery } from "~/comms/commsClient";
+import { useCommsConfig } from "~/comms/useCommsConfig";
 import type { ConversationView } from "~/comms/commsTypes";
 import {
   GroupChatComposer,

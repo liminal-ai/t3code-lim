@@ -28,7 +28,6 @@ import {
   chooseRoute,
   orderRoutes,
   type RouteProbe,
-  routeKey,
 } from "./commsRoute.logic";
 
 export class CommsError extends Error {
@@ -200,7 +199,8 @@ class CommsClient {
           const line = buffer.slice(0, newline);
           buffer = buffer.slice(newline + 1);
           const frame = line ? decodeWatchFrame(JSON.parse(line)) : undefined;
-          if (frame?._tag === "Some") this.deliver(frame.value);
+          // A frame from a stream that was replaced (retarget, new watched set) is stale.
+          if (frame?._tag === "Some" && this.stream === controller) this.deliver(frame.value);
         }
       }
     } catch (error) {
@@ -229,6 +229,8 @@ class CommsClient {
 
   /** Comms moved to another server: drop what the old one said and re-watch on the new one. */
   retarget(): void {
+    this.stream?.abort();
+    this.stream = undefined;
     for (const entry of this.entries.values()) this.set(entry, undefined);
     this.reopen();
   }
@@ -291,11 +293,17 @@ async function probe(via: CommsRoute): Promise<RouteProbe<CommsConfig>> {
   }
 }
 
+/** Same environment with a new endpoint or bearer counts as a different route. */
+const sameRoute = (a: CommsRoute | null, b: CommsRoute | null): boolean =>
+  JSON.stringify(a) === JSON.stringify(b);
+
 function applyRoute(next: CommsRoute | null): void {
-  const changed =
-    (route === null ? null : routeKey(route)) !== (next === null ? null : routeKey(next));
+  const changed = !sameRoute(route, next);
   route = next;
-  if (changed) client.retarget();
+  if (changed) {
+    client.retarget();
+    for (const listener of configListeners) listener();
+  }
 }
 
 /**
@@ -318,7 +326,11 @@ function loadConfig(): Promise<CommsConfig> {
     if (configPromise !== attempt) return configValue ?? DISABLED; // superseded by a newer probe
     if (chosen.route === null && chosen.retry) {
       scheduleRetry();
-      return configValue ?? DISABLED;
+      // Keep the current route through a transient failure only while it's still a candidate.
+      if (routes.some((candidate) => sameRoute(candidate, route))) return configValue ?? DISABLED;
+      applyRoute(null);
+      publishConfig(DISABLED);
+      return DISABLED;
     }
     if (chosen.retry) scheduleRetry();
     else configBackoff = 2_000;
@@ -353,8 +365,23 @@ export function setCommsEnvironments(next: typeof environments): void {
   void loadConfig();
 }
 
-/** This server's comms setup; `undefined` until known. A server without comms reports disabled. */
-export function useCommsConfig(): CommsConfig | undefined {
+/**
+ * The comms server's setup; `undefined` until known, disabled when no connected
+ * T3 serves comms. Components use `useCommsConfig` (useCommsConfig.ts), which
+ * also keeps the connected environments current.
+ */
+/** The chosen route; `null` before one is chosen or when no T3 serves comms. */
+export function useCommsRouteSnapshot(): CommsRoute | null {
+  return useSyncExternalStore(
+    (onChange) => {
+      configListeners.add(onChange);
+      return () => configListeners.delete(onChange);
+    },
+    () => route,
+  );
+}
+
+export function useCommsConfigSnapshot(): CommsConfig | undefined {
   useEffect(() => {
     void loadConfig();
   }, []);
