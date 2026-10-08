@@ -8,14 +8,14 @@
 // desktop shelf stayed empty until an unrelated re-render, up to ~60 s later.
 import * as NodeFS from "node:fs";
 import * as NodeModule from "node:module";
-import { fileURLToPath } from "node:url";
+import * as NodeURL from "node:url";
 import { act } from "react";
 import { create, type ReactTestRenderer } from "react-test-renderer";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 
-const SOURCE = fileURLToPath(new URL("./commsClient.ts", import.meta.url));
+const SOURCE = NodeURL.fileURLToPath(new URL("./commsClient.ts", import.meta.url));
 const COMPILED_URL = new URL("./commsClient.compiled.test-output.js", import.meta.url);
-const COMPILED = fileURLToPath(COMPILED_URL);
+const COMPILED = NodeURL.fileURLToPath(COMPILED_URL);
 
 async function compileWithReactCompiler(): Promise<string> {
   const { transformWithOxc } = await import("vite");
@@ -24,7 +24,7 @@ async function compileWithReactCompiler(): Promise<string> {
   });
   // Babel is a peer of @rolldown/plugin-babel, the plugin the app's Vite config uses.
   const pluginBabel = NodeFS.realpathSync(
-    fileURLToPath(import.meta.resolve("@rolldown/plugin-babel")),
+    NodeURL.fileURLToPath(import.meta.resolve("@rolldown/plugin-babel")),
   );
   const babel = NodeModule.createRequire(pluginBabel)(
     "@babel/core",
