@@ -74,13 +74,17 @@ describe("useCommsQuery, compiled by the React Compiler", { concurrent: false },
 
   it("re-renders on the first frame of a query that started as skip", async () => {
     const stream = watchStream();
+    // Milestones instead of sleeps: the client has asked for /watch, and the stream has
+    // been read up to a given frame.
+    let watchOpened: () => void = () => {};
+    const opened = new Promise<void>((resolve) => (watchOpened = resolve));
     vi.stubGlobal(
       "fetch",
-      vi.fn(async (input: RequestInfo | URL) =>
-        String(input).endsWith("/api/comms/watch")
-          ? stream.response
-          : new Response("{}", { status: 404 }),
-      ),
+      vi.fn(async (input: RequestInfo | URL) => {
+        if (!String(input).endsWith("/api/comms/watch")) return new Response("{}", { status: 404 });
+        watchOpened();
+        return stream.response;
+      }),
     );
     Object.defineProperty(globalThis, "window", { configurable: true, value: sameOriginWindow });
     Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
@@ -107,16 +111,23 @@ describe("useCommsQuery, compiled by the React Compiler", { concurrent: false },
       renderer!.update(<Probe enabled />);
     });
     await act(async () => {
-      await new Promise((resolve) => setTimeout(resolve, 30)); // the client opens /watch
+      await opened;
     });
 
     // The first frame arrives; nothing else re-renders the component.
     await act(async () => {
       stream.push("{}");
       stream.push(JSON.stringify({ id: "conversations:list\u0000{}", value: { n: 3 } }));
-      await new Promise((resolve) => setTimeout(resolve, 30));
     });
-    expect(renderer!.toJSON()).toBe("n=3");
+    // Polls until the rendered output changes; with the old compiled snapshot it never
+    // does (only an unrelated re-render would show the data), so this times out.
+    await vi.waitFor(
+      async () => {
+        await act(async () => {});
+        expect(renderer!.toJSON()).toBe("n=3");
+      },
+      { timeout: 2_000, interval: 20 },
+    );
     await act(async () => renderer!.unmount());
   });
 });
