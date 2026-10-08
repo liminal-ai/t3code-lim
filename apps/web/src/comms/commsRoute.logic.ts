@@ -88,7 +88,8 @@ export type RouteProbe<C> =
 /**
  * Probes candidates in order and takes the first that serves comms. `retry` is
  * set when a more-preferred candidate failed transiently, so a later probe can
- * move back to it once it recovers.
+ * move back to it once it recovers. `failed` lists the candidates whose probe
+ * failed transiently (as opposed to a definite no).
  */
 export async function chooseRoute<C>(
   routes: ReadonlyArray<CommsRoute>,
@@ -97,12 +98,15 @@ export async function chooseRoute<C>(
   readonly route: CommsRoute | null;
   readonly config: C | null;
   readonly retry: boolean;
+  readonly failed: ReadonlyArray<CommsRoute>;
 }> {
-  let retry = false;
+  const failed: CommsRoute[] = [];
   for (const route of routes) {
     const result = await probe(route);
-    if (result.kind === "enabled") return { route, config: result.config, retry };
-    if (result.kind === "failed") retry = true;
+    if (result.kind === "enabled") {
+      return { route, config: result.config, retry: failed.length > 0, failed };
+    }
+    if (result.kind === "failed") failed.push(route);
   }
-  return { route: null, config: null, retry };
+  return { route: null, config: null, retry: failed.length > 0, failed };
 }

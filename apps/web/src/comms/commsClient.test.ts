@@ -154,10 +154,11 @@ describe("comms client transport", { concurrent: false }, () => {
     await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
     await new Promise((resolve) => setTimeout(resolve, 0)); // staging is now the route
     setCommsEnvironments({ activeId: null, list: [] });
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2));
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2)); // primary 500
     await new Promise((resolve) => setTimeout(resolve, 0));
-    await commsCall("inbox:markRead").catch(() => {});
-    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe("http://127.0.0.1:3773/api/comms/call");
+    // No T3 serves comms right now: the call is refused rather than sent to the gone remote.
+    await expect(commsCall("inbox:markRead")).rejects.toMatchObject({ status: 503 });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it("moves back to the preferred remote once it recovers", async () => {
@@ -242,5 +243,29 @@ describe("comms client transport", { concurrent: false }, () => {
     } finally {
       vi.useRealTimers();
     }
+  });
+
+  it("drops a route that now says it has no comms, even while another candidate is failing", async () => {
+    let stagingStatus = 200;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      const status = url.startsWith("https://lim-builder.example:8463/") ? stagingStatus : 500;
+      if (status !== 200) return new Response("{}", { status });
+      return new Response(JSON.stringify(url.endsWith("/config") ? enabledConfig : { value: 1 }), {
+        status: 200,
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(globalThis, "window", { configurable: true, value: desktopWindow({}) });
+    const { commsCall, setCommsEnvironments } = await import("./commsClient");
+    setCommsEnvironments({ activeId: "staging", list: [staging] });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0)); // staging is now the route
+    stagingStatus = 404; // comms switched off on staging
+    setCommsEnvironments({ activeId: null, list: [staging] }); // re-probe: primary 500, staging 404
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3));
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await expect(commsCall("inbox:markRead")).rejects.toMatchObject({ status: 503 });
+    expect(fetchMock).toHaveBeenCalledTimes(3); // nothing sent to staging
   });
 });

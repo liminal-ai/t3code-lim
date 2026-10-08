@@ -87,7 +87,12 @@ describe("chooseRoute", () => {
         ? { kind: "enabled", config: routeKey(route) }
         : { kind: "disabled" },
     );
-    expect(chosen).toEqual({ route: { kind: "primary" }, config: "primary", retry: false });
+    expect(chosen).toEqual({
+      route: { kind: "primary" },
+      config: "primary",
+      retry: false,
+      failed: [],
+    });
   });
 
   it("flags a retry when a more-preferred candidate failed transiently", async () => {
@@ -96,6 +101,7 @@ describe("chooseRoute", () => {
     );
     expect(chosen.route).toEqual({ kind: "primary" });
     expect(chosen.retry).toBe(true);
+    expect(chosen.failed.map(routeKey)).toEqual(["environment:a"]);
   });
 
   it("reports no route, and no retry, when every candidate definitely lacks comms", async () => {
@@ -103,6 +109,7 @@ describe("chooseRoute", () => {
       route: null,
       config: null,
       retry: false,
+      failed: [],
     });
   });
 });

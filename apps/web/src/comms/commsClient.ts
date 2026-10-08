@@ -102,9 +102,12 @@ async function fetchVia(via: CommsRoute, path: string, init: RequestInit = {}): 
   return fetch(target, { ...init, headers, credentials: "omit" });
 }
 
-/** Calls go to the chosen route; before one is chosen, to the first candidate (the primary, if any). */
+/** Set once a probe has finished: after that, no route means no T3 serves comms. */
+let chosenOnce = false;
+
+/** Calls go to the chosen route; before any probe has finished, to the first candidate. */
 async function commsFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const via = route ?? candidateRoutes()[0];
+  const via = route ?? (chosenOnce ? undefined : candidateRoutes()[0]);
   if (!via) throw new CommsError("no connected T3 serves comms", 503);
   return fetchVia(via, path, init);
 }
@@ -305,6 +308,7 @@ const sameRoute = (a: CommsRoute | null, b: CommsRoute | null): boolean =>
   JSON.stringify(a) === JSON.stringify(b);
 
 function applyRoute(next: CommsRoute | null): void {
+  chosenOnce = true;
   const changed = !sameRoute(route, next);
   route = next;
   if (changed) {
@@ -333,8 +337,11 @@ function loadConfig(): Promise<CommsConfig> {
     if (configPromise !== attempt) return configValue ?? DISABLED; // superseded by a newer probe
     if (chosen.route === null && chosen.retry) {
       scheduleRetry();
-      // Keep the current route through a transient failure only while it's still a candidate.
-      if (routes.some((candidate) => sameRoute(candidate, route))) return configValue ?? DISABLED;
+      // Keep the current route only if its own probe failed transiently; a route that's
+      // gone, or that just said 404 / not enabled, is dropped.
+      if (chosen.failed.some((candidate) => sameRoute(candidate, route))) {
+        return configValue ?? DISABLED;
+      }
       applyRoute(null);
       publishConfig(DISABLED);
       return DISABLED;
