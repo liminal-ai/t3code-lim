@@ -239,6 +239,10 @@ run_case() {
       echo "-- verify-identity:"; run_rc "$DEPLOY" verify-identity "$R"
       check "verify-identity exit" "$RC" "0"
       check "verify-identity says PASS" "$OUT" "*identity check PASS: 2 native refs unchanged*"
+      # A large, ordinary journal is not empty (Alder: grep -q under pipefail SIGPIPEd at 20,000 lines; #23).
+      printf '#!/bin/sh\nseq 1 200000 | sed "s/^/prod log line /"\n' > "$ROOT/$c/journalctl-large"; chmod 700 "$ROOT/$c/journalctl-large"
+      run_rc env JOURNALCTL="$ROOT/$c/journalctl-large" "$DEPLOY" verify-identity "$R"
+      check "verify-identity on a 200,000-line journal" "$RC $OUT" "0 *identity check PASS*"
       echo "-- rollback after deliveries resumed needs an explicit decision (Codex, #22):"
       run_rc "$DEPLOY" rollback "$R"
       check "rollback after resume refused" "$RC $OUT" "1 *refusing rollback: deliveries resumed*"
