@@ -108,6 +108,8 @@ function makeTestAdapter(input: {
   readonly nativeThreadGeneration?: Ref.Ref<number>;
   readonly failResume?: boolean;
   readonly failResumeOnce?: Ref.Ref<boolean>;
+  /** Fork-only (#21): keep strong native refs even when resume is set to fail. */
+  readonly strongRefOnResumeFailure?: boolean;
   readonly initialContextUsage?: OrchestrationV2ProviderThread["contextUsage"];
   readonly getModelContextWindow?: (selection: ModelSelection) => number | undefined;
   readonly canReuseContextUsage?: ProviderAdapterV2SessionRuntime["canReuseContextUsage"];
@@ -172,7 +174,16 @@ function makeTestAdapter(input: {
                 nativeThreadRef: {
                   driver: input.driver,
                   nativeId: nativeThreadId,
-                  strength: "strong",
+                  // Fork-only (#21): a failed resume of a same-provider strong
+                  // ref fails the run instead of replacing the session, so the
+                  // tests of upstream's replacement path bind weak refs, which
+                  // still fall back. Strong-ref fail-and-keep is covered in
+                  // ProviderTurnStartService.test.ts and below.
+                  strength:
+                    input.strongRefOnResumeFailure !== true &&
+                    (input.failResume === true || input.failResumeOnce !== undefined)
+                      ? "weak"
+                      : "strong",
                 },
                 nativeConversationHeadRef: null,
                 status: "idle",

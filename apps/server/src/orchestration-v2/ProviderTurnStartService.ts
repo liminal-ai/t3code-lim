@@ -686,19 +686,20 @@ export const layer: Layer.Layer<
           return resumed.success;
         }
 
-        // Fork-only (#21): a transient failure to resume a same-provider strong
-        // native ref never swaps in a fresh session. It retries with the same
-        // ref; on the last attempt the run fails and the ref is kept. Other
-        // failures (the native thread is gone) keep upstream's fallback, logged
-        // at error level below.
+        // Fork-only (#21; Lee 2026-10-08: never recreate a failed session): a
+        // failed resume of a same-provider strong native ref never swaps in a
+        // fresh session. Transient failures retry with the same ref; definitive
+        // or unknown ones, and the last attempt, fail the run and keep the ref
+        // for an agent to triage. Upstream's fallback below stays for provider
+        // switches, weak or missing refs and uncertain history delivery.
         const keepsBinding =
           !uncertainDelivery &&
           providerThread.nativeThreadRef !== null &&
           ProviderResumeFailure.keepsNativeBinding(providerThread, run.providerInstanceId);
-        const transient = ProviderResumeFailure.isTransientResumeFailure(resumed.failure);
-        if (keepsBinding && transient && providerThread.nativeThreadRef !== null) {
+        if (keepsBinding && providerThread.nativeThreadRef !== null) {
           const nativeId = providerThread.nativeThreadRef.nativeId ?? providerThread.id;
-          if (input.willRetry === true) {
+          const transient = ProviderResumeFailure.isTransientResumeFailure(resumed.failure);
+          if (input.willRetry === true && transient) {
             yield* Effect.logWarning("Native session resume failed; retrying the same session", {
               driver: session.driver,
               providerThreadId: providerThread.id,
@@ -719,6 +720,7 @@ export const layer: Layer.Layer<
             providerThreadId: providerThread.id,
             nativeId,
             runId,
+            transient,
             error: failure.message,
           });
           yield* settleStartFailure({
@@ -729,19 +731,15 @@ export const layer: Layer.Layer<
           return undefined;
         }
 
-        // Fork-only (#21): replacing a strong ref is logged at error level.
-        yield* (keepsBinding ? Effect.logError : Effect.logWarning)(
-          "Provider resume failed; attempting a fresh native session",
-          {
-            driver: session.driver,
-            providerThreadId: providerThread.id,
-            nativeId: providerThread.nativeThreadRef?.nativeId ?? null,
-            runId,
-            reason: uncertainDelivery ? "uncertain_history_delivery" : "resume_failed",
-            errorTag: resumed.failure._tag,
-            error: ProviderResumeFailure.failureText(resumed.failure),
-          },
-        );
+        yield* Effect.logWarning("Provider resume failed; attempting a fresh native session", {
+          driver: session.driver,
+          providerThreadId: providerThread.id,
+          nativeId: providerThread.nativeThreadRef?.nativeId ?? null,
+          runId,
+          reason: uncertainDelivery ? "uncertain_history_delivery" : "resume_failed",
+          errorTag: resumed.failure._tag,
+          error: ProviderResumeFailure.failureText(resumed.failure),
+        });
         const replacement = yield* loadFromProvider(
           session.ensureThread({
             threadId: projection.thread.id,

@@ -348,7 +348,9 @@ function makeLocalCommandHarness(input: {
     const nativeThreadRef = {
       driver: providerThread.driver,
       nativeId: "native-resume-thread",
-      strength: "strong" as const,
+      // Fork-only (#21): only a weak ref still falls back to a fresh session,
+      // so the upstream fallback test binds a weak one.
+      strength: "resumeFailure" in input ? ("strong" as const) : ("weak" as const),
     };
     projection = {
       ...projection,
@@ -907,4 +909,42 @@ effectIt.effect(
       expect(written).toContain("Native session resume failed");
       expect(written).toContain("native-resume-thread");
     }),
+);
+
+// Fork-only (#21; Lee 2026-10-08): no failure of a same-provider strong-ref
+// resume swaps in a fresh session, transient or not.
+effectIt.effect.each([
+  ["a definitive failure (native thread gone)", "thread not found: native-resume-thread"],
+  ["an unknown failure", "something unexpected"],
+])("fails at once and keeps the native session after %s, even with retries left", ([, cause]) =>
+  Effect.gen(function* () {
+    const harness = makeLocalCommandHarness({ text: "Continue", resumeFailure: cause });
+
+    yield* harness.startWithRetry;
+
+    expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+    expect(harness.projection().runs.at(-1)?.status).toBe("failed");
+    expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef?.nativeId).toBe(
+      "native-resume-thread",
+    );
+    expect(JSON.stringify(harness.events)).toContain("Native session resume failed");
+  }),
+);
+
+effectIt.effect("retries a native session another writer still holds", () =>
+  Effect.gen(function* () {
+    const harness = makeLocalCommandHarness({
+      text: "Continue",
+      resumeFailure: {
+        code: -32600,
+        errorMessage: "thread native-resume-thread already has an active writer",
+      },
+    });
+
+    const error = yield* harness.startWithRetry.pipe(Effect.flip);
+
+    expect(error._tag).toBe("ProviderTurnStartError");
+    expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+    expect(harness.projection().runs.at(-1)?.status).toBe("starting");
+  }),
 );
