@@ -25,11 +25,21 @@ export type CommsRoute =
       readonly bearer: string | null;
     };
 
-/** The T3 environment comms acts on (threads for "This T3", Open thread): the route's own, or the primary's. */
+/**
+ * The T3 environment comms acts on (threads for "This T3", Open thread): the
+ * route's own, or the primary's. Before any route is chosen that's the primary;
+ * once routing has run, no route means none (a remote that just dropped mustn't
+ * map its threads onto the primary).
+ */
 export const routeEnvironmentId = (
-  route: CommsRoute | null,
+  state: { readonly route: CommsRoute | null; readonly chosen: boolean },
   primaryId: string | null,
-): string | null => (route?.kind === "environment" ? route.id : primaryId);
+): string | null =>
+  state.route?.kind === "environment"
+    ? state.route.id
+    : state.route?.kind === "primary" || !state.chosen
+      ? primaryId
+      : null;
 
 export const routeKey = (route: CommsRoute): string =>
   route.kind === "primary" ? "primary" : `environment:${route.id}`;

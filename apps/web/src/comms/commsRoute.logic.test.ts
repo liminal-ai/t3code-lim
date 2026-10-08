@@ -115,18 +115,23 @@ describe("chooseRoute", () => {
 });
 
 describe("routeEnvironmentId", () => {
+  const remote: CommsRoute = {
+    kind: "environment",
+    id: "staging",
+    baseUrl: "https://s",
+    bearer: "t",
+  };
+
   it("acts on the remote environment when comms comes from it", () => {
-    expect(
-      routeEnvironmentId(
-        { kind: "environment", id: "staging", baseUrl: "https://s", bearer: "t" },
-        "local",
-      ),
-    ).toBe("staging");
+    expect(routeEnvironmentId({ route: remote, chosen: true }, "local")).toBe("staging");
   });
 
-  it("acts on the primary for the primary route, or before a route is chosen", () => {
-    expect(routeEnvironmentId({ kind: "primary" }, "local")).toBe("local");
-    expect(routeEnvironmentId(null, "local")).toBe("local");
-    expect(routeEnvironmentId(null, null)).toBeNull();
+  it("acts on the primary for the primary route, or before routing has chosen", () => {
+    expect(routeEnvironmentId({ route: { kind: "primary" }, chosen: true }, "local")).toBe("local");
+    expect(routeEnvironmentId({ route: null, chosen: false }, "local")).toBe("local");
+  });
+
+  it("acts on nothing once routing has run and no route is chosen (a remote just dropped)", () => {
+    expect(routeEnvironmentId({ route: null, chosen: true }, "local")).toBeNull();
   });
 });

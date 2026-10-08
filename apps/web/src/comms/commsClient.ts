@@ -104,6 +104,11 @@ async function fetchVia(via: CommsRoute, path: string, init: RequestInit = {}): 
 
 /** Set once a probe has finished: after that, no route means no T3 serves comms. */
 let chosenOnce = false;
+/** The route as components see it (a new object per change, for useSyncExternalStore). */
+let routeState: { readonly route: CommsRoute | null; readonly chosen: boolean } = {
+  route: null,
+  chosen: false,
+};
 
 /** Calls go to the chosen route; before any probe has finished, to the first candidate. */
 async function commsFetch(path: string, init: RequestInit = {}): Promise<Response> {
@@ -308,11 +313,13 @@ const sameRoute = (a: CommsRoute | null, b: CommsRoute | null): boolean =>
   JSON.stringify(a) === JSON.stringify(b);
 
 function applyRoute(next: CommsRoute | null): void {
+  const firstChoice = !chosenOnce;
   chosenOnce = true;
   const changed = !sameRoute(route, next);
   route = next;
-  if (changed) {
-    client.retarget();
+  if (changed) client.retarget();
+  if (changed || firstChoice) {
+    routeState = { route, chosen: true };
     for (const listener of configListeners) listener();
   }
 }
@@ -389,14 +396,17 @@ export function setCommsEnvironments(next: typeof environments): void {
  * T3 serves comms. Components use `useCommsConfig` (useCommsConfig.ts), which
  * also keeps the connected environments current.
  */
-/** The chosen route; `null` before one is chosen or when no T3 serves comms. */
-export function useCommsRouteSnapshot(): CommsRoute | null {
+/** The chosen route, and whether routing has chosen yet (`route: null, chosen: true` = no T3 serves comms). */
+export function useCommsRouteSnapshot(): {
+  readonly route: CommsRoute | null;
+  readonly chosen: boolean;
+} {
   return useSyncExternalStore(
     (onChange) => {
       configListeners.add(onChange);
       return () => configListeners.delete(onChange);
     },
-    () => route,
+    () => routeState,
   );
 }
 
