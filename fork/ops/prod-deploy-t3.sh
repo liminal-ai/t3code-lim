@@ -179,23 +179,17 @@ alert() { # alert <text>: receipt file always; issue comment and comms DM best-e
   done
 }
 hold_for_decision() { # a check failed after the first change: stop here, change nothing, hand off
-  local unit_state conn_state cmd backup
+  local unit_state conn_state cmd
   unit_state=$(systemctl --user is-active "$UNIT" || true)
   conn_state=$(systemctl --user is-active "$CONNECTOR_UNIT" || true)
-  backup=$(receipt_get backup || true)
-  state shepherd "$SHEPHERD"
+  # Nothing installed yet (phase stopped): there is nothing to roll back, only the unchanged
+  # old release to restart, which is the shepherd's call (Quinn's review of #22, D1).
+  if [[ "$PHASE" == stopped ]]; then cmd="$(readlink -f "$0") restart-unchanged $RECEIPT"; else cmd="$(readlink -f "$0") rollback $RECEIPT"; fi
+  state rollback_command "$cmd"; state shepherd "$SHEPHERD"
   log "FAILED, stopped for the shepherd ($SHEPHERD): $1. Nothing rolled back or restarted: current -> $(readlink "$PROD/current"), $UNIT $unit_state, $CONNECTOR_UNIT $conn_state."
-  if [[ -n "$backup" && -f "$backup" ]]; then
-    cmd="$(readlink -f "$0") rollback $RECEIPT"
-    state rollback_command "$cmd"
-    log "rollback (shepherd runs it on a decision): $cmd"
-    alert "FAILED in phase $PHASE: $1. Stopped, nothing rolled back or restarted; $UNIT is $unit_state on $(readlink "$PROD/current"); deliveries paused. Shepherd: $SHEPHERD. Roll back: '$cmd'. Or accept after manual checks: 'resume-deliveries $RECEIPT --checks-done <ref> --decision <ref>'."
-    finish "FAILED (stopped, not rolled back; shepherd $SHEPHERD): $1. Roll back: $cmd" 1
-  else
-    log "no verified backup recorded; rollback UNAVAILABLE"
-    alert "FAILED in phase $PHASE: $1. Stopped, nothing rolled back or restarted; $UNIT is $unit_state on $(readlink "$PROD/current"); deliveries paused. Shepherd: $SHEPHERD. No backup recorded — rollback unavailable. Accept after manual checks: 'resume-deliveries $RECEIPT --checks-done <ref> --decision <ref>'."
-    finish "FAILED (stopped, not rolled back; shepherd $SHEPHERD): $1. Rollback unavailable (no backup recorded)" 1
-  fi
+  log "next step (shepherd runs it on a decision): $cmd"
+  alert "FAILED in phase $PHASE: $1. Stopped, nothing rolled back or restarted; $UNIT is $unit_state on $(readlink "$PROD/current"); deliveries paused. Shepherd: $SHEPHERD. Next step: '$cmd'. Or accept after manual checks: 'resume-deliveries $RECEIPT --checks-done <ref> --decision <ref>'."
+  finish "FAILED (stopped, not rolled back; shepherd $SHEPHERD): $1. Next step: $cmd" 1
 }
 
 resolve_paths() {
@@ -355,7 +349,7 @@ cmd_resume() {
   [[ -n "$checks" ]] || { echo "--checks-done \"<who checked, link>\" is required" >&2; exit 2; }
   local result; result=$(receipt_get result)
   case $result in
-    installed* | "rolled back"*) ;;
+    installed* | "rolled back"* | "restarted unchanged") ;;
     "FAILED (stopped, not rolled back"*)
       # Accepting a release whose check failed is a decision, recorded like one.
       [[ -n "$decision" ]] || { echo "receipt says '$result'; resuming needs --decision \"<who decided, link>\"" >&2; exit 1; }
@@ -363,8 +357,6 @@ cmd_resume() {
     *) echo "receipt result is '$result'; not resuming" >&2; exit 1 ;;
   esac
   set -- "$checks"
-  # Ensure prod is up before resuming deliveries; start it if it was left stopped.
-  systemctl --user start "$UNIT" >/dev/null 2>&1 || true
   wait_http || { log "resume refused: prod is not answering"; exit 1; }
   local cstart; cstart=$(date -u +%FT%TZ)
   systemctl --user start "$CONNECTOR_UNIT"
@@ -398,6 +390,19 @@ EOF2
   fi
 }
 
+cmd_restart_unchanged() { # shepherd's step after a failure before install: start the same old release again
+  RECEIPT=$1; [[ -f "$RECEIPT/receipt.json" ]] || { echo "no receipt in ${1:-}" >&2; exit 2; }
+  OLD_RELEASE=$(receipt_get old_release); MIG_BEFORE=$(receipt_get migrations_before)
+  [[ "$(readlink "$PROD/current")" == "$OLD_RELEASE" ]] || { log "refusing restart-unchanged: current is not $OLD_RELEASE; use rollback"; exit 1; }
+  [[ "$(migrations)" == "$MIG_BEFORE" ]] || { log "refusing restart-unchanged: migrations differ from the pre-deploy set; use rollback"; exit 1; }
+  systemctl --user start "$UNIT" || { log "restart-unchanged: $UNIT did not start"; exit 1; }
+  if wait_http; then
+    state result "restarted unchanged"; log "restarted $OLD_RELEASE unchanged; deliveries stay paused until resume-deliveries"
+  else
+    state result "RESTART FAILED"; log "restart-unchanged: no HTTP 200; needs a person"; exit 1
+  fi
+}
+
 cmd_rollback() { # starts rollback-run in its own unit, so it survives stopping prod; then exits
   local receipt; receipt=$(readlink -f "${1:-}")
   [[ -f "$receipt/receipt.json" ]] || { echo "no receipt in ${1:-}" >&2; exit 2; }
@@ -426,6 +431,7 @@ case ${1:-plan} in
   resume-deliveries) shift; cmd_resume "$@" ;;
   rollback) shift; cmd_rollback "$@" ;;
   rollback-run) shift; cmd_rollback_run "$@" ;;
+  restart-unchanged) shift; cmd_restart_unchanged "$@" ;;
   verify-identity) shift; cmd_verify_identity "$@" ;;
   *) echo "usage: $0 plan | launch --approved <ref> --heads-up-sent [--apply-comms] | resume-deliveries <receipt-dir> --checks-done <ref> [--decision <ref>] | rollback <receipt-dir>" >&2; exit 2 ;;
 esac

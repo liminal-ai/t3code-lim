@@ -142,7 +142,11 @@ run_case() {
       python3 -I -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.execute(\"update orchestration_v2_projection_provider_threads set payload_json=replace(payload_json,'native-b','native-b-REPLACED') where provider_thread_id='pt-b'\");c.commit()" "$ROOT/identity-changed/prod/data/userdata/statev2.sqlite"
       echo "== identity-changed"; echo "-- verify-identity:"; "$DEPLOY" verify-identity "$R" 2>&1 | sed 's/^[0-9TZ:-]* /  /' || true ;;
     backup-fails)     # error during backup, after prod was stopped -> FAILED, prod left stopped, nothing restarted
-      setup backup-fails 18902 yes; deploy backup-fails 18902 backup_fails; report backup-fails 18902; frozen backup-fails ;;
+      setup backup-fails 18902 yes; deploy backup-fails 18902 backup_fails; report backup-fails 18902; frozen backup-fails
+      echo "-- shepherd: restart-unchanged, then resume-deliveries:"
+      "$DEPLOY" restart-unchanged "$R" 2>&1 | sed 's/^[0-9TZ:-]* /  /'
+      "$DEPLOY" resume-deliveries "$R" --checks-done "test" 2>&1 | sed 's/^[0-9TZ:-]* /  /'
+      echo "prod after: $(systemctl --user is-active jess-fake-prod-backup-fails || true), connector $(systemctl --user is-active jess-fake-connector-backup-fails || true)" ;;
     migration-missing) # a check fails after install -> STOPPED, nothing rolled back, alert; then the shepherd's rollback
       setup migration-missing 18903 no; deploy migration-missing 18903; report migration-missing 18903; frozen migration-missing
       echo "-- resume-deliveries without a decision is refused:"; "$DEPLOY" resume-deliveries "$R" --checks-done "test" 2>&1 | sed 's/^/  /' || true

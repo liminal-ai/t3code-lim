@@ -691,7 +691,9 @@ export const layer: Layer.Layer<
         // fresh session. Transient failures retry with the same ref; definitive
         // or unknown ones, and the last attempt, fail the run and keep the ref
         // for an agent to triage. Upstream's fallback below stays for provider
-        // switches, weak or missing refs and uncertain history delivery.
+        // switches, weak or missing refs and uncertain history delivery (an
+        // earlier history injection into this session may or may not have
+        // landed; open question on #22 whether that should fail too).
         const keepsBinding =
           !uncertainDelivery &&
           providerThread.nativeThreadRef !== null &&
