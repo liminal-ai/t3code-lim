@@ -664,6 +664,17 @@ export const layer: Layer.Layer<
             handoff.delivery?.nativeThreadId === providerThread.nativeThreadRef?.nativeId &&
             handoff.delivery?.status === "pending",
         );
+        // Fork-only (#21; Mira #178): an uncertain history delivery may only
+        // replace a native thread with no completed turn of its own on this
+        // row, i.e. one just created for this handoff, since nothing can be
+        // lost there. A thread that has completed a turn keeps its binding.
+        // (Conservative: a row whose earlier native session was replaced
+        // counts that session's turns too, so it fails closed.)
+        const nothingToLose =
+          uncertainDelivery &&
+          !projection.providerTurns.some(
+            (turn) => turn.providerThreadId === providerThread.id && turn.status === "completed",
+          );
         const resumed = yield* Effect.result(
           uncertainDelivery
             ? Effect.fail(
@@ -691,9 +702,8 @@ export const layer: Layer.Layer<
         // fresh session. Transient failures retry with the same ref; definitive
         // or unknown ones, and the last attempt, fail the run and keep the ref
         // for an agent to triage. Upstream's fallback below stays for provider
-        // switches, weak or missing refs and uncertain history delivery (an
-        // earlier history injection into this session may or may not have
-        // landed; open question on #22 whether that should fail too).
+        // switches, weak or missing refs, and an uncertain history delivery
+        // into a native thread with no turns of its own (see nothingToLose).
         // The thread's previous run must have been this instance on this row;
         // otherwise this run is a provider switch: either a queued
         // `restart_and_resume` copied another instance's ref into the target
@@ -712,7 +722,7 @@ export const layer: Layer.Layer<
           previousRun.providerThreadId === providerThread.id &&
           previousRun.providerInstanceId === run.providerInstanceId;
         const keepsBinding =
-          !uncertainDelivery &&
+          !nothingToLose &&
           continuesHere &&
           providerThread.nativeThreadRef !== null &&
           ProviderResumeFailure.keepsNativeBinding(providerThread, run.providerInstanceId);

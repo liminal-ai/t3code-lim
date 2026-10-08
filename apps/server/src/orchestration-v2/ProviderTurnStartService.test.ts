@@ -2,6 +2,7 @@ import { expect, it, vi } from "vite-plus/test";
 import { it as effectIt } from "@effect/vitest";
 import {
   CheckpointScopeId,
+  ContextHandoffId,
   MessageId,
   NodeId,
   ProviderSessionId,
@@ -9,6 +10,7 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   ProviderSetupError,
+  ProviderTurnId,
   RunAttemptId,
   RunId,
   ThreadId,
@@ -170,6 +172,11 @@ function makeLocalCommandHarness(input: {
   readonly resumeFailure?: unknown;
   /** Fork-only (#21): the ref was copied from another instance (no earlier run on this row). */
   readonly copiedFromOtherInstance?: boolean;
+  /**
+   * Fork-only (#21, Mira #178): an earlier history injection into the native
+   * session is still pending; "own-turns" adds a turn the session completed.
+   */
+  readonly uncertainDelivery?: "own-turns" | "no-turns";
   readonly interruptOpen?: boolean;
   readonly interruptRunBeforeOpenFailure?: boolean;
   readonly writeFailure?: unknown;
@@ -372,6 +379,48 @@ function makeLocalCommandHarness(input: {
               ...projection.runs,
             ]
           : projection.runs,
+      ...(input.uncertainDelivery === undefined
+        ? {}
+        : {
+            contextHandoffs: [
+              {
+                id: ContextHandoffId.make("pending-history-handoff"),
+                threadId,
+                targetRunId: RunId.make("earlier-same-instance-run"),
+                fromProviderThreadIds: [],
+                toProviderThreadId: providerThreadId,
+                coveredRunOrdinals: { from: 1, to: 1 },
+                strategy: "full_thread_summary" as const,
+                status: "ready" as const,
+                summaryMessageId: null,
+                summaryText: "earlier history",
+                delivery: {
+                  nativeThreadId: "native-resume-thread",
+                  status: "pending" as const,
+                  itemIds: [],
+                },
+                createdByProviderInstanceId: null,
+                createdAt: now,
+                updatedAt: now,
+              },
+            ],
+            providerTurns:
+              input.uncertainDelivery === "own-turns"
+                ? [
+                    {
+                      id: ProviderTurnId.make("own-completed-turn"),
+                      providerThreadId,
+                      nodeId: rootNodeId,
+                      runAttemptId: null,
+                      nativeTurnRef: null,
+                      ordinal: 1,
+                      status: "completed" as const,
+                      startedAt: now,
+                      completedAt: now,
+                    },
+                  ]
+                : [],
+          }),
     };
   }
   const events: Array<OrchestrationV2DomainEvent> = [];
@@ -980,4 +1029,45 @@ effectIt.effect("falls back for a strong ref copied from another instance", () =
     expect(harness.fallbackEnsureThread).toHaveBeenCalled();
     expect(JSON.stringify(harness.events)).not.toContain("Native session resume failed");
   }),
+);
+
+// Fork-only (#21, Mira #178): an uncertain history delivery may replace only a
+// native session with no completed turn of its own; one that has completed a
+// turn keeps its binding and the run fails.
+effectIt.effect(
+  "fails and keeps a native session with its own turns when history delivery is uncertain",
+  () =>
+    Effect.gen(function* () {
+      const harness = makeLocalCommandHarness({
+        text: "Continue",
+        resumeFailure: "thread not found: native-resume-thread",
+        uncertainDelivery: "own-turns",
+      });
+
+      yield* harness.startWithRetry;
+
+      expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+      expect(harness.projection().runs.at(-1)?.status).toBe("failed");
+      expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef?.nativeId).toBe(
+        "native-resume-thread",
+      );
+      expect(JSON.stringify(harness.events)).toContain("Native session resume failed");
+    }),
+);
+
+effectIt.effect(
+  "replaces a native session with no turns of its own when history delivery is uncertain",
+  () =>
+    Effect.gen(function* () {
+      const harness = makeLocalCommandHarness({
+        text: "Continue",
+        resumeFailure: "thread not found: native-resume-thread",
+        uncertainDelivery: "no-turns",
+      });
+
+      yield* Effect.ignore(harness.start);
+
+      expect(harness.fallbackEnsureThread).toHaveBeenCalled();
+      expect(JSON.stringify(harness.events)).not.toContain("Native session resume failed");
+    }),
 );
