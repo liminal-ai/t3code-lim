@@ -480,7 +480,9 @@ EOF2
   rm -f "$jerr"
   # journalctl exits 0 with no output for a wrong unit, a wrong --since or a non-persistent journal
   # (Quinn, #22 re-review). Prod has just started, so it must have logged something since then.
-  if ! grep -v -x -e '' -e '-- No entries --' <<<"$journal" | grep -q .; then
+  # No pipe into grep -q: under pipefail its early exit SIGPIPEs the first grep on a large journal and reads
+  # as empty (Alder's co-sign of #22; #23).
+  if [[ -z "$(grep -v -x -e '' -e '-- No entries --' <<<"$journal" || true)" ]]; then
     log "identity check FAIL (goes to fleet triage, T-9): no journal entries from $UNIT since $since, so nothing was searched"
     state identity "FAIL"; exit 1
   fi
