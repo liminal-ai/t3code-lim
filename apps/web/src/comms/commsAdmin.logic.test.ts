@@ -12,6 +12,7 @@ import {
   PRESENCE_STALE_MS,
   presenceView,
   sortRoster,
+  pickedCandidate,
 } from "./commsAdmin.logic";
 import type { RegistryEntry } from "./commsTypes";
 
@@ -142,5 +143,16 @@ describe("test-mode ownership", () => {
     expect(isOwnTestParticipant(own, config)).toBe(true);
     expect(isOwnTestParticipant(elsewhere, config)).toBe(false);
     expect(isOwnTestParticipant(real, config)).toBe(false);
+  });
+});
+
+describe("pickedCandidate", () => {
+  it("keeps a pick that's still a candidate", () => {
+    expect(pickedCandidate([{ id: "a" }, { id: "b" }], "b")).toBe("b");
+  });
+
+  it("drops a pick from another T3's threads", () => {
+    expect(pickedCandidate([{ id: "staging-thread" }], "local-thread")).toBe("");
+    expect(pickedCandidate([], "")).toBe("");
   });
 });

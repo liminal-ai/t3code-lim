@@ -39,6 +39,7 @@ import {
   machineOptions,
   nameProblem,
   parseDuties,
+  pickedCandidate,
 } from "./commsAdmin.logic";
 import type { ConversationView, DirectoryList, RegistryEntry } from "./commsTypes";
 
@@ -127,10 +128,13 @@ export function RegisterAgentDialog(props: {
   const submit = useSubmit();
 
   const effectiveLocator = harnessLocator(harness, name, locator);
+  // A pick only counts while it's one of the comms server's threads: if comms moves to
+  // another T3, an earlier pick must not be registered under the new home machine.
+  const pickedThread = pickedCandidate(candidateThreads, threadId);
   const home =
     source === "local"
-      ? homeMachine && threadId
-        ? { machine: homeMachine, harness: "t3", locator: threadId }
+      ? homeMachine && pickedThread
+        ? { machine: homeMachine, harness: "t3", locator: pickedThread }
         : null
       : machine && harness && effectiveLocator
         ? { machine, harness, locator: effectiveLocator }
@@ -208,7 +212,7 @@ export function RegisterAgentDialog(props: {
               <div className="grid gap-1.5">
                 <Label>T3 thread</Label>
                 <Select
-                  value={threadId}
+                  value={pickedThread}
                   onValueChange={(value) => setThreadId(String(value ?? ""))}
                 >
                   <SelectTrigger aria-label="T3 thread">

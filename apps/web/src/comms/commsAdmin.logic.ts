@@ -201,3 +201,9 @@ export function isOwnTestParticipant(
     entry.home?.machine === config?.homeMachine
   );
 }
+
+/** The picked thread, or "" when it isn't among the current candidates (comms moved to another T3). */
+export const pickedCandidate = (
+  candidates: ReadonlyArray<{ readonly id: string }>,
+  picked: string,
+): string => (candidates.some((t) => t.id === picked) ? picked : "");
