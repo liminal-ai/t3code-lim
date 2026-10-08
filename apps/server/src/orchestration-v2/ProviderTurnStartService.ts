@@ -665,15 +665,20 @@ export const layer: Layer.Layer<
             handoff.delivery?.status === "pending",
         );
         // Fork-only (#21; Mira #178): an uncertain history delivery may only
-        // replace a native thread with no completed turn of its own on this
-        // row, i.e. one just created for this handoff, since nothing can be
-        // lost there. A thread that has completed a turn keeps its binding.
+        // replace a native thread with no turn of its own on this row that
+        // completed, failed or was interrupted (any of which leaves native
+        // history), i.e. one just created for this handoff, since nothing can
+        // be lost there. A thread with such a turn keeps its binding.
         // (Conservative: a row whose earlier native session was replaced
         // counts that session's turns too, so it fails closed.)
         const nothingToLose =
           uncertainDelivery &&
           !projection.providerTurns.some(
-            (turn) => turn.providerThreadId === providerThread.id && turn.status === "completed",
+            (turn) =>
+              turn.providerThreadId === providerThread.id &&
+              (turn.status === "completed" ||
+                turn.status === "interrupted" ||
+                turn.status === "failed"),
           );
         const resumed = yield* Effect.result(
           uncertainDelivery

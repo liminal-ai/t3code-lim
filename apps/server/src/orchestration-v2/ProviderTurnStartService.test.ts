@@ -174,9 +174,10 @@ function makeLocalCommandHarness(input: {
   readonly copiedFromOtherInstance?: boolean;
   /**
    * Fork-only (#21, Mira #178): an earlier history injection into the native
-   * session is still pending; "own-turns" adds a turn the session completed.
+   * session is still pending; "own-turns" adds a turn the session completed,
+   * "interrupted-turn" one it started and was interrupted in.
    */
-  readonly uncertainDelivery?: "own-turns" | "no-turns";
+  readonly uncertainDelivery?: "own-turns" | "interrupted-turn" | "no-turns";
   readonly interruptOpen?: boolean;
   readonly interruptRunBeforeOpenFailure?: boolean;
   readonly writeFailure?: unknown;
@@ -405,7 +406,7 @@ function makeLocalCommandHarness(input: {
               },
             ],
             providerTurns:
-              input.uncertainDelivery === "own-turns"
+              input.uncertainDelivery !== "no-turns"
                 ? [
                     {
                       id: ProviderTurnId.make("own-completed-turn"),
@@ -414,7 +415,10 @@ function makeLocalCommandHarness(input: {
                       runAttemptId: null,
                       nativeTurnRef: null,
                       ordinal: 1,
-                      status: "completed" as const,
+                      status:
+                        input.uncertainDelivery === "own-turns"
+                          ? ("completed" as const)
+                          : ("interrupted" as const),
                       startedAt: now,
                       completedAt: now,
                     },
@@ -1034,14 +1038,14 @@ effectIt.effect("falls back for a strong ref copied from another instance", () =
 // Fork-only (#21, Mira #178): an uncertain history delivery may replace only a
 // native session with no completed turn of its own; one that has completed a
 // turn keeps its binding and the run fails.
-effectIt.effect(
-  "fails and keeps a native session with its own turns when history delivery is uncertain",
-  () =>
+effectIt.effect.each(["own-turns", "interrupted-turn"] as const)(
+  "fails and keeps a native session with history (%s) when history delivery is uncertain",
+  (uncertainDelivery) =>
     Effect.gen(function* () {
       const harness = makeLocalCommandHarness({
         text: "Continue",
         resumeFailure: "thread not found: native-resume-thread",
-        uncertainDelivery: "own-turns",
+        uncertainDelivery,
       });
 
       yield* harness.startWithRetry;

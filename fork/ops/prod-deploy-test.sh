@@ -195,7 +195,10 @@ run_case() {
       python3 -I -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.execute(\"update orchestration_v2_projection_provider_threads set payload_json=replace(payload_json,'weak','strong') where provider_thread_id='pt-b'\");c.commit()" "$ROOT/identity-changed/prod/data/userdata/statev2.sqlite"
       echo "-- verify-identity (journal unreadable):"; run_rc env JOURNALCTL=/bin/false "$DEPLOY" verify-identity "$R"
       check "verify-identity exit (no journal)" "$RC" "1"
-      check "says the journal could not be read" "$OUT" "*could not read*journal*" ;;
+      check "says the journal could not be read" "$OUT" "*could not read*journal*"
+      echo "-- verify-identity (journal empty):"; run_rc env JOURNALCTL=/bin/true "$DEPLOY" verify-identity "$R"
+      check "verify-identity exit (empty journal)" "$RC" "1"
+      check "says no journal entries" "$OUT" "*no journal entries from*" ;;
     backup-fails)     # error during backup, after prod was stopped -> FAILED, prod left stopped, nothing restarted
       setup backup-fails 18902 yes; deploy backup-fails 18902 backup_fails; report backup-fails 18902; frozen backup-fails
       stopped_checks $c $OLD 56

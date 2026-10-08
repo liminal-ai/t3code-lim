@@ -394,6 +394,12 @@ EOF2
     log "identity check FAIL (goes to fleet triage, T-9): could not read $UNIT's journal: $(head -c 200 <<<"$journal")"
     state identity "FAIL"; exit 1
   fi
+  # journalctl exits 0 with no output for a wrong unit, a wrong --since or a non-persistent journal
+  # (Quinn, #22 re-review). Prod has just started, so it must have logged something since then.
+  if ! grep -v -x -e '' -e '-- No entries --' <<<"$journal" | grep -q .; then
+    log "identity check FAIL (goes to fleet triage, T-9): no journal entries from $UNIT since $since, so nothing was searched"
+    state identity "FAIL"; exit 1
+  fi
   fallbacks=$(grep -c "Provider resume failed; attempting a fresh native session" <<<"$journal" || true)
   failures=$(grep -c "Native session resume failed" <<<"$journal" || true)
   if [[ -z "$changed" && "$fallbacks" == 0 && "$failures" == 0 ]]; then
