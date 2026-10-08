@@ -214,4 +214,33 @@ describe("comms client transport", { concurrent: false }, () => {
     await commsCall("inbox:markRead");
     expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe("http://127.0.0.1:3773/api/comms/call");
   });
+
+  it("gives up on a stalled probe and falls back to the next candidate", async () => {
+    vi.useFakeTimers();
+    try {
+      const fetchMock = vi.fn((input: RequestInfo | URL, init?: RequestInit) => {
+        const url = String(input);
+        if (url.startsWith("https://lim-builder.example:8463/")) {
+          // Never answers; only the abort ends it.
+          return new Promise<Response>((_, reject) =>
+            init?.signal?.addEventListener("abort", () => reject(new Error("aborted"))),
+          );
+        }
+        return Promise.resolve(
+          new Response(JSON.stringify(url.endsWith("/config") ? enabledConfig : { value: 1 }), {
+            status: 200,
+          }),
+        );
+      });
+      vi.stubGlobal("fetch", fetchMock);
+      Object.defineProperty(globalThis, "window", { configurable: true, value: desktopWindow({}) });
+      const { commsCall, setCommsEnvironments } = await import("./commsClient");
+      setCommsEnvironments({ activeId: "staging", list: [staging] });
+      await vi.advanceTimersByTimeAsync(8_100);
+      await commsCall("inbox:markRead");
+      expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe("http://127.0.0.1:3773/api/comms/call");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

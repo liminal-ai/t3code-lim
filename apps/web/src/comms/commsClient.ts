@@ -279,10 +279,15 @@ function publishConfig(config: CommsConfig): void {
   for (const listener of configListeners) listener();
 }
 
+/** A probe that hasn't answered by then counts as a transient failure, so later candidates still get probed. */
+const PROBE_TIMEOUT_MS = 8_000;
+
 /** One candidate's `/config`: a 404 or `enabled: false` is a definite no; anything else may heal. */
 async function probe(via: CommsRoute): Promise<RouteProbe<CommsConfig>> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
   try {
-    const response = await fetchVia(via, "/config");
+    const response = await fetchVia(via, "/config", { signal: controller.signal });
     if (response.status === 404) return { kind: "disabled" };
     if (!response.ok) return { kind: "failed" };
     const config = decodeConfig(await response.json());
@@ -290,6 +295,8 @@ async function probe(via: CommsRoute): Promise<RouteProbe<CommsConfig>> {
     return config.value.enabled ? { kind: "enabled", config: config.value } : { kind: "disabled" };
   } catch {
     return { kind: "failed" };
+  } finally {
+    clearTimeout(timer);
   }
 }
 
