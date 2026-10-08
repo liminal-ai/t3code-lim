@@ -46,6 +46,7 @@ import * as IdAllocator from "./IdAllocator.ts";
 import * as ProjectionStore from "./ProjectionStore.ts";
 import * as ProviderSessionManager from "./ProviderSessionManager.ts";
 import { makeProviderFailure } from "./ProviderFailure.ts";
+import * as ProviderResumeFailure from "./ProviderResumeFailure.ts";
 import * as RunExecutionService from "./RunExecutionService.ts";
 import * as RuntimePolicy from "./RuntimePolicy.ts";
 import {
@@ -685,12 +686,61 @@ export const layer: Layer.Layer<
           return resumed.success;
         }
 
+        // Fork-only invariant (#21; Lee 2026-10-08 12:30 ET; Mira #193 and #200,
+        // which supersede #156 and #178's exemptions): T3 never replaces a
+        // strong native ref, for any reason: account overlay, in-place or
+        // queued switch, import, copied ref, a return to a provider, or an
+        // uncertain history delivery (an imported session has native history
+        // T3 never recorded, so "no turns" can't prove nothing is lost). Only
+        // reset-thread replaces one, on an explicit decision. A failed resume
+        // retries transient errors with the same ref; anything else, or the last
+        // attempt, fails the run and keeps the ref. Upstream's fresh-session
+        // fallback below stays only for weak or missing refs. There is
+        // deliberately no inference of provider switches or of native history.
+        const keepsBinding = ProviderResumeFailure.keepsNativeBinding(providerThread);
+        if (keepsBinding && providerThread.nativeThreadRef !== null) {
+          const nativeId = providerThread.nativeThreadRef.nativeId ?? providerThread.id;
+          const transient = ProviderResumeFailure.isTransientResumeFailure(resumed.failure);
+          if (input.willRetry === true && transient) {
+            yield* Effect.logWarning("Native session resume failed; retrying the same session", {
+              driver: session.driver,
+              providerThreadId: providerThread.id,
+              nativeId,
+              runId,
+              errorTag: resumed.failure._tag,
+            });
+            return yield* resumed.failure;
+          }
+          const failure = new ProviderResumeFailure.NativeSessionResumeFailedError(
+            projection.thread.id,
+            nativeId,
+            resumed.failure,
+          );
+          yield* Effect.logError("Native session resume failed; run failed, binding kept", {
+            driver: session.driver,
+            threadId: projection.thread.id,
+            providerThreadId: providerThread.id,
+            nativeId,
+            runId,
+            transient,
+            error: failure.message,
+          });
+          yield* settleStartFailure({
+            signal: "provider-native-resume-failure",
+            title: "Native session resume failed",
+            error: failure,
+          });
+          return undefined;
+        }
+
         yield* Effect.logWarning("Provider resume failed; attempting a fresh native session", {
           driver: session.driver,
           providerThreadId: providerThread.id,
+          nativeId: providerThread.nativeThreadRef?.nativeId ?? null,
           runId,
           reason: uncertainDelivery ? "uncertain_history_delivery" : "resume_failed",
           errorTag: resumed.failure._tag,
+          error: ProviderResumeFailure.failureText(resumed.failure),
         });
         const replacement = yield* loadFromProvider(
           session.ensureThread({
