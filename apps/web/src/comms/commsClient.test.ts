@@ -293,4 +293,30 @@ describe("comms client transport", { concurrent: false }, () => {
     );
     primaryConfig?.();
   });
+
+  it("fails over to a connected remote when the selected primary drops", async () => {
+    let primaryUp = true;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url.startsWith("http://127.0.0.1:3773/") && !primaryUp)
+        throw new TypeError("connection refused");
+      return new Response(JSON.stringify(url.endsWith("/config") ? enabledConfig : { value: 1 }), {
+        status: 200,
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(globalThis, "window", { configurable: true, value: desktopWindow({}) });
+    const { commsCall, setCommsEnvironments } = await import("./commsClient");
+    setCommsEnvironments({ activeId: null, list: [staging], primaryConnected: true });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1)); // primary first
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    primaryUp = false;
+    setCommsEnvironments({ activeId: null, list: [staging], primaryConnected: false });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3)); // primary fails, staging serves
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await commsCall("inbox:markRead");
+    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe(
+      "https://lim-builder.example:8463/api/comms/call",
+    );
+  });
 });

@@ -59,6 +59,8 @@ interface Entry {
 let environments: {
   readonly activeId: string | null;
   readonly list: ReadonlyArray<CommsEnvironment>;
+  /** Only part of the key: the primary dropping or coming back makes comms choose again. */
+  readonly primaryConnected?: boolean;
 } = {
   activeId: null,
   list: [],
@@ -213,9 +215,11 @@ class CommsClient {
       }
     } catch (error) {
       if (controller.signal.aborted) return;
-      // Configuration and auth refusals won't heal on retry: show them.
+      // Configuration and auth refusals won't heal on retry: show them, and check
+      // whether comms now lives on another connected T3.
       if (error instanceof CommsError && error.status !== 502 && error.status < 500) {
         for (const [, entry] of live) this.set(entry, { error });
+        reprobe();
         return;
       }
     }
@@ -371,12 +375,23 @@ function scheduleRetry(): void {
 }
 
 const environmentsKey = (value: typeof environments): string =>
-  JSON.stringify([value.activeId, value.list.map((e) => [e.id, e.httpBaseUrl, e.authorization])]);
+  JSON.stringify([
+    value.activeId,
+    value.primaryConnected ?? null,
+    value.list.map((e) => [e.id, e.httpBaseUrl, e.authorization]),
+  ]);
 
 /**
  * The connected environments changed (one connected or dropped, or the active
  * one switched): choose the comms server again.
  */
+/** Choose the comms server again (the current one refused a watch). */
+function reprobe(): void {
+  configPromise = undefined;
+  clearTimeout(configRetry);
+  void loadConfig();
+}
+
 export function setCommsEnvironments(next: typeof environments): void {
   if (environmentsKey(next) === environmentsKey(environments)) return;
   environments = next;

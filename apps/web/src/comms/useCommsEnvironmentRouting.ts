@@ -41,7 +41,8 @@ export function useCommsEnvironmentRouting(): void {
     [connected, primaryId],
   );
   const list = useAtomValue(preparedAtom);
+  const primaryConnected = primaryId !== null && connected.includes(primaryId);
   useEffect(() => {
-    setCommsEnvironments({ activeId, list });
-  }, [activeId, list]);
+    setCommsEnvironments({ activeId, list, primaryConnected });
+  }, [activeId, list, primaryConnected]);
 }
