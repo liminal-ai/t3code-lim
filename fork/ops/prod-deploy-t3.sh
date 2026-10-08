@@ -353,7 +353,7 @@ cmd_run() {
   tar -C "$PROD/releases" -xzf "$ARTIFACT"
   local commit; commit=$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))["commit"])' "$PROD/releases/$RELEASE_NAME/release.json")
   [[ "$commit" == "$EXPECTED_COMMIT" ]] || handle_failure "release.json commit $commit"
-  ln -sfn "releases/$RELEASE_NAME" "$PROD/current"; log "current -> releases/$RELEASE_NAME"
+  ln -sfn "releases/$RELEASE_NAME" "$PROD/current"; state repointed yes; log "current -> releases/$RELEASE_NAME"
   if [[ "$comms" == 1 ]]; then
     grep -v '^COMMS_' "$RECEIPT/private/service.env.before" > "$PROD/config/service.env.new"
     printf '%s\n' "${COMMS_LINES[@]}" >> "$PROD/config/service.env.new"
@@ -423,16 +423,22 @@ cmd_resume() {
       log "starting $UNIT as part of the accept decision"; systemctl --user start "$UNIT" || { log "resume refused: $UNIT did not start"; exit 1; }
     fi
   fi
+  # A retry after a successful resume (say the output was lost) changes nothing (Codex, #22).
+  if [[ "$(receipt_get deliveries)" == resumed* && "$(systemctl --user is-active "$CONNECTOR_UNIT" || true)" == active ]]; then
+    echo "deliveries already resumed ($(receipt_get deliveries)); nothing changed"; exit 0
+  fi
   set -- "$checks"
   wait_http || { log "resume refused: prod is not answering"; exit 1; }
   local cstart; cstart=$(date -u +%FT%TZ)
   systemctl --user start "$CONNECTOR_UNIT"
-  if timeout "$ATTACH_TIMEOUT" bash -c "until journalctl --user -u $CONNECTOR_UNIT --since '$cstart' --no-pager | grep -q 'T3 adapter: http://127.0.0.1:$PORT'; do sleep 2; done"; then
+  # Attached, and still running a moment later: a connector that logs the marker and exits isn't delivering (Codex, #22).
+  if timeout "$ATTACH_TIMEOUT" bash -c "until journalctl --user -u $CONNECTOR_UNIT --since '$cstart' --no-pager | grep -q 'T3 adapter: http://127.0.0.1:$PORT'; do sleep 2; done" \
+    && sleep 3 && [[ "$(systemctl --user is-active "$CONNECTOR_UNIT" || true)" == active ]]; then
     log "deliveries resumed after checks ($1); connector attached to prod T3"; state deliveries "resumed: $1"
   else
     # Stop it again so it can't attach later and release deliveries the receipt says are paused (Codex, #22).
     if svc_stop "$CONNECTOR_UNIT"; then
-      log "connector started but did not attach to prod T3 within ${ATTACH_TIMEOUT}s; stopped it again, deliveries paused"; state deliveries "paused (resume failed: connector did not attach)"
+      log "connector started but did not attach to prod T3 within ${ATTACH_TIMEOUT}s, or didn't stay up; stopped it again, deliveries paused"; state deliveries "paused (resume failed: connector did not attach)"
     else
       log "connector started but did not attach to prod T3 within ${ATTACH_TIMEOUT}s, and did not stop; needs a person"; state deliveries "resume failed; connector may be running"
     fi
@@ -553,8 +559,11 @@ cmd_rollback_run() {
   refusal=$(resumed_guard rollback-run "$after_resume" 2>&1) || refuse_rollback "$refusal"
   [[ -z "$after_resume" ]] || { state rollback_after_resume "$after_resume"; log "rolling back after deliveries resumed, on decision: $after_resume"; }
   local cur; cur=$(readlink "$PROD/current")
-  [[ "$cur" == "releases/$(receipt_get new_release)" || "$cur" == "$(receipt_get old_release)" ]] \
-    || refuse_rollback "current is $cur, which is neither this deploy's new release nor its old one"
+  # The old release only counts if this deploy never repointed current; after a repoint, old means someone
+  # moved it back by hand, and restoring the backup over that would be stale (Codex, #22).
+  if [[ "$cur" == "releases/$(receipt_get new_release)" ]]; then :
+  elif [[ "$cur" == "$(receipt_get old_release)" && "$(receipt_get repointed)" != yes ]]; then :
+  else refuse_rollback "current is $cur, which isn't what this deploy left (new release, or old if it never repointed)"; fi
   log "rollback by hand, running in cgroup: $(cut -d: -f3 /proc/$$/cgroup)"
   not_in_prod_cgroup || { log "refusing: rollback-run is inside $UNIT's cgroup and would be killed with it; use rollback"; exit 1; }
   OLD_RELEASE=$(receipt_get old_release); MIG_BEFORE=$(receipt_get migrations_before)

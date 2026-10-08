@@ -166,6 +166,11 @@ rollback_by_hand() { # rollback_by_hand <case>: the shepherd's explicit rollback
   "$DEPLOY" rollback "$R" 2>/dev/null | sed 's/^/  /'; wait_result_change 90
   check "rollback finished (receipt result changed)" "$CHANGED" "yes"
 }
+set_connector_crash() { # set_connector_crash <case> yes|no: the fake connector logs the marker, then exits
+  if [[ "$2" == yes ]]; then sed -i 's#exec sleep infinity#sleep 0.5; exit 1#' "$UNITS/jess-fake-connector-$1.service"
+  else sed -i 's#sleep 0.5; exit 1#exec sleep infinity#' "$UNITS/jess-fake-connector-$1.service"; fi
+  systemctl --user daemon-reload
+}
 set_connector_port() { # set_connector_port <case> <port>: the port the fake connector reports attaching to
   sed -i -E "s#(fake T3 adapter: http://127.0.0.1:)[0-9]+#\\1$2#" "$UNITS/jess-fake-connector-$1.service"
   systemctl --user daemon-reload
@@ -222,6 +227,8 @@ run_case() {
       check "resume-deliveries exit" "$RC" "0"
       check "connector after resume" "$(active_of jess-fake-connector-$c)" "active"
       check "deploy closed by the resume" "$(receipt_of deliveries)" "resumed*"
+      run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test: retry"
+      check "a second resume changes nothing" "$RC $(active_of jess-fake-connector-$c) $(receipt_of deliveries)" "0 active resumed*"
       flock -n -o "$ROOT/$c/prod/.prod-deploy.lock" sleep 30 & holder=$!; sleep 0.5
       run_rc "$DEPLOY" launch --approved "isolated test lock" --heads-up-sent
       check "launch while locked refused" "$RC $OUT" "1 *refusing launch: another deploy*"
@@ -296,6 +303,9 @@ run_case() {
       run_rc "$DEPLOY" rollback-run "$R"
       check "rollback over a release installed since refused" "$RC $(receipt_of rollback)" "1 refused, nothing changed: current is releases/manual*"
       check "nothing restored" "$(setaside_of $c) $(active_of jess-fake-prod-$c)" "0 active"
+      ln -sfn releases/t3code-lim-fake-old-linux-x64 "$ROOT/$c/prod/current"
+      run_rc "$DEPLOY" rollback-run "$R"
+      check "rollback over old repointed back by hand refused" "$RC $(receipt_of rollback)" "1 refused, nothing changed: current is releases/t3code-lim-fake-old-linux-x64*"
       ln -sfn "releases/$NEW" "$ROOT/$c/prod/current"
       rollback_by_hand migration-missing; report migration-missing 18903
       check "result after rollback" "$(result_of)" "rolled back by hand"
@@ -316,6 +326,10 @@ run_case() {
       check "connector stopped again" "$(active_of jess-fake-connector-$c)" "inactive"
       check "receipt says deliveries paused" "$(receipt_of deliveries)" "paused (resume failed: connector did not attach)"
       set_connector_port $c 18908
+      set_connector_crash $c yes
+      run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test" --decision "test: accept"
+      check "a connector that attaches then exits isn't a resume" "$RC $(active_of jess-fake-connector-$c) $(receipt_of deliveries)" "1 * paused (resume failed: connector did not attach)"
+      set_connector_crash $c no; systemctl --user reset-failed jess-fake-connector-$c 2>/dev/null || true
       echo "-- resume-deliveries with a decision:"; run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test" --decision "test: accept"
       check "resume-deliveries exit" "$RC" "0"
       check "decision recorded" "$OUT" "*decision recorded: accept as installed (test: accept)*"
