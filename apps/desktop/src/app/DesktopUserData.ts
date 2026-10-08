@@ -37,7 +37,11 @@ export const resolveUserDataPath = Effect.fn("desktop.userData.resolveUserDataPa
     readonly appDataDirectory: string;
     readonly isDevelopment: boolean;
     readonly platform: NodeJS.Platform;
+    readonly userDataDirOverride?: string | undefined;
   }) {
+    // Fork-only: a dedicated profile wins outright, so a candidate run beside an installed app
+    // never inspects, copies from or opens the default profiles under appDataDirectory.
+    if (input.userDataDirOverride !== undefined) return input.userDataDirOverride;
     const fs = yield* FileSystem.FileSystem;
     const path = yield* Path.Path;
     const names = input.isDevelopment

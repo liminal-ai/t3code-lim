@@ -44,6 +44,8 @@ export class DesktopEnvironment extends Context.Service<
     readonly resourcesPath: string;
     readonly homeDirectory: string;
     readonly appDataDirectory: string;
+    /** Fork-only: absolute Electron profile directory from T3CODE_DESKTOP_USER_DATA_DIR. */
+    readonly userDataDirOverride?: string | undefined;
     readonly baseDir: string;
     readonly stateDir: string;
     readonly desktopSettingsPath: string;
@@ -204,6 +206,9 @@ const make = Effect.fn("desktop.environment.make")(function* (
     resourcesPath,
     homeDirectory,
     appDataDirectory,
+    userDataDirOverride: Option.getOrUndefined(
+      Option.map(config.userDataDirOverride, (directory) => path.resolve(directory)),
+    ),
     baseDir,
     stateDir,
     desktopSettingsPath: path.join(stateDir, "desktop-settings.json"),
