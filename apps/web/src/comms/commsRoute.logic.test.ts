@@ -62,6 +62,19 @@ describe("orderRoutes", () => {
     expect(routes.map(routeKey)).toEqual(["environment:staging"]);
   });
 
+  it("drops a disconnected primary while a remote can take over", () => {
+    const base = { hasPrimary: true, activeId: null, pageOrigin: "t3code://app" };
+    expect(
+      orderRoutes({ ...base, primaryConnected: false, environments: [bearerEnv("staging")] }).map(
+        routeKey,
+      ),
+    ).toEqual(["environment:staging"]);
+    // Alone, it stays: its connection may still be coming up.
+    expect(
+      orderRoutes({ ...base, primaryConnected: false, environments: [] }).map(routeKey),
+    ).toEqual(["primary"]);
+  });
+
   it("has no candidates when nothing is reachable", () => {
     expect(
       orderRoutes({ hasPrimary: false, activeId: null, environments: [], pageOrigin: null }),

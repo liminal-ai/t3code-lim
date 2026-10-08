@@ -59,7 +59,7 @@ interface Entry {
 let environments: {
   readonly activeId: string | null;
   readonly list: ReadonlyArray<CommsEnvironment>;
-  /** Only part of the key: the primary dropping or coming back makes comms choose again. */
+  /** A disconnected primary gives way to a connected remote (orderRoutes). */
   readonly primaryConnected?: boolean;
 } = {
   activeId: null,
@@ -73,6 +73,7 @@ const pageOrigin = (): string | null =>
 const candidateRoutes = (): ReadonlyArray<CommsRoute> =>
   orderRoutes({
     hasPrimary: readPrimaryEnvironmentTarget() !== null,
+    primaryConnected: environments.primaryConnected,
     activeId: environments.activeId,
     environments: environments.list,
     pageOrigin: pageOrigin(),

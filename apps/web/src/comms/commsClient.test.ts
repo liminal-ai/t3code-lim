@@ -312,7 +312,27 @@ describe("comms client transport", { concurrent: false }, () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     primaryUp = false;
     setCommsEnvironments({ activeId: null, list: [staging], primaryConnected: false });
-    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(3)); // primary fails, staging serves
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2)); // primary skipped, staging serves
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    await commsCall("inbox:markRead");
+    expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe(
+      "https://lim-builder.example:8463/api/comms/call",
+    );
+  });
+
+  it("moves calls off a disconnected primary at once, even if its HTTP still answers", async () => {
+    const fetchMock = respond({
+      "https://lim-builder.example:8463/api/comms/": 200,
+      "http://127.0.0.1:3773/api/comms/": 200,
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(globalThis, "window", { configurable: true, value: desktopWindow({}) });
+    const { commsCall, setCommsEnvironments } = await import("./commsClient");
+    setCommsEnvironments({ activeId: null, list: [staging], primaryConnected: true });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1)); // primary chosen
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    setCommsEnvironments({ activeId: null, list: [staging], primaryConnected: false });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(2)); // staging probed
     await new Promise((resolve) => setTimeout(resolve, 0));
     await commsCall("inbox:markRead");
     expect(String(fetchMock.mock.calls.at(-1)?.[0])).toBe(

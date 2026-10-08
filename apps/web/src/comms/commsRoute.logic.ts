@@ -72,9 +72,14 @@ export function environmentRoute(
   };
 }
 
-/** Candidates in preference order: the active environment, then the primary, then the rest. */
+/**
+ * Candidates in preference order: the active environment, then the primary, then
+ * the rest. A primary reported as disconnected drops out while a remote can take
+ * over; with nothing else to try it stays (its connection may still be coming up).
+ */
 export function orderRoutes(input: {
   readonly hasPrimary: boolean;
+  readonly primaryConnected?: boolean | undefined;
   readonly activeId: string | null;
   readonly environments: ReadonlyArray<CommsEnvironment>;
   readonly pageOrigin: string | null;
@@ -87,7 +92,11 @@ export function orderRoutes(input: {
     (route) => route.kind === "environment" && route.id === input.activeId,
   );
   const rest = remote.filter((route) => !active.includes(route));
-  return [...active, ...(input.hasPrimary ? [{ kind: "primary" } as const] : []), ...rest];
+  const primary =
+    input.hasPrimary && (input.primaryConnected !== false || remote.length === 0)
+      ? [{ kind: "primary" } as const]
+      : [];
+  return [...active, ...primary, ...rest];
 }
 
 export type RouteProbe<C> =
