@@ -8,21 +8,23 @@
 // desktop shelf stayed empty until an unrelated re-render, up to ~60 s later.
 import * as NodeFS from "node:fs";
 import * as NodeModule from "node:module";
+import { fileURLToPath } from "node:url";
 import { act } from "react";
 import { create, type ReactTestRenderer } from "react-test-renderer";
 import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from "vite-plus/test";
 
-const SOURCE = new URL("./commsClient.ts", import.meta.url);
-const COMPILED = new URL("./commsClient.compiled.test-output.js", import.meta.url);
+const SOURCE = fileURLToPath(new URL("./commsClient.ts", import.meta.url));
+const COMPILED_URL = new URL("./commsClient.compiled.test-output.js", import.meta.url);
+const COMPILED = fileURLToPath(COMPILED_URL);
 
 async function compileWithReactCompiler(): Promise<string> {
   const { transformWithOxc } = await import("vite");
-  const stripped = await transformWithOxc(NodeFS.readFileSync(SOURCE, "utf8"), SOURCE.pathname, {
+  const stripped = await transformWithOxc(NodeFS.readFileSync(SOURCE, "utf8"), SOURCE, {
     lang: "ts",
   });
   // Babel is a peer of @rolldown/plugin-babel, the plugin the app's Vite config uses.
   const pluginBabel = NodeFS.realpathSync(
-    new URL(import.meta.resolve("@rolldown/plugin-babel")).pathname,
+    fileURLToPath(import.meta.resolve("@rolldown/plugin-babel")),
   );
   const babel = NodeModule.createRequire(pluginBabel)(
     "@babel/core",
@@ -31,7 +33,7 @@ async function compileWithReactCompiler(): Promise<string> {
   const result = await babel.transformAsync(stripped.code, {
     babelrc: false,
     configFile: false,
-    filename: SOURCE.pathname.replace(/\.ts$/, ".js"),
+    filename: SOURCE.replace(/\.ts$/, ".js"),
     plugins: [compiler.default ?? compiler],
   });
   // The `~/` alias is resolved for TypeScript sources only; point it at src/ directly.
@@ -65,7 +67,7 @@ describe("useCommsQuery, compiled by the React Compiler", { concurrent: false },
   });
 
   it("is actually compiled (memo cache in the hook)", async () => {
-    const mod = await import(/* @vite-ignore */ COMPILED.href);
+    const mod = await import(/* @vite-ignore */ COMPILED_URL.href);
     expect(NodeFS.readFileSync(COMPILED, "utf8")).toContain("react/compiler-runtime");
     expect(String(mod.useCommsQuery)).toMatch(/\$\[\d+\]/); // memo cache slots
   });
@@ -83,7 +85,7 @@ describe("useCommsQuery, compiled by the React Compiler", { concurrent: false },
     Object.defineProperty(globalThis, "window", { configurable: true, value: sameOriginWindow });
     Reflect.set(globalThis, "IS_REACT_ACT_ENVIRONMENT", true);
     const { useCommsQuery } = (await import(
-      /* @vite-ignore */ COMPILED.href
+      /* @vite-ignore */ COMPILED_URL.href
     )) as typeof import("./commsClient");
 
     function Probe(props: { readonly enabled: boolean }) {

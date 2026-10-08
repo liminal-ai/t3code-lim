@@ -177,6 +177,9 @@ class CommsClient {
   }
 
   listen(key: string, entry: Entry, onChange: () => void): () => void {
+    // A component can hold an entry that the 1 s eviction already dropped; put it back,
+    // so open(), deliver() and snapshot() (all by key) see the one being listened to.
+    if (this.entries.get(key) !== entry) this.entries.set(key, entry);
     entry.listeners.add(onChange);
     if (entry.listeners.size === 1) this.reopen();
     return () => {
