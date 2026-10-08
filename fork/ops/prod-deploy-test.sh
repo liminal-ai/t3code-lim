@@ -198,7 +198,12 @@ run_case() {
       check "says the journal could not be read" "$OUT" "*could not read*journal*"
       echo "-- verify-identity (journal empty):"; run_rc env JOURNALCTL=/bin/true "$DEPLOY" verify-identity "$R"
       check "verify-identity exit (empty journal)" "$RC" "1"
-      check "says no journal entries" "$OUT" "*no journal entries from*" ;;
+      check "says no journal entries" "$OUT" "*no journal entries from*"
+      printf '#!/bin/sh\necho "No journal files were opened due to insufficient permissions." >&2\n' > "$ROOT/$c/journalctl-stderr-only"
+      chmod 700 "$ROOT/$c/journalctl-stderr-only"
+      echo "-- verify-identity (journal only writes a stderr hint):"; run_rc env JOURNALCTL="$ROOT/$c/journalctl-stderr-only" "$DEPLOY" verify-identity "$R"
+      check "verify-identity exit (stderr hint only)" "$RC" "1"
+      check "a stderr hint is not an entry" "$OUT" "*no journal entries from*" ;;
     backup-fails)     # error during backup, after prod was stopped -> FAILED, prod left stopped, nothing restarted
       setup backup-fails 18902 yes; deploy backup-fails 18902 backup_fails; report backup-fails 18902; frozen backup-fails
       stopped_checks $c $OLD 56

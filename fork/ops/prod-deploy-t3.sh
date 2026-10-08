@@ -389,11 +389,13 @@ EOF2
   since=$(receipt_get started_at); [[ -n "$since" ]] || since=$(receipt_get started)
   # Both a silent fresh-session fallback (lim.5) and a fail-and-keep resume failure (#22) are a binding
   # that did not resume, so both go to triage. An unreadable journal is a FAIL, never 0 (Quinn, #22 A2).
-  local journal failures
-  if ! journal=$("$JOURNALCTL" --user -u "$UNIT" --since "${since:-today}" --no-pager -o cat 2>&1); then
-    log "identity check FAIL (goes to fleet triage, T-9): could not read $UNIT's journal: $(head -c 200 <<<"$journal")"
+  # stdout only: an exit-0 stderr hint ("No journal files were opened") must not count as an entry.
+  local journal failures jerr; jerr=$(mktemp)
+  if ! journal=$("$JOURNALCTL" --user -u "$UNIT" --since "${since:-today}" --no-pager -o cat 2>"$jerr"); then
+    log "identity check FAIL (goes to fleet triage, T-9): could not read $UNIT's journal: $(head -c 200 "$jerr")"; rm -f "$jerr"
     state identity "FAIL"; exit 1
   fi
+  rm -f "$jerr"
   # journalctl exits 0 with no output for a wrong unit, a wrong --since or a non-persistent journal
   # (Quinn, #22 re-review). Prod has just started, so it must have logged something since then.
   if ! grep -v -x -e '' -e '-- No entries --' <<<"$journal" | grep -q .; then
