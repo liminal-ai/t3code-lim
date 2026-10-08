@@ -42,6 +42,9 @@ setup() { # setup <case> <port> <new release migrates: yes|no>
   python3 -I -c "
 import sqlite3,sys;c=sqlite3.connect(sys.argv[1])
 c.execute('create table effect_sql_migrations(migration_id integer primary key not null, created_at datetime not null default current_timestamp, name varchar(255) not null)')
+c.execute('create table orchestration_v2_projection_provider_threads(provider_thread_id text primary key, thread_id text, payload_json text)')
+import json
+c.executemany('insert into orchestration_v2_projection_provider_threads values(?,?,?)',[(f'pt-{n}',f'thread-{n}',json.dumps(dict(nativeThreadRef=dict(driver='codex',nativeId=f'native-{n}',strength='strong')))) for n in ('a','b')])
 c.executemany('insert into effect_sql_migrations(migration_id,name) values(?,?)',[(i,f'm{i}') for i in range(1,57)]);c.commit()" "$P/data/userdata/statev2.sqlite"
   fake_t3 "$P/releases/t3code-lim-fake-old-linux-x64"
   ln -s releases/t3code-lim-fake-old-linux-x64 "$P/current"
@@ -99,6 +102,7 @@ report() { # report <case> <port>
   echo "connector:  $(systemctl --user is-active "jess-fake-connector-$c" || true)"
   echo "set aside:  $(ls -d "$P"/failed-* 2>/dev/null | wc -l) failed-state dir(s); backups: $(ls "$ROOT/$c/backups"/*.tar.gz 2>/dev/null | wc -l)"
   echo "alert:      $(test -f "$R/ALERT.txt" && echo "yes ($(wc -l < "$R/ALERT.txt") line)" || echo no)"
+  echo "shepherd:   $(python3 -I -c 'import json,sys;d=json.load(open(sys.argv[1]));print(d.get("shepherd","-"), "| rollback_command:", "yes" if d.get("rollback_command") else "no")' "$R/receipt.json")"
   grep -o "cgroup: .*" "$R/receipt.log" | sed "s/^/ran in /"
   sed -E 's/^[0-9TZ:-]+ /  /' "$R/receipt.log" | grep -v 'cgroup:'
 }
@@ -115,6 +119,12 @@ wait_result_change() { # wait_result_change <seconds>: until receipt.json's resu
   local before; before=$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))["result"])' "$R/receipt.json")
   timeout "$1" bash -c "until [ \"\$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))[\"result\"])' '$R/receipt.json')\" != '$before' ]; do sleep 1; done" || true
 }
+frozen() { # frozen <case>: after a FAILED stop, nothing changes over 5 s (current, units, data hash)
+  local c=$1 P=$ROOT/$1/prod snap
+  snap() { echo "$(readlink "$P/current") $(systemctl --user is-active "jess-fake-prod-$c" || true) $(systemctl --user is-active "jess-fake-connector-$c" || true) $(tar -C "$P" -cf - data | sha256sum | cut -c1-16)"; }
+  local a; a=$(snap); sleep 5
+  [[ "$(snap)" == "$a" ]] && echo "frozen:     yes ($a)" || echo "frozen:     NO ($a -> $(snap))"
+}
 rollback_by_hand() { # rollback_by_hand <case>: the shepherd's explicit rollback after a stop
   echo "-- rollback by hand (shepherd's decision):"
   "$DEPLOY" rollback "$R" 2>/dev/null | sed 's/^/  /'; wait_result_change 90
@@ -122,14 +132,19 @@ rollback_by_hand() { # rollback_by_hand <case>: the shepherd's explicit rollback
 
 run_case() {
   case $1 in
-    happy)            # install succeeds; deliveries stay paused until resume-deliveries
+    happy)            # install succeeds; deliveries stay paused until resume-deliveries; identity verified
       setup happy 18901 yes; deploy happy 18901; report happy 18901
       echo "-- resume-deliveries:"; "$DEPLOY" resume-deliveries "$R" --checks-done "test: manual checks stand-in" | sed 's/^[0-9TZ:-]* /  /'
-      echo "connector:  $(systemctl --user is-active jess-fake-connector-happy || true)" ;;
-    backup-fails)     # error during backup, nothing installed -> old release restarted unchanged, deliveries paused
-      setup backup-fails 18902 yes; deploy backup-fails 18902 backup_fails; report backup-fails 18902 ;;
+      echo "connector:  $(systemctl --user is-active jess-fake-connector-happy || true)"
+      echo "-- verify-identity:"; "$DEPLOY" verify-identity "$R" 2>&1 | sed 's/^[0-9TZ:-]* /  /' || true ;;
+    identity-changed) # a native ref changed after the deploy (the 2026-10-08 fallback) -> verify-identity FAILs
+      setup identity-changed 18909 yes; deploy identity-changed 18909
+      python3 -I -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.execute(\"update orchestration_v2_projection_provider_threads set payload_json=replace(payload_json,'native-b','native-b-REPLACED') where provider_thread_id='pt-b'\");c.commit()" "$ROOT/identity-changed/prod/data/userdata/statev2.sqlite"
+      echo "== identity-changed"; echo "-- verify-identity:"; "$DEPLOY" verify-identity "$R" 2>&1 | sed 's/^[0-9TZ:-]* /  /' || true ;;
+    backup-fails)     # error during backup, after prod was stopped -> FAILED, prod left stopped, nothing restarted
+      setup backup-fails 18902 yes; deploy backup-fails 18902 backup_fails; report backup-fails 18902; frozen backup-fails ;;
     migration-missing) # a check fails after install -> STOPPED, nothing rolled back, alert; then the shepherd's rollback
-      setup migration-missing 18903 no; deploy migration-missing 18903; report migration-missing 18903
+      setup migration-missing 18903 no; deploy migration-missing 18903; report migration-missing 18903; frozen migration-missing
       echo "-- resume-deliveries without a decision is refused:"; "$DEPLOY" resume-deliveries "$R" --checks-done "test" 2>&1 | sed 's/^/  /' || true
       rollback_by_hand migration-missing; report migration-missing 18903
       echo "-- resume-deliveries after the rollback:"; "$DEPLOY" resume-deliveries "$R" --checks-done "test" | sed 's/^[0-9TZ:-]* /  /'
@@ -161,7 +176,7 @@ run_case() {
   echo
 }
 
-CASES=("$@"); ((${#CASES[@]})) || CASES=(happy backup-fails migration-missing accept-stopped rollback-unhealthy restore-stop-fails rollback-own-unit rollback-rev2-control)
+CASES=("$@"); ((${#CASES[@]})) || CASES=(happy identity-changed backup-fails migration-missing accept-stopped rollback-unhealthy restore-stop-fails rollback-own-unit rollback-rev2-control)
 for c in "${CASES[@]}"; do run_case "$c"; done
 for c in "${CASES[@]}"; do teardown "$c"; done
 echo "fake units removed; sandbox kept in $ROOT for inspection"
