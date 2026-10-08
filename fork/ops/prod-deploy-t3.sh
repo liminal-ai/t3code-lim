@@ -361,6 +361,8 @@ cmd_run() {
     log "service.env: COMMS_* applied (keys: ${COMMS_LINES[*]%%=*})"; state comms_applied yes
   fi
   local started; started=$(date -u +%FT%TZ)
+  # verify-identity scans the journal from here: the candidate's own start, not the old release's last minutes (Codex, #22).
+  state service_started_at "$(date "+%F %T")"
   systemctl --user start "$UNIT" || handle_failure "prod did not start"
   wait_http || handle_failure "prod not answering HTTP 200 within ${HEALTH_TIMEOUT}s"
   journalctl --user -u "$UNIT" --since "$started" --no-pager | grep -i -E "migrat" | cut -c1-240 > "$RECEIPT/migrations.log" || true
@@ -466,7 +468,7 @@ for k, v in sorted(a.items()):
         print(f"{v[0]} {v[1]}/{v[2]} -> {after[1]}/{after[2]}")
 EOF2
 )
-  since=$(receipt_get started_at); [[ -n "$since" ]] || since=$(receipt_get started)
+  since=$(receipt_get service_started_at); [[ -n "$since" ]] || since=$(receipt_get started_at); [[ -n "$since" ]] || since=$(receipt_get started)
   # Both a silent fresh-session fallback (lim.5) and a fail-and-keep resume failure (#22) are a binding
   # that did not resume, so both go to triage. An unreadable journal is a FAIL, never 0 (Quinn, #22 A2).
   # stdout only: an exit-0 stderr hint ("No journal files were opened") must not count as an entry.
@@ -568,6 +570,7 @@ cmd_rollback_run() {
   not_in_prod_cgroup || { log "refusing: rollback-run is inside $UNIT's cgroup and would be killed with it; use rollback"; exit 1; }
   OLD_RELEASE=$(receipt_get old_release); MIG_BEFORE=$(receipt_get migrations_before)
   svc_stop "$CONNECTOR_UNIT" || { log "could not stop the connector; not rolling back"; exit 1; }
+  state deliveries "paused (rollback)" # an --after-resume rollback reopens the deploy until resume-deliveries (Macroscope, #22)
   if restore_backup "$(receipt_get backup)"; then
     state result "rolled back by hand"; log "rolled back by hand; deliveries stay paused until resume-deliveries"
   else

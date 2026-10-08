@@ -127,7 +127,8 @@ invoke_from_prod() { # invoke_from_prod <case> <command...>: run a command insid
 wait_result_change() { # wait_result_change <seconds>: until receipt.json's result changes from what it is now
   local before; before=$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))["result"])' "$R/receipt.json")
   # Sets CHANGED (yes|no) for the caller to assert, rather than passing a timeout off as a change (Macroscope, #22).
-  if timeout "$1" bash -c "until [ \"\$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))[\"result\"])' '$R/receipt.json')\" != '$before' ]; do sleep 1; done"; then CHANGED=yes; else CHANGED=no; fi
+  # A read must succeed before a differing result counts: a half-written receipt.json isn't a change (Macroscope, #22).
+  if timeout "$1" bash -c "until r=\$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))[\"result\"])' '$R/receipt.json' 2>/dev/null) && [ \"\$r\" != '$before' ]; do sleep 1; done"; then CHANGED=yes; else CHANGED=no; fi
 }
 frozen() { # frozen <case>: after a FAILED stop, nothing changes over 5 s (current, units, data hash)
   local c=$1 P=$ROOT/$1/prod snap
@@ -246,6 +247,7 @@ run_case() {
       rm -f "$R/ALERT.txt"
       run_rc "$DEPLOY" rollback "$R" --after-resume "test: roll back anyway"; wait_result_change 90
       check "rollback with --after-resume" "$RC $CHANGED $(result_of) $(receipt_of rollback_after_resume)" "0 yes rolled back by hand test: roll back anyway"
+      check "deploy open again after that rollback" "$(receipt_of deliveries)" "paused (rollback)"
       check "prod after" "$(current_of $c) $(mig_of $c) $(active_of jess-fake-connector-$c)" "releases/t3code-lim-fake-old-linux-x64 56 inactive" ;;
     identity-changed) # a native ref changed after the deploy (the 2026-10-08 fallback) -> verify-identity FAILs
       setup identity-changed 18909 yes; deploy identity-changed 18909
