@@ -176,10 +176,15 @@ class CommsClient {
     return entry;
   }
 
-  listen(key: string, entry: Entry, onChange: () => void): () => void {
-    // A component can hold an entry that the 1 s eviction already dropped; put it back,
-    // so open(), deliver() and snapshot() (all by key) see the one being listened to.
-    if (this.entries.get(key) !== entry) this.entries.set(key, entry);
+  listen(key: string, held: Entry, onChange: () => void): () => void {
+    // Listen on the entry stored under the key, which open(), deliver() and snapshot()
+    // all use: a component can hold one the 1 s eviction already dropped (put it back
+    // only if nothing replaced it), or another component may have made a newer one.
+    let entry = this.entries.get(key);
+    if (!entry) {
+      entry = held;
+      this.entries.set(key, entry);
+    }
     entry.listeners.add(onChange);
     if (entry.listeners.size === 1) this.reopen();
     return () => {
