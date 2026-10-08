@@ -1,9 +1,9 @@
-// Fork-only (t3code-lim #21): a failed resume of a same-provider strong native
-// ref never swaps in a fresh native session (Lee, 2026-10-08: never recreate a
-// failed session). Transient failures go back to the worker's retry; anything
-// else, or the last attempt, fails the run and leaves the binding as it was.
-// See fork/README.md.
-import type { OrchestrationV2ProviderThread, ProviderInstanceId } from "@t3tools/contracts";
+// Fork-only (t3code-lim #21): T3 never replaces a strong native ref that has
+// history, for any reason (Lee, 2026-10-08: never recreate a failed session;
+// Mira #193). Transient failures go back to the worker's retry; anything else,
+// or the last attempt, fails the run and leaves the binding as it was. Only
+// reset-thread replaces such a ref. See fork/README.md.
+import type { OrchestrationV2ProviderThread } from "@t3tools/contracts";
 
 /** Text of an error and its nested causes, for classifying provider failures. */
 export function failureText(error: unknown, depth = 0): string {
@@ -30,18 +30,14 @@ export function isTransientResumeFailure(error: unknown): boolean {
 }
 
 /**
- * True when the run must keep this provider thread's native session: the ref is
- * strong and belongs to the provider instance now running. A ref from another
- * provider (a provider switch) keeps upstream's portable fallback.
+ * True when a failed resume must keep this provider thread's native session:
+ * the ref is strong. The fork-only invariant (fork/README.md, #21) holds for
+ * every instance and switch; only reset-thread replaces such a ref.
  */
 export function keepsNativeBinding(
-  providerThread: Pick<OrchestrationV2ProviderThread, "nativeThreadRef" | "providerInstanceId">,
-  runProviderInstanceId: ProviderInstanceId,
+  providerThread: Pick<OrchestrationV2ProviderThread, "nativeThreadRef">,
 ): boolean {
-  return (
-    providerThread.nativeThreadRef?.strength === "strong" &&
-    providerThread.providerInstanceId === runProviderInstanceId
-  );
+  return providerThread.nativeThreadRef?.strength === "strong";
 }
 
 export class NativeSessionResumeFailedError extends Error {

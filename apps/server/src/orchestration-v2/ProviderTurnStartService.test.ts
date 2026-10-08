@@ -180,6 +180,10 @@ function makeLocalCommandHarness(input: {
   readonly copiedRunCancelled?: boolean;
   /** Fork-only (#21): a run for another instance was cancelled before it started. */
   readonly cancelledBeforeStart?: boolean;
+  /** Fork-only (#21): another provider ran after this row's run; this run returns here. */
+  readonly returningAfterOtherProvider?: boolean;
+  /** Fork-only (#21): in-place account switch: the row is still on the other instance. */
+  readonly rowOnOtherInstance?: boolean;
   /**
    * Fork-only (#21, Mira #178): an earlier history injection into the native
    * session is still pending; "own-turns" adds a turn the session completed,
@@ -212,7 +216,8 @@ function makeLocalCommandHarness(input: {
   const run: OrchestrationV2ThreadProjection["runs"][number] = {
     id: runId,
     threadId,
-    ordinal: input.cancelledBeforeStart === true ? 3 : 2,
+    ordinal:
+      input.cancelledBeforeStart === true || input.returningAfterOtherProvider === true ? 3 : 2,
     providerInstanceId: newInstanceId,
     modelSelection: { instanceId: newInstanceId, model: "gpt-5.4" },
     providerThreadId,
@@ -389,7 +394,13 @@ function makeLocalCommandHarness(input: {
             ]
           : []),
         ...projection.providerThreads.map((candidate) =>
-          candidate.id === providerThreadId ? { ...candidate, nativeThreadRef } : candidate,
+          candidate.id === providerThreadId
+            ? {
+                ...candidate,
+                nativeThreadRef,
+                ...(input.rowOnOtherInstance === true ? { providerInstanceId: oldInstanceId } : {}),
+              }
+            : candidate,
         ),
       ],
       // Fork-only (#21): the previous started run, by default this instance
@@ -420,14 +431,17 @@ function makeLocalCommandHarness(input: {
                     status: "completed" as const,
                     startedAt: now,
                   },
-              ...(input.cancelledBeforeStart === true
+              ...(input.cancelledBeforeStart === true || input.returningAfterOtherProvider === true
                 ? [
                     {
                       ...run,
-                      id: RunId.make("cancelled-other-instance-run"),
+                      id: RunId.make("between-other-instance-run"),
                       ordinal: 2,
-                      status: "cancelled" as const,
-                      startedAt: null,
+                      status:
+                        input.returningAfterOtherProvider === true
+                          ? ("completed" as const)
+                          : ("cancelled" as const),
+                      startedAt: input.returningAfterOtherProvider === true ? now : null,
                       providerInstanceId: oldInstanceId,
                       providerThreadId: oldProviderThreadId,
                     },
@@ -1076,24 +1090,6 @@ effectIt.effect("retries a native session another writer still holds", () =>
   }),
 );
 
-// Fork-only (#21, Codex review of #22): a queued restart_and_resume copies
-// another instance's strong ref into the target row. That is a provider
-// switch, so upstream's fallback still applies.
-effectIt.effect("falls back for a strong ref copied from another instance", () =>
-  Effect.gen(function* () {
-    const harness = makeLocalCommandHarness({
-      text: "Continue",
-      resumeFailure: "thread not found: native-resume-thread",
-      copiedFromOtherInstance: true,
-    });
-
-    yield* Effect.ignore(harness.start);
-
-    expect(harness.fallbackEnsureThread).toHaveBeenCalled();
-    expect(JSON.stringify(harness.events)).not.toContain("Native session resume failed");
-  }),
-);
-
 // Fork-only (#21, Mira #178): an uncertain history delivery may replace only a
 // native session with no completed turn of its own; one that has completed a
 // turn keeps its binding and the run fails.
@@ -1135,12 +1131,28 @@ effectIt.effect(
     }),
 );
 
-// Fork-only (#21, Codex review of #22): an imported strong ref has no earlier
-// run, and a run cancelled before it started isn't a provider switch; both
-// keep the binding on a failed resume.
+// Fork-only invariant (#21; Mira #193, superseding #156): T3 never replaces a
+// strong native ref that has history, for any reason. These are the seven cases
+// the review of #22 hit; each fails the run and keeps the binding. (Weak or
+// missing refs and a no-turn uncertain delivery still fall back: see the
+// upstream fallback test above and the "no-turns" case.)
 effectIt.effect.each([
+  [
+    "a ref copied from another instance by a queued restart_and_resume",
+    { copiedFromOtherInstance: true },
+  ],
+  ["a return to this provider after another one ran", { returningAfterOtherProvider: true }],
   ["an imported ref on its first run", { importedRef: true }],
   ["a run for another instance cancelled before it started", { cancelledBeforeStart: true }],
+  ["an imported ref switched here before any run", { importedThenSwitched: true }],
+  [
+    "a ref copied after the other instance's run started and was cancelled",
+    { copiedFromOtherInstance: true, copiedRunCancelled: true },
+  ],
+  [
+    "an in-place account switch before the first run",
+    { importedRef: true, rowOnOtherInstance: true },
+  ],
 ] as const)("fails and keeps the native session after %s", ([, options]) =>
   Effect.gen(function* () {
     const harness = makeLocalCommandHarness({
@@ -1153,32 +1165,10 @@ effectIt.effect.each([
 
     expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
     expect(harness.projection().runs.at(-1)?.status).toBe("failed");
-    expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef?.nativeId).toBe(
-      "native-resume-thread",
-    );
-  }),
-);
-
-// Fork-only (#21, Quinn's review of #22): a ref imported on another instance
-// and switched here before any run, or copied after the other instance's run
-// started and was cancelled, is a provider switch and keeps the fallback.
-effectIt.effect.each([
-  ["imported and switched before any run", { importedThenSwitched: true }],
-  [
-    "copied after the other instance's run started and was cancelled",
-    { copiedFromOtherInstance: true, copiedRunCancelled: true },
-  ],
-] as const)("falls back for a strong ref %s", ([, options]) =>
-  Effect.gen(function* () {
-    const harness = makeLocalCommandHarness({
-      text: "Continue",
-      resumeFailure: "thread not found: native-resume-thread",
-      ...options,
-    });
-
-    yield* Effect.ignore(harness.start);
-
-    expect(harness.fallbackEnsureThread).toHaveBeenCalled();
-    expect(JSON.stringify(harness.events)).not.toContain("Native session resume failed");
+    expect(
+      harness.projection().providerThreads.find((row) => row.id === "new-provider-thread")
+        ?.nativeThreadRef,
+    ).toMatchObject({ nativeId: "native-resume-thread", strength: "strong" });
+    expect(JSON.stringify(harness.events)).toContain("Native session resume failed");
   }),
 );

@@ -704,48 +704,19 @@ export const layer: Layer.Layer<
           return resumed.success;
         }
 
-        // Fork-only (#21; Lee 2026-10-08: never recreate a failed session): a
-        // failed resume of a same-provider strong native ref never swaps in a
-        // fresh session. Transient failures retry with the same ref; definitive
-        // or unknown ones, and the last attempt, fail the run and keep the ref
-        // for an agent to triage. Upstream's fallback below stays for provider
-        // switches, weak or missing refs, and an uncertain history delivery
-        // into a native thread with no turns of its own (see nothingToLose).
-        // The thread's previous run that actually started must have been this
-        // instance on this row; otherwise this run is a provider switch:
-        // either a queued `restart_and_resume` copied another instance's ref
-        // into the target row (Orchestrator.ts), or the thread is returning to
-        // this provider after another one ran. A run cancelled before it
-        // started doesn't count. With no started run at all, the ref was
-        // imported (ws.ts, AgentSessionImporter.ts) and is this row's own,
-        // unless another row on the thread carries the same native session: a
-        // `restart_and_resume` before the first run copied it here (Quinn, #22).
-        const previousRun = projection.runs.reduce<OrchestrationV2Run | undefined>(
-          (previous, candidate) =>
-            candidate.ordinal < run.ordinal &&
-            candidate.startedAt !== null &&
-            (previous === undefined || candidate.ordinal > previous.ordinal)
-              ? candidate
-              : previous,
-          undefined,
-        );
-        const boundNativeId = providerThread.nativeThreadRef?.nativeId;
-        const sharedWithAnotherRow = projection.providerThreads.some(
-          (candidate) =>
-            candidate.id !== providerThread.id &&
-            candidate.nativeThreadRef?.driver === providerThread.nativeThreadRef?.driver &&
-            candidate.nativeThreadRef?.nativeId === boundNativeId,
-        );
-        const continuesHere =
-          previousRun === undefined
-            ? !sharedWithAnotherRow
-            : previousRun.providerThreadId === providerThread.id &&
-              previousRun.providerInstanceId === run.providerInstanceId;
+        // Fork-only invariant (#21; Lee 2026-10-08 12:30 ET; Mira #193, which
+        // supersedes #156 and #178's "explicit provider switch" wording): T3
+        // never replaces a strong native ref that has history, for any reason:
+        // account overlay, in-place or queued switch, import, copied ref, or a
+        // return to a provider. Only reset-thread replaces one, on an explicit
+        // decision. A failed resume retries transient errors with the same ref;
+        // anything else, or the last attempt, fails the run and keeps the ref.
+        // Upstream's fresh-session fallback below stays only for weak or missing
+        // refs and for an uncertain delivery into a native session with no turn
+        // of its own (nothingToLose). There is deliberately no inference of
+        // provider switches from run history.
         const keepsBinding =
-          !nothingToLose &&
-          continuesHere &&
-          providerThread.nativeThreadRef !== null &&
-          ProviderResumeFailure.keepsNativeBinding(providerThread, run.providerInstanceId);
+          !nothingToLose && ProviderResumeFailure.keepsNativeBinding(providerThread);
         if (keepsBinding && providerThread.nativeThreadRef !== null) {
           const nativeId = providerThread.nativeThreadRef.nativeId ?? providerThread.id;
           const transient = ProviderResumeFailure.isTransientResumeFailure(resumed.failure);

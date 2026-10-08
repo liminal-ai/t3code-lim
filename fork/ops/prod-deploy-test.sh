@@ -329,7 +329,20 @@ run_case() {
       check "close-receipt needs a decision" "$RC" "2"
       run_rc "$DEPLOY" close-receipt "$R" --decision "test: recovered by hand"
       check "close-receipt" "$RC $(receipt_of closed)" "0 test: recovered by hand"
-      check "connector untouched by close-receipt" "$(active_of jess-fake-connector-$c)" "inactive" ;;
+      check "connector untouched by close-receipt" "$(active_of jess-fake-connector-$c)" "inactive"
+      # Positive: once closed, a launch gets past the open-deploy check. A wrong artifact hash stops it in
+      # preflight, so nothing changes (Quinn, #22).
+      run_rc env EXPECTED_SHA256=0000000000000000000000000000000000000000000000000000000000000000 "$DEPLOY" launch --approved "isolated test after close" --heads-up-sent
+      local R2; R2=$(grep -o 'receipt: [^ ]*' <<<"$OUT" | cut -d' ' -f2)
+      check "launch after close-receipt starts" "$RC ${R2:+receipt}" "0 receipt"
+      timeout 60 bash -c "until python3 -I -c 'import json,sys;sys.exit(0 if \"result\" in json.load(open(sys.argv[1])) else 1)' '$R2/receipt.json' 2>/dev/null; do sleep 1; done" || true
+      check "it stops in preflight on the hash, not on the closed deploy" "$(R=$R2 result_of)" "failed before any change: artifact hash mismatch"
+      # A receipt folder with no receipt.json reads as open and can be closed.
+      mkdir "$ROOT/$c/receipts/99991231T000000000Z"
+      run_rc "$DEPLOY" launch --approved "isolated test" --heads-up-sent
+      check "launch over a receipt folder with no receipt.json refused" "$RC $OUT" "1 *still open (receipt.json missing or unreadable)*"
+      run_rc "$DEPLOY" close-receipt "$ROOT/$c/receipts/99991231T000000000Z" --decision "test: empty folder"
+      check "close-receipt on a folder with no receipt.json" "$RC $(R=$ROOT/$c/receipts/99991231T000000000Z receipt_of closed)" "0 test: empty folder" ;;
     restore-stop-fails) # STOPPED; the shepherd's rollback can't confirm prod stopped -> no data moved
       setup restore-stop-fails 18905 no; deploy restore-stop-fails 18905 restore_stop_fails
       rollback_by_hand restore-stop-fails; report restore-stop-fails 18905
