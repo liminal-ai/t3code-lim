@@ -174,6 +174,10 @@ function makeLocalCommandHarness(input: {
   readonly copiedFromOtherInstance?: boolean;
   /** Fork-only (#21): the strong ref was imported; no run has started yet. */
   readonly importedRef?: boolean;
+  /** Fork-only (#21): imported, then switched to this instance before any run: another row has the ref. */
+  readonly importedThenSwitched?: boolean;
+  /** Fork-only (#21): the other instance's previous run started, then was cancelled. */
+  readonly copiedRunCancelled?: boolean;
   /** Fork-only (#21): a run for another instance was cancelled before it started. */
   readonly cancelledBeforeStart?: boolean;
   /**
@@ -373,13 +377,27 @@ function makeLocalCommandHarness(input: {
     };
     projection = {
       ...projection,
-      providerThreads: projection.providerThreads.map((candidate) =>
-        candidate.id === providerThreadId ? { ...candidate, nativeThreadRef } : candidate,
-      ),
+      providerThreads: [
+        ...(input.importedThenSwitched === true
+          ? [
+              {
+                ...providerThread,
+                id: oldProviderThreadId,
+                providerInstanceId: oldInstanceId,
+                nativeThreadRef,
+              },
+            ]
+          : []),
+        ...projection.providerThreads.map((candidate) =>
+          candidate.id === providerThreadId ? { ...candidate, nativeThreadRef } : candidate,
+        ),
+      ],
       // Fork-only (#21): the previous started run, by default this instance
       // on this row; copied: another instance on its own row; imported: none.
       runs:
-        !("resumeFailure" in input) || input.importedRef === true
+        !("resumeFailure" in input) ||
+        input.importedRef === true ||
+        input.importedThenSwitched === true
           ? projection.runs
           : [
               input.copiedFromOtherInstance === true
@@ -387,7 +405,10 @@ function makeLocalCommandHarness(input: {
                     ...run,
                     id: RunId.make("earlier-other-instance-run"),
                     ordinal: 1,
-                    status: "completed" as const,
+                    status:
+                      input.copiedRunCancelled === true
+                        ? ("cancelled" as const)
+                        : ("completed" as const),
                     startedAt: now,
                     providerInstanceId: oldInstanceId,
                     providerThreadId: oldProviderThreadId,
@@ -1135,5 +1156,29 @@ effectIt.effect.each([
     expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef?.nativeId).toBe(
       "native-resume-thread",
     );
+  }),
+);
+
+// Fork-only (#21, Quinn's review of #22): a ref imported on another instance
+// and switched here before any run, or copied after the other instance's run
+// started and was cancelled, is a provider switch and keeps the fallback.
+effectIt.effect.each([
+  ["imported and switched before any run", { importedThenSwitched: true }],
+  [
+    "copied after the other instance's run started and was cancelled",
+    { copiedFromOtherInstance: true, copiedRunCancelled: true },
+  ],
+] as const)("falls back for a strong ref %s", ([, options]) =>
+  Effect.gen(function* () {
+    const harness = makeLocalCommandHarness({
+      text: "Continue",
+      resumeFailure: "thread not found: native-resume-thread",
+      ...options,
+    });
+
+    yield* Effect.ignore(harness.start);
+
+    expect(harness.fallbackEnsureThread).toHaveBeenCalled();
+    expect(JSON.stringify(harness.events)).not.toContain("Native session resume failed");
   }),
 );

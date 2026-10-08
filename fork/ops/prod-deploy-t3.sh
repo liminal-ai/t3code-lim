@@ -47,12 +47,13 @@ CONNECTOR_UNIT=${CONNECTOR_UNIT:-comms-prod-connector}
 BACKUPS=${BACKUPS:-$HOME/lim/service/t3code/prod-backups}
 RECEIPTS=${RECEIPTS:-$HOME/lim/agents/jess/notes/prod-deploy}
 HEALTH_TIMEOUT=${HEALTH_TIMEOUT:-180}
+ATTACH_TIMEOUT=${ATTACH_TIMEOUT:-60} # connector must report attaching to prod T3 within this after resume
 # Where a stop is announced ("none" disables; the isolated tests use none).
 ALERT_ISSUE=${ALERT_ISSUE:-liminal-ai/t3code-lim#12}
 ALERT_TO=${ALERT_TO:-tux mira}
 SHEPHERD=${SHEPHERD:-tux}
 OVERRIDABLE=(CANDIDATE_RUN EXPECTED_COMMIT RELEASE_NAME ARTIFACT EXPECTED_SHA256 EXPECTED_NEW_MIGRATIONS
-  UNIT PROD PORT CONNECTOR_UNIT BACKUPS RECEIPTS HEALTH_TIMEOUT ALERT_ISSUE ALERT_TO SHEPHERD)
+  UNIT PROD PORT CONNECTOR_UNIT BACKUPS RECEIPTS HEALTH_TIMEOUT ATTACH_TIMEOUT ALERT_ISSUE ALERT_TO SHEPHERD)
 FAULT=${JESS_DEPLOY_FAULT:-}
 if [[ -n "$FAULT" && "$PROD" == "$REAL_PROD" ]]; then echo "fault injection is refused against real prod" >&2; exit 2; fi
 # The isolated tests stand in an unreadable journal for verify-identity; real prod always reads journalctl.
@@ -109,6 +110,21 @@ print(json.dumps(out, sort_keys=True))
 EOF2
 }
 receipt_get() { python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1])).get(sys.argv[2],""))' "$RECEIPT/receipt.json" "$1"; }
+target_id() { echo "unit=$UNIT prod=$PROD connector=$CONNECTOR_UNIT port=$PORT"; }
+check_target() { # check_target <command>: refuse unless this shell targets what the receipt's deploy targeted
+  # A fresh shell defaults to real prod; a sandbox receipt must never drive it (Macroscope, #22).
+  local want; want=$(receipt_get target)
+  [[ -n "$want" ]] || { echo "refusing $1: receipt records no target; nothing changed" >&2; exit 1; }
+  [[ "$want" == "$(target_id)" ]] || { echo "refusing $1: receipt targets '$want', this shell targets '$(target_id)'; nothing changed" >&2; exit 1; }
+}
+check_latest() { # check_latest <command>: refuse an older receipt once a newer deploy exists (Macroscope, #22)
+  local newest; newest=$(find "$RECEIPTS" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | tail -1)
+  [[ "$newest" == "$(basename "$RECEIPT")" ]] || { echo "refusing $1: a newer deploy receipt exists ($RECEIPTS/$newest); nothing changed" >&2; exit 1; }
+}
+take_lock() { # take_lock <command>: one state-changing operation per prod at a time; never waits (Macroscope, Codex, #22)
+  exec 9>>"$PROD/.prod-deploy.lock"
+  flock -n 9 || { echo "refusing $1: another deploy, rollback, restart or resume holds $PROD/.prod-deploy.lock; nothing changed" >&2; return 1; }
+}
 # Every request is bounded: on 2026-10-08 an unbounded curl that connected while T3 was starting
 # never returned, so the 180 s wait failed against servers that were up (receipt 20261008T1125121677Z).
 http_code() { curl -s -o /dev/null --connect-timeout 2 --max-time 5 -w '%{http_code}' "http://127.0.0.1:$PORT/" || true; }
@@ -188,10 +204,10 @@ hold_for_decision() { # a check failed after the first change: stop here, change
   # Nothing installed yet (phase stopped): there is nothing to roll back, only the unchanged
   # old release to restart, which is the shepherd's call (Quinn's review of #22, D1).
   if [[ "$PHASE" == stopped ]]; then cmd="$(readlink -f "$0") restart-unchanged $RECEIPT"; else cmd="$(readlink -f "$0") rollback $RECEIPT"; fi
-  state rollback_command "$cmd"; state shepherd "$SHEPHERD"
+  state rollback_command "$cmd"; state shepherd "$SHEPHERD"; state failed_phase "$PHASE"
   log "FAILED, stopped for the shepherd ($SHEPHERD): $1. Nothing rolled back or restarted: current -> $(readlink "$PROD/current"), $UNIT $unit_state, $CONNECTOR_UNIT $conn_state."
   log "next step (shepherd runs it on a decision): $cmd"
-  alert "FAILED in phase $PHASE: $1. Stopped, nothing rolled back or restarted; $UNIT is $unit_state on $(readlink "$PROD/current"); deliveries paused. Shepherd: $SHEPHERD. Next step: '$cmd'. Or accept after manual checks: 'resume-deliveries $RECEIPT --checks-done <ref> --decision <ref>'."
+  alert "FAILED in phase $PHASE: $1. Stopped, nothing rolled back or restarted; $UNIT is $unit_state on $(readlink "$PROD/current"); deliveries paused. Shepherd: $SHEPHERD. Next step: '$cmd'.$([[ "$PHASE" == installed ]] && echo " Or accept after manual checks: 'resume-deliveries $RECEIPT --checks-done <ref> --decision <ref>'.")"
   finish "FAILED (stopped, not rolled back; shepherd $SHEPHERD): $1. Next step: $cmd" 1
 }
 
@@ -244,6 +260,7 @@ cmd_launch() {
   esac; done
   [[ -n "$approved" ]] || { echo "--approved \"<Lee's OK, relayed by Mira: message link>\" is required" >&2; exit 2; }
   ((headsup)) || { echo "--heads-up-sent is required (prod agents were told the restart is coming; Lee does not require them to be idle)" >&2; exit 2; }
+  take_lock launch || exit 1; exec 9>&-
   local ts unit; ts=$(date -u +%Y%m%dT%H%M%S%NZ); ts=${ts:0:19}Z; unit=jess-prod-deploy-$ts
   own_unit "$unit" run "$ts" "$approved" "$comms"
   echo "started $unit; receipt: $RECEIPTS/$ts/ (follow: journalctl --user -u $unit -f)"
@@ -255,6 +272,8 @@ cmd_run() {
   trap 'LAST_CMD="line $LINENO: $BASH_COMMAND"' ERR
   trap 'on_exit $?' EXIT
   state started "$ts"; state approved "$approved"; state candidate_run "$CANDIDATE_RUN"; state started_at "$(date "+%F %T")"
+  state target "$(target_id)"
+  take_lock deploy 2>>"$RECEIPT/receipt.log" || handle_failure "another prod-deploy operation holds the lock"
 
   # 1. Preflight (nothing changed yet)
   log "deploy unit cgroup: $(cut -d: -f3 /proc/$$/cgroup)"
@@ -268,10 +287,6 @@ cmd_run() {
   MIG_BEFORE=$(migrations); state migrations_before "$MIG_BEFORE"
   cp -p "$PROD/config/service.env" "$RECEIPT/private/service.env.before"
   systemctl --user cat "$UNIT" > "$RECEIPT/private/unit.before"
-  local sessions_before; sessions_before=$(session_ids | sha256sum | cut -c1-16)
-  state sessions_before "$sessions_before"
-  native_refs > "$RECEIPT/native-refs-before.json"
-  log "native refs snapshot: $(python3 -I -c 'import json,sys;print(len(json.load(open(sys.argv[1]))))' "$RECEIPT/native-refs-before.json") provider rows"
   state artifact "$ARTIFACT"; state artifact_sha256 "$EXPECTED_SHA256"; state new_release "$RELEASE_NAME"; state new_commit "$EXPECTED_COMMIT"
   log "preflight ok: old=$OLD_RELEASE new=$RELEASE_NAME artifact sha256 $EXPECTED_SHA256; migrations up to ${MIG_BEFORE##* }"
 
@@ -282,6 +297,11 @@ cmd_run() {
   log "connector stopped (deliveries pause in comms)"; state deliveries paused
   svc_stop "$UNIT" || handle_failure "prod did not stop"
   log "prod stopped"
+  # Baselines from the stopped state, so they match the backup and nothing running can move them (Macroscope, #22).
+  local sessions_before; sessions_before=$(session_ids | sha256sum | cut -c1-16)
+  state sessions_before "$sessions_before"
+  native_refs > "$RECEIPT/native-refs-before.json"
+  log "native refs snapshot: $(python3 -I -c 'import json,sys;print(len(json.load(open(sys.argv[1]))))' "$RECEIPT/native-refs-before.json") provider rows"
 
   # 3. Cold backup of config, data, data-lhc and the current link; verify by test restore
   local backup=$BACKUPS/pre-$CANDIDATE_RUN-$ts.tar.gz t
@@ -352,28 +372,48 @@ cmd_resume() {
     *) echo "unknown flag $1" >&2; exit 2 ;;
   esac; done
   [[ -n "$checks" ]] || { echo "--checks-done \"<who checked, link>\" is required" >&2; exit 2; }
-  local result; result=$(receipt_get result)
+  check_target resume-deliveries; check_latest resume-deliveries
+  take_lock resume-deliveries || exit 1
+  local result want accept=0; result=$(receipt_get result)
   case $result in
-    installed* | "rolled back"* | "restarted unchanged") ;;
+    installed*) want="releases/$(receipt_get new_release)" ;;
+    "rolled back"* | "restarted unchanged") want=$(receipt_get old_release) ;;
     "FAILED (stopped, not rolled back"*)
+      [[ "$(receipt_get failed_phase)" == installed ]] || { echo "receipt says '$result' before install; run its restart-unchanged step first" >&2; exit 1; }
       # Accepting a release whose check failed is a decision, recorded like one.
       [[ -n "$decision" ]] || { echo "receipt says '$result'; resuming needs --decision \"<who decided, link>\"" >&2; exit 1; }
-      state decision "accepted as installed: $decision"; log "decision recorded: accept as installed ($decision)" ;;
+      want="releases/$(receipt_get new_release)"; accept=1 ;;
     *) echo "receipt result is '$result'; not resuming" >&2; exit 1 ;;
   esac
+  # The receipt must describe what is installed now, not an earlier state (Macroscope, #22).
+  [[ "$(readlink "$PROD/current")" == "$want" ]] || { echo "refusing resume-deliveries: current is $(readlink "$PROD/current"), the receipt expects $want; nothing changed" >&2; exit 1; }
+  if ((accept)); then
+    state decision "accepted as installed: $decision"; log "decision recorded: accept as installed ($decision)"
+    # Part of the shepherd's explicit accept, never on its own: an accepted release left down is started (Codex, #22).
+    if [[ "$(systemctl --user is-active "$UNIT" || true)" != active ]]; then
+      log "starting $UNIT as part of the accept decision"; systemctl --user start "$UNIT" || { log "resume refused: $UNIT did not start"; exit 1; }
+    fi
+  fi
   set -- "$checks"
   wait_http || { log "resume refused: prod is not answering"; exit 1; }
   local cstart; cstart=$(date -u +%FT%TZ)
   systemctl --user start "$CONNECTOR_UNIT"
-  if timeout 60 bash -c "until journalctl --user -u $CONNECTOR_UNIT --since '$cstart' --no-pager | grep -q 'T3 adapter: http://127.0.0.1:$PORT'; do sleep 2; done"; then
+  if timeout "$ATTACH_TIMEOUT" bash -c "until journalctl --user -u $CONNECTOR_UNIT --since '$cstart' --no-pager | grep -q 'T3 adapter: http://127.0.0.1:$PORT'; do sleep 2; done"; then
     log "deliveries resumed after checks ($1); connector attached to prod T3"; state deliveries "resumed: $1"
   else
-    log "connector started but did not attach to prod T3 within 60 s"; state deliveries "resume failed"; exit 1
+    # Stop it again so it can't attach later and release deliveries the receipt says are paused (Codex, #22).
+    if svc_stop "$CONNECTOR_UNIT"; then
+      log "connector started but did not attach to prod T3 within ${ATTACH_TIMEOUT}s; stopped it again, deliveries paused"; state deliveries "paused (resume failed: connector did not attach)"
+    else
+      log "connector started but did not attach to prod T3 within ${ATTACH_TIMEOUT}s, and did not stop; needs a person"; state deliveries "resume failed; connector may be running"
+    fi
+    exit 1
   fi
 }
 
 cmd_verify_identity() { # T-9: every provider row keeps its pre-deploy native ref; no fresh-session fallback
   RECEIPT=$1; [[ -f "$RECEIPT/native-refs-before.json" ]] || { echo "no native-refs-before.json in $RECEIPT" >&2; exit 2; }
+  check_target verify-identity
   native_refs > "$RECEIPT/native-refs-after.json"
   local changed fallbacks since
   changed=$(python3 -I - "$RECEIPT/native-refs-before.json" "$RECEIPT/native-refs-after.json" <<'EOF2'
@@ -415,6 +455,8 @@ EOF2
 
 cmd_restart_unchanged() { # shepherd's step after a failure before install: start the same old release again
   RECEIPT=$1; [[ -f "$RECEIPT/receipt.json" ]] || { echo "no receipt in ${1:-}" >&2; exit 2; }
+  check_target restart-unchanged; check_latest restart-unchanged
+  take_lock restart-unchanged || exit 1
   OLD_RELEASE=$(receipt_get old_release); MIG_BEFORE=$(receipt_get migrations_before)
   [[ "$(readlink "$PROD/current")" == "$OLD_RELEASE" ]] || { log "refusing restart-unchanged: current is not $OLD_RELEASE; use rollback"; exit 1; }
   [[ "$(migrations)" == "$MIG_BEFORE" ]] || { log "refusing restart-unchanged: migrations differ from the pre-deploy set; use rollback"; exit 1; }
@@ -429,6 +471,8 @@ cmd_restart_unchanged() { # shepherd's step after a failure before install: star
 cmd_rollback() { # starts rollback-run in its own unit, so it survives stopping prod; then exits
   local receipt; receipt=$(readlink -f "${1:-}")
   [[ -f "$receipt/receipt.json" ]] || { echo "no receipt in ${1:-}" >&2; exit 2; }
+  RECEIPT=$receipt; check_target rollback; check_latest rollback
+  take_lock rollback || exit 1; exec 9>&-
   local ts unit; ts=$(date -u +%Y%m%dT%H%M%S%NZ); unit=jess-prod-rollback-${ts:0:19}Z
   own_unit "$unit" rollback-run "$receipt"
   echo "started $unit; log: $receipt/receipt.log (follow: journalctl --user -u $unit -f)"
@@ -436,6 +480,8 @@ cmd_rollback() { # starts rollback-run in its own unit, so it survives stopping 
 
 cmd_rollback_run() {
   RECEIPT=$1; [[ -f "$RECEIPT/receipt.json" ]] || { echo "no receipt in $RECEIPT" >&2; exit 2; }
+  check_target rollback-run; check_latest rollback-run
+  take_lock rollback-run || { log "refusing rollback: another prod-deploy operation holds the lock"; exit 1; }
   log "rollback by hand, running in cgroup: $(cut -d: -f3 /proc/$$/cgroup)"
   not_in_prod_cgroup || { log "refusing: rollback-run is inside $UNIT's cgroup and would be killed with it; use rollback"; exit 1; }
   OLD_RELEASE=$(receipt_get old_release); MIG_BEFORE=$(receipt_get migrations_before)

@@ -92,7 +92,7 @@ teardown() {
 deploy() { # deploy <case> <port> [fault] [after-stop hook]: launch and wait for the receipt's result
   local c=$1 port=$2 P=$ROOT/$1/prod
   export UNIT=jess-fake-prod-$c CONNECTOR_UNIT=jess-fake-connector-$c PROD=$P PORT=$port
-  export BACKUPS=$ROOT/$c/backups RECEIPTS=$ROOT/$c/receipts HEALTH_TIMEOUT=15 CANDIDATE_RUN=test
+  export BACKUPS=$ROOT/$c/backups RECEIPTS=$ROOT/$c/receipts HEALTH_TIMEOUT=15 ATTACH_TIMEOUT=5 CANDIDATE_RUN=test
   export ALERT_ISSUE=none ALERT_TO=none
   export RELEASE_NAME=$NEW ARTIFACT=$ROOT/$c/new.tar.gz EXPECTED_COMMIT=$COMMIT
   EXPECTED_SHA256=$(sha256sum "$ARTIFACT" | cut -c1-64); export EXPECTED_SHA256
@@ -125,7 +125,8 @@ invoke_from_prod() { # invoke_from_prod <case> <command...>: run a command insid
 }
 wait_result_change() { # wait_result_change <seconds>: until receipt.json's result changes from what it is now
   local before; before=$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))["result"])' "$R/receipt.json")
-  timeout "$1" bash -c "until [ \"\$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))[\"result\"])' '$R/receipt.json')\" != '$before' ]; do sleep 1; done" || true
+  # Sets CHANGED (yes|no) for the caller to assert, rather than passing a timeout off as a change (Macroscope, #22).
+  if timeout "$1" bash -c "until [ \"\$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))[\"result\"])' '$R/receipt.json')\" != '$before' ]; do sleep 1; done"; then CHANGED=yes; else CHANGED=no; fi
 }
 frozen() { # frozen <case>: after a FAILED stop, nothing changes over 5 s (current, units, data hash)
   local c=$1 P=$ROOT/$1/prod snap
@@ -162,6 +163,11 @@ stopped_checks() { # stopped_checks <case> <current> <migrations>: a FAILED stop
 rollback_by_hand() { # rollback_by_hand <case>: the shepherd's explicit rollback after a stop
   echo "-- rollback by hand (shepherd's decision):"
   "$DEPLOY" rollback "$R" 2>/dev/null | sed 's/^/  /'; wait_result_change 90
+  check "rollback finished (receipt result changed)" "$CHANGED" "yes"
+}
+set_connector_port() { # set_connector_port <case> <port>: the port the fake connector reports attaching to
+  sed -i -E "s#(fake T3 adapter: http://127.0.0.1:)[0-9]+#\\1$2#" "$UNITS/jess-fake-connector-$1.service"
+  systemctl --user daemon-reload
 }
 
 run_case() {
@@ -176,6 +182,32 @@ run_case() {
       check "connector paused" "$(active_of jess-fake-connector-$c)" "inactive"
       check "backup taken" "$(backups_of $c)" "1"
       check "no alert" "$(test -f "$R/ALERT.txt" && echo yes || echo no)" "no"
+      echo "-- guards (Macroscope and Codex on #22): each refuses and changes nothing"
+      local before_guards; before_guards="$(current_of $c) $(active_of jess-fake-prod-$c) $(active_of jess-fake-connector-$c)"
+      local cmd; for cmd in rollback restart-unchanged resume-deliveries verify-identity; do
+        run_rc env UNIT=jess-fake-prod-elsewhere PROD="$ROOT/elsewhere" "$DEPLOY" $cmd "$R" --checks-done test
+        check "$cmd with another target refused" "$RC $OUT" "1 *refusing $cmd: receipt targets*"
+      done
+      ln -sfn releases/t3code-lim-fake-old-linux-x64 "$ROOT/$c/prod/current"
+      run_rc "$DEPLOY" resume-deliveries "$R" --checks-done test
+      check "resume with a receipt that doesn't match current refused" "$RC $OUT" "1 *refusing resume-deliveries: current is*"
+      ln -sfn "releases/$NEW" "$ROOT/$c/prod/current"
+      mkdir "$ROOT/$c/receipts/99991231T000000000Z"
+      run_rc "$DEPLOY" resume-deliveries "$R" --checks-done test
+      check "resume with an older receipt refused" "$RC $OUT" "1 *refusing resume-deliveries: a newer deploy receipt exists*"
+      run_rc "$DEPLOY" rollback "$R"
+      check "rollback with an older receipt refused" "$RC $OUT" "1 *refusing rollback: a newer deploy receipt exists*"
+      rmdir "$ROOT/$c/receipts/99991231T000000000Z"
+      # -o: the lock is held by flock itself, so killing it releases the lock (sleep doesn't inherit it).
+      flock -n -o "$ROOT/$c/prod/.prod-deploy.lock" sleep 30 & local holder=$!; sleep 0.5
+      for cmd in resume-deliveries rollback restart-unchanged; do
+        run_rc "$DEPLOY" $cmd "$R" --checks-done test
+        check "$cmd while locked refused" "$RC $OUT" "1 *refusing $cmd: another deploy, rollback, restart or resume holds*"
+      done
+      run_rc "$DEPLOY" launch --approved "isolated test lock" --heads-up-sent
+      check "launch while locked refused" "$RC $OUT" "1 *refusing launch: another deploy*"
+      kill $holder; wait $holder 2>/dev/null || true
+      check "guards changed nothing" "$(current_of $c) $(active_of jess-fake-prod-$c) $(active_of jess-fake-connector-$c)" "$before_guards"
       echo "-- resume-deliveries:"; run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test: manual checks stand-in"
       check "resume-deliveries exit" "$RC" "0"
       check "connector after resume" "$(active_of jess-fake-connector-$c)" "active"
@@ -210,6 +242,9 @@ run_case() {
       check "prod left stopped" "$(active_of jess-fake-prod-$c)" "inactive"
       check "no backup" "$(backups_of $c)" "0"
       check "next step is restart-unchanged" "$(receipt_of rollback_command)" "*prod-deploy-t3.sh restart-unchanged *"
+      check "alert offers no accept before install" "$(grep -c -e '--decision' "$R/ALERT.txt" || true)" "0"
+      run_rc "$DEPLOY" resume-deliveries "$R" --checks-done test --decision "test: accept"
+      check "accept before install refused" "$RC $OUT" "1 *before install; run its restart-unchanged step first*"
       echo "-- shepherd: restart-unchanged, then resume-deliveries:"
       run_rc "$DEPLOY" restart-unchanged "$R"; check "restart-unchanged exit" "$RC" "0"
       run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test"; check "resume-deliveries exit" "$RC" "0"
@@ -234,6 +269,14 @@ run_case() {
     accept-stopped)   # a check fails after install -> STOPPED; the shepherd accepts the release instead, recorded as a decision
       setup accept-stopped 18908 no; deploy accept-stopped 18908; report accept-stopped 18908
       check "result is a FAILED stop" "$(result_of)" "FAILED (stopped, not rolled back; shepherd tux)*"
+      echo "-- accept with prod left down and a connector that never attaches (Codex on #22):"
+      systemctl --user stop jess-fake-prod-$c; set_connector_port $c 1
+      run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test" --decision "test: accept"
+      check "accept started prod" "$(active_of jess-fake-prod-$c) $(http_of 18908)" "active 200"
+      check "resume fails when the connector doesn't attach" "$RC" "1"
+      check "connector stopped again" "$(active_of jess-fake-connector-$c)" "inactive"
+      check "receipt says deliveries paused" "$(receipt_of deliveries)" "paused (resume failed: connector did not attach)"
+      set_connector_port $c 18908
       echo "-- resume-deliveries with a decision:"; run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test" --decision "test: accept"
       check "resume-deliveries exit" "$RC" "0"
       check "decision recorded" "$OUT" "*decision recorded: accept as installed (test: accept)*"
@@ -271,6 +314,7 @@ run_case() {
       setup rollback-own-unit 18906 yes; deploy rollback-own-unit 18906
       invoke_from_prod rollback-own-unit "$DEPLOY" rollback "$R"; wait_result_change 90
       report rollback-own-unit 18906; echo "-- invoker (inside fake prod):"; sed 's/^/  /' "$ROOT/rollback-own-unit/invoker.log"
+      check "rollback finished (receipt result changed)" "$CHANGED" "yes"
       check "invoked from inside prod" "$(cat "$ROOT/$c/invoker.log")" "*invoker cgroup: */jess-fake-prod-rollback-own-unit.service*"
       check "result" "$(result_of)" "rolled back by hand"
       check "prod after rollback" "$(active_of jess-fake-prod-$c) $(http_of 18906) $(current_of $c) $(mig_of $c)" "active 200 releases/$OLD 56" ;;
@@ -280,6 +324,7 @@ run_case() {
       install -m 700 /tmp/prod-deploy-t3.rev2.sh "$ROOT/rollback-rev2-control/prod-deploy-t3.rev2.sh"
       invoke_from_prod rollback-rev2-control "$ROOT/rollback-rev2-control/prod-deploy-t3.rev2.sh" rollback "$R"
       wait_result_change 40
+      check "control: receipt never changed" "$CHANGED" "no"
       report rollback-rev2-control 18907; echo "-- invoker (inside fake prod):"; sed 's/^/  /' "$ROOT/rollback-rev2-control/invoker.log"
       check "control: revision 2's rollback was killed with prod" "$(result_of) | $(active_of jess-fake-prod-$c)" "installed * | inactive"
       check "control: invoker never finished" "$(grep -c 'invoker finished' "$ROOT/$c/invoker.log" || true)" "0" ;;
@@ -288,8 +333,8 @@ run_case() {
   echo
 }
 CASES=("$@"); ((${#CASES[@]})) || CASES=(happy identity-changed backup-fails migration-missing accept-stopped hanging-listener rollback-unhealthy restore-stop-fails rollback-own-unit rollback-rev2-control)
+# Teardown runs on any exit, including a failed or interrupted case (Macroscope, #22).
+trap 'for c in "${CASES[@]}"; do teardown "$c"; done; echo "fake units removed; sandbox kept in $ROOT for inspection"' EXIT
 for c in "${CASES[@]}"; do run_case "$c"; done
-for c in "${CASES[@]}"; do teardown "$c"; done
-echo "fake units removed; sandbox kept in $ROOT for inspection"
 if ((FAILS)); then printf 'FAILED: %s check(s)\n' "$FAILS"; printf '  %s\n' "${FAILED_CHECKS[@]}"; exit 1; fi
 echo "PASSED: all checks"

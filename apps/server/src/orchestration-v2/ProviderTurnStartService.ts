@@ -717,7 +717,9 @@ export const layer: Layer.Layer<
         // into the target row (Orchestrator.ts), or the thread is returning to
         // this provider after another one ran. A run cancelled before it
         // started doesn't count. With no started run at all, the ref was
-        // imported (ws.ts, AgentSessionImporter.ts) and is this row's own.
+        // imported (ws.ts, AgentSessionImporter.ts) and is this row's own,
+        // unless another row on the thread carries the same native session: a
+        // `restart_and_resume` before the first run copied it here (Quinn, #22).
         const previousRun = projection.runs.reduce<OrchestrationV2Run | undefined>(
           (previous, candidate) =>
             candidate.ordinal < run.ordinal &&
@@ -727,10 +729,18 @@ export const layer: Layer.Layer<
               : previous,
           undefined,
         );
+        const boundNativeId = providerThread.nativeThreadRef?.nativeId;
+        const sharedWithAnotherRow = projection.providerThreads.some(
+          (candidate) =>
+            candidate.id !== providerThread.id &&
+            candidate.nativeThreadRef?.driver === providerThread.nativeThreadRef?.driver &&
+            candidate.nativeThreadRef?.nativeId === boundNativeId,
+        );
         const continuesHere =
-          previousRun === undefined ||
-          (previousRun.providerThreadId === providerThread.id &&
-            previousRun.providerInstanceId === run.providerInstanceId);
+          previousRun === undefined
+            ? !sharedWithAnotherRow
+            : previousRun.providerThreadId === providerThread.id &&
+              previousRun.providerInstanceId === run.providerInstanceId;
         const keepsBinding =
           !nothingToLose &&
           continuesHere &&
