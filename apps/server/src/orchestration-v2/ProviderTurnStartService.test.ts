@@ -166,6 +166,8 @@ function makeLocalCommandHarness(input: {
    * fallback succeeds, then reading history for its handoff fails.
    */
   readonly historyReadFailureAfterFallback?: unknown;
+  /** Fork-only (#21): resumes a strong native ref, and resume fails with this cause. */
+  readonly resumeFailure?: unknown;
   readonly interruptOpen?: boolean;
   readonly interruptRunBeforeOpenFailure?: boolean;
   readonly writeFailure?: unknown;
@@ -342,7 +344,7 @@ function makeLocalCommandHarness(input: {
     checkpoints: [],
     updatedAt: now,
   };
-  if ("historyReadFailureAfterFallback" in input) {
+  if ("historyReadFailureAfterFallback" in input || "resumeFailure" in input) {
     const nativeThreadRef = {
       driver: providerThread.driver,
       nativeId: "native-resume-thread",
@@ -381,6 +383,7 @@ function makeLocalCommandHarness(input: {
       ),
     ),
   );
+  const fallbackEnsureThread = vi.fn(() => Effect.succeed(providerThread));
   const resumeFallbackSession = {
     driver: providerThread.driver,
     resumeThread: () =>
@@ -388,15 +391,15 @@ function makeLocalCommandHarness(input: {
         new ProviderAdapterEventStreamError({
           driver: providerThread.driver,
           providerSessionId,
-          cause: "native thread is gone",
+          cause: "resumeFailure" in input ? input.resumeFailure : "native thread is gone",
         }),
       ),
-    ensureThread: () => Effect.succeed(providerThread),
+    ensureThread: fallbackEnsureThread,
   };
   const open = vi.fn(() =>
     input.interruptOpen === true
       ? Effect.interrupt
-      : "historyReadFailureAfterFallback" in input
+      : "historyReadFailureAfterFallback" in input || "resumeFailure" in input
         ? Effect.succeed(resumeFallbackSession as never)
         : "ensureThreadFailure" in input
           ? Effect.succeed({ driver: providerThread.driver, ensureThread } as never)
@@ -532,6 +535,7 @@ function makeLocalCommandHarness(input: {
   );
   return {
     open,
+    fallbackEnsureThread,
     writeIfRunCurrent,
     startRootRun,
     tryHandlePromptCommand,
@@ -855,3 +859,52 @@ for (const previousMessages of [[], ["/compact", " /COMPACT "]]) {
       }),
   );
 }
+
+// Fork-only (#21): on 2026-10-08 a shared Codex app-server rejected a racing
+// `initialize` with "Already initialized", and two agents silently lost their
+// native sessions. A transient resume failure must keep the strong ref.
+const alreadyInitialized = { code: -32600, errorMessage: "Already initialized" };
+
+effectIt.effect("retries a transient native resume failure without replacing the session", () =>
+  Effect.gen(function* () {
+    const harness = makeLocalCommandHarness({
+      text: "Continue",
+      resumeFailure: alreadyInitialized,
+    });
+
+    const error = yield* harness.startWithRetry.pipe(Effect.flip);
+
+    expect(error._tag).toBe("ProviderTurnStartError");
+    expect((error.cause as { _tag?: string } | undefined)?._tag).toBe(
+      "ProviderAdapterEventStreamError",
+    );
+    expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+    expect(harness.events).toEqual([]);
+    expect(harness.projection().runs.at(-1)?.status).toBe("starting");
+    expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef?.nativeId).toBe(
+      "native-resume-thread",
+    );
+  }),
+);
+
+effectIt.effect(
+  "fails the run and keeps the native session when a transient resume keeps failing",
+  () =>
+    Effect.gen(function* () {
+      const harness = makeLocalCommandHarness({
+        text: "Continue",
+        resumeFailure: alreadyInitialized,
+      });
+
+      yield* harness.start;
+
+      expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+      expect(harness.projection().runs.at(-1)?.status).toBe("failed");
+      expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef?.nativeId).toBe(
+        "native-resume-thread",
+      );
+      const written = JSON.stringify(harness.events);
+      expect(written).toContain("Native session resume failed");
+      expect(written).toContain("native-resume-thread");
+    }),
+);
