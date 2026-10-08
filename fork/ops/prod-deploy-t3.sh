@@ -55,6 +55,9 @@ OVERRIDABLE=(CANDIDATE_RUN EXPECTED_COMMIT RELEASE_NAME ARTIFACT EXPECTED_SHA256
   UNIT PROD PORT CONNECTOR_UNIT BACKUPS RECEIPTS HEALTH_TIMEOUT ALERT_ISSUE ALERT_TO SHEPHERD)
 FAULT=${JESS_DEPLOY_FAULT:-}
 if [[ -n "$FAULT" && "$PROD" == "$REAL_PROD" ]]; then echo "fault injection is refused against real prod" >&2; exit 2; fi
+# The isolated tests stand in an unreadable journal for verify-identity; real prod always reads journalctl.
+JOURNALCTL=${JOURNALCTL:-journalctl}
+if [[ "$JOURNALCTL" != journalctl && "$PROD" == "$REAL_PROD" ]]; then echo "JOURNALCTL override is refused against real prod" >&2; exit 2; fi
 
 # --- COMMS_* for prod (values from @kit, 2026-10-08); applied only with --apply-comms ---
 COMMS_LINES=(
@@ -272,7 +275,8 @@ cmd_run() {
   state artifact "$ARTIFACT"; state artifact_sha256 "$EXPECTED_SHA256"; state new_release "$RELEASE_NAME"; state new_commit "$EXPECTED_COMMIT"
   log "preflight ok: old=$OLD_RELEASE new=$RELEASE_NAME artifact sha256 $EXPECTED_SHA256; migrations up to ${MIG_BEFORE##* }"
 
-  # 2. Pause deliveries, then stop prod. From here a failure restarts the old release.
+  # 2. Pause deliveries, then stop prod. From here a failure stops for the shepherd (T-8): nothing is
+  #    restarted; the receipt names restart-unchanged, which the shepherd runs on a decision.
   PHASE=stopped
   svc_stop "$CONNECTOR_UNIT" || handle_failure "connector did not stop"
   log "connector stopped (deliveries pause in comms)"; state deliveries paused
@@ -297,7 +301,8 @@ cmd_run() {
   state rollback_command "$(readlink -f "$0") rollback $RECEIPT"
   log "rollback (release + pre-migration data together): $(readlink -f "$0") rollback $RECEIPT"
 
-  # 4-7. Install, configure, start, check. From here a failure restores the release and data together.
+  # 4-7. Install, configure, start, check. From here a failure stops for the shepherd (T-8): nothing is
+  #    rolled back; the receipt names rollback (release and data together), which the shepherd runs on a decision.
   PHASE=installed
   tar -C "$PROD/releases" -xzf "$ARTIFACT"
   local commit; commit=$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1]))["commit"])' "$PROD/releases/$RELEASE_NAME/release.json")
@@ -382,12 +387,20 @@ for k, v in sorted(a.items()):
 EOF2
 )
   since=$(receipt_get started_at); [[ -n "$since" ]] || since=$(receipt_get started)
-  fallbacks=$(journalctl --user -u "$UNIT" --since "${since:-today}" --no-pager -o cat 2>/dev/null | grep -c "Provider resume failed; attempting a fresh native session" || true)
-  if [[ -z "$changed" && "${fallbacks:-0}" == 0 ]]; then
+  # Both a silent fresh-session fallback (lim.5) and a fail-and-keep resume failure (#22) are a binding
+  # that did not resume, so both go to triage. An unreadable journal is a FAIL, never 0 (Quinn, #22 A2).
+  local journal failures
+  if ! journal=$("$JOURNALCTL" --user -u "$UNIT" --since "${since:-today}" --no-pager -o cat 2>&1); then
+    log "identity check FAIL (goes to fleet triage, T-9): could not read $UNIT's journal: $(head -c 200 <<<"$journal")"
+    state identity "FAIL"; exit 1
+  fi
+  fallbacks=$(grep -c "Provider resume failed; attempting a fresh native session" <<<"$journal" || true)
+  failures=$(grep -c "Native session resume failed" <<<"$journal" || true)
+  if [[ -z "$changed" && "$fallbacks" == 0 && "$failures" == 0 ]]; then
     log "identity check PASS: $(python3 -I -c 'import json,sys;print(len(json.load(open(sys.argv[1]))))' "$RECEIPT/native-refs-before.json") native refs unchanged, no fresh-session fallback since $since"
     state identity "pass"
   else
-    log "identity check FAIL (goes to fleet triage, T-9): changed refs: ${changed:-none}; fresh-session fallbacks in journal: $fallbacks"
+    log "identity check FAIL (goes to fleet triage, T-9): changed refs: ${changed:-none}; fresh-session fallbacks in journal: $fallbacks; resume failures (binding kept) in journal: $failures"
     state identity "FAIL"; exit 1
   fi
 }

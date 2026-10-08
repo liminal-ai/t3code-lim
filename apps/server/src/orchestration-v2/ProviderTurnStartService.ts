@@ -694,18 +694,26 @@ export const layer: Layer.Layer<
         // switches, weak or missing refs and uncertain history delivery (an
         // earlier history injection into this session may or may not have
         // landed; open question on #22 whether that should fail too).
-        // The ref must have been used by this instance on this row before: a
-        // queued `restart_and_resume` copies another instance's ref into the
-        // target row (Orchestrator.ts), and that is a provider switch.
-        const usedHereBefore = projection.runs.some(
-          (candidate) =>
-            candidate.id !== run.id &&
-            candidate.providerThreadId === providerThread.id &&
-            candidate.providerInstanceId === run.providerInstanceId,
+        // The thread's previous run must have been this instance on this row;
+        // otherwise this run is a provider switch: either a queued
+        // `restart_and_resume` copied another instance's ref into the target
+        // row (Orchestrator.ts), or the thread is returning to this provider
+        // after another one ran.
+        const previousRun = projection.runs.reduce<OrchestrationV2Run | undefined>(
+          (previous, candidate) =>
+            candidate.ordinal < run.ordinal &&
+            (previous === undefined || candidate.ordinal > previous.ordinal)
+              ? candidate
+              : previous,
+          undefined,
         );
+        const continuesHere =
+          previousRun !== undefined &&
+          previousRun.providerThreadId === providerThread.id &&
+          previousRun.providerInstanceId === run.providerInstanceId;
         const keepsBinding =
           !uncertainDelivery &&
-          usedHereBefore &&
+          continuesHere &&
           providerThread.nativeThreadRef !== null &&
           ProviderResumeFailure.keepsNativeBinding(providerThread, run.providerInstanceId);
         if (keepsBinding && providerThread.nativeThreadRef !== null) {

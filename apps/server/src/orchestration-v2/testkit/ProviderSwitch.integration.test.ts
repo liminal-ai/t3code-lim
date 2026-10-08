@@ -108,6 +108,8 @@ function makeTestAdapter(input: {
   readonly nativeThreadGeneration?: Ref.Ref<number>;
   readonly failResume?: boolean;
   readonly failResumeOnce?: Ref.Ref<boolean>;
+  /** Fork-only (#21): bind a strong ref even when resume fails (provider switches still fall back). */
+  readonly strongRefOnResumeFailure?: boolean;
   readonly initialContextUsage?: OrchestrationV2ProviderThread["contextUsage"];
   readonly getModelContextWindow?: (selection: ModelSelection) => number | undefined;
   readonly canReuseContextUsage?: ProviderAdapterV2SessionRuntime["canReuseContextUsage"];
@@ -178,7 +180,8 @@ function makeTestAdapter(input: {
                   // still fall back. Strong-ref fail-and-keep is covered in
                   // ProviderTurnStartService.test.ts.
                   strength:
-                    input.failResume === true || input.failResumeOnce !== undefined
+                    input.strongRefOnResumeFailure !== true &&
+                    (input.failResume === true || input.failResumeOnce !== undefined)
                       ? "weak"
                       : "strong",
                 },
@@ -2666,6 +2669,7 @@ describe("orchestration v2 provider switching", () => {
             },
             capturedTurns,
             failResume: true,
+            strongRefOnResumeFailure: true,
             nativeThreadGeneration: codexNativeThreadGeneration,
           }),
           makeTestAdapter({
