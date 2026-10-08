@@ -666,9 +666,10 @@ export const layer: Layer.Layer<
         );
         // Fork-only (#21; Mira #178): an uncertain history delivery may only
         // replace a native thread with no turn of its own on this row that
-        // completed, failed or was interrupted (any of which leaves native
-        // history), i.e. one just created for this handoff, since nothing can
-        // be lost there. A thread with such a turn keeps its binding.
+        // started, or that completed, failed or was interrupted (any of which
+        // leaves native history, including a started turn recovery cancelled),
+        // i.e. one just created for this handoff, since nothing can be lost
+        // there. A thread with such a turn keeps its binding.
         // (Conservative: a row whose earlier native session was replaced
         // counts that session's turns too, so it fails closed.)
         const nothingToLose =
@@ -676,7 +677,8 @@ export const layer: Layer.Layer<
           !projection.providerTurns.some(
             (turn) =>
               turn.providerThreadId === providerThread.id &&
-              (turn.status === "completed" ||
+              (turn.startedAt !== null ||
+                turn.status === "completed" ||
                 turn.status === "interrupted" ||
                 turn.status === "failed"),
           );
@@ -709,23 +711,26 @@ export const layer: Layer.Layer<
         // for an agent to triage. Upstream's fallback below stays for provider
         // switches, weak or missing refs, and an uncertain history delivery
         // into a native thread with no turns of its own (see nothingToLose).
-        // The thread's previous run must have been this instance on this row;
-        // otherwise this run is a provider switch: either a queued
-        // `restart_and_resume` copied another instance's ref into the target
-        // row (Orchestrator.ts), or the thread is returning to this provider
-        // after another one ran.
+        // The thread's previous run that actually started must have been this
+        // instance on this row; otherwise this run is a provider switch:
+        // either a queued `restart_and_resume` copied another instance's ref
+        // into the target row (Orchestrator.ts), or the thread is returning to
+        // this provider after another one ran. A run cancelled before it
+        // started doesn't count. With no started run at all, the ref was
+        // imported (ws.ts, AgentSessionImporter.ts) and is this row's own.
         const previousRun = projection.runs.reduce<OrchestrationV2Run | undefined>(
           (previous, candidate) =>
             candidate.ordinal < run.ordinal &&
+            candidate.startedAt !== null &&
             (previous === undefined || candidate.ordinal > previous.ordinal)
               ? candidate
               : previous,
           undefined,
         );
         const continuesHere =
-          previousRun !== undefined &&
-          previousRun.providerThreadId === providerThread.id &&
-          previousRun.providerInstanceId === run.providerInstanceId;
+          previousRun === undefined ||
+          (previousRun.providerThreadId === providerThread.id &&
+            previousRun.providerInstanceId === run.providerInstanceId);
         const keepsBinding =
           !nothingToLose &&
           continuesHere &&

@@ -170,14 +170,23 @@ function makeLocalCommandHarness(input: {
   readonly historyReadFailureAfterFallback?: unknown;
   /** Fork-only (#21): resumes a strong native ref, and resume fails with this cause. */
   readonly resumeFailure?: unknown;
-  /** Fork-only (#21): the ref was copied from another instance (no earlier run on this row). */
+  /** Fork-only (#21): the ref was copied from another instance, which ran the previous turn. */
   readonly copiedFromOtherInstance?: boolean;
+  /** Fork-only (#21): the strong ref was imported; no run has started yet. */
+  readonly importedRef?: boolean;
+  /** Fork-only (#21): a run for another instance was cancelled before it started. */
+  readonly cancelledBeforeStart?: boolean;
   /**
    * Fork-only (#21, Mira #178): an earlier history injection into the native
    * session is still pending; "own-turns" adds a turn the session completed,
    * "interrupted-turn" and "failed-turn" one that ended that way.
    */
-  readonly uncertainDelivery?: "own-turns" | "interrupted-turn" | "failed-turn" | "no-turns";
+  readonly uncertainDelivery?:
+    | "own-turns"
+    | "interrupted-turn"
+    | "failed-turn"
+    | "cancelled-turn"
+    | "no-turns";
   readonly interruptOpen?: boolean;
   readonly interruptRunBeforeOpenFailure?: boolean;
   readonly writeFailure?: unknown;
@@ -199,7 +208,7 @@ function makeLocalCommandHarness(input: {
   const run: OrchestrationV2ThreadProjection["runs"][number] = {
     id: runId,
     threadId,
-    ordinal: 2,
+    ordinal: input.cancelledBeforeStart === true ? 3 : 2,
     providerInstanceId: newInstanceId,
     modelSelection: { instanceId: newInstanceId, model: "gpt-5.4" },
     providerThreadId,
@@ -367,19 +376,44 @@ function makeLocalCommandHarness(input: {
       providerThreads: projection.providerThreads.map((candidate) =>
         candidate.id === providerThreadId ? { ...candidate, nativeThreadRef } : candidate,
       ),
-      // Fork-only (#21): a ref this instance used on this row before.
+      // Fork-only (#21): the previous started run, by default this instance
+      // on this row; copied: another instance on its own row; imported: none.
       runs:
-        "resumeFailure" in input && input.copiedFromOtherInstance !== true
-          ? [
-              {
-                ...run,
-                id: RunId.make("earlier-same-instance-run"),
-                ordinal: 1,
-                status: "completed" as const,
-              },
+        !("resumeFailure" in input) || input.importedRef === true
+          ? projection.runs
+          : [
+              input.copiedFromOtherInstance === true
+                ? {
+                    ...run,
+                    id: RunId.make("earlier-other-instance-run"),
+                    ordinal: 1,
+                    status: "completed" as const,
+                    startedAt: now,
+                    providerInstanceId: oldInstanceId,
+                    providerThreadId: oldProviderThreadId,
+                  }
+                : {
+                    ...run,
+                    id: RunId.make("earlier-same-instance-run"),
+                    ordinal: 1,
+                    status: "completed" as const,
+                    startedAt: now,
+                  },
+              ...(input.cancelledBeforeStart === true
+                ? [
+                    {
+                      ...run,
+                      id: RunId.make("cancelled-other-instance-run"),
+                      ordinal: 2,
+                      status: "cancelled" as const,
+                      startedAt: null,
+                      providerInstanceId: oldInstanceId,
+                      providerThreadId: oldProviderThreadId,
+                    },
+                  ]
+                : []),
               ...projection.runs,
-            ]
-          : projection.runs,
+            ],
       ...(input.uncertainDelivery === undefined
         ? {}
         : {
@@ -420,7 +454,9 @@ function makeLocalCommandHarness(input: {
                           ? ("completed" as const)
                           : input.uncertainDelivery === "failed-turn"
                             ? ("failed" as const)
-                            : ("interrupted" as const),
+                            : input.uncertainDelivery === "cancelled-turn"
+                              ? ("cancelled" as const)
+                              : ("interrupted" as const),
                       startedAt: now,
                       completedAt: now,
                     },
@@ -1040,7 +1076,7 @@ effectIt.effect("falls back for a strong ref copied from another instance", () =
 // Fork-only (#21, Mira #178): an uncertain history delivery may replace only a
 // native session with no completed turn of its own; one that has completed a
 // turn keeps its binding and the run fails.
-effectIt.effect.each(["own-turns", "interrupted-turn", "failed-turn"] as const)(
+effectIt.effect.each(["own-turns", "interrupted-turn", "failed-turn", "cancelled-turn"] as const)(
   "fails and keeps a native session with history (%s) when history delivery is uncertain",
   (uncertainDelivery) =>
     Effect.gen(function* () {
@@ -1076,4 +1112,28 @@ effectIt.effect(
       expect(harness.fallbackEnsureThread).toHaveBeenCalled();
       expect(JSON.stringify(harness.events)).not.toContain("Native session resume failed");
     }),
+);
+
+// Fork-only (#21, Codex review of #22): an imported strong ref has no earlier
+// run, and a run cancelled before it started isn't a provider switch; both
+// keep the binding on a failed resume.
+effectIt.effect.each([
+  ["an imported ref on its first run", { importedRef: true }],
+  ["a run for another instance cancelled before it started", { cancelledBeforeStart: true }],
+] as const)("fails and keeps the native session after %s", ([, options]) =>
+  Effect.gen(function* () {
+    const harness = makeLocalCommandHarness({
+      text: "Continue",
+      resumeFailure: "thread not found: native-resume-thread",
+      ...options,
+    });
+
+    yield* harness.startWithRetry;
+
+    expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+    expect(harness.projection().runs.at(-1)?.status).toBe("failed");
+    expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef?.nativeId).toBe(
+      "native-resume-thread",
+    );
+  }),
 );
