@@ -162,6 +162,11 @@ class CommsClient {
     return body.value.value;
   }
 
+  /** A query's current state, read by key (see useCommsQuery). */
+  snapshot(key: string): EntryState | undefined {
+    return this.entries.get(key)?.state;
+  }
+
   entry(key: string, name: string, args: Args): Entry {
     let entry = this.entries.get(key);
     if (!entry) {
@@ -285,7 +290,11 @@ export function useCommsQuery<T>(
     (onChange: () => void) => (entry ? client.listen(key, entry, onChange) : () => {}),
     [entry, key],
   );
-  const state = useSyncExternalStore(subscribe, () => entry?.state);
+  // Read by key, not through `entry`: compiled, a `() => entry?.state` closure is
+  // memoized on `entry?.state`, so after a skip it kept the old (missing) entry and
+  // never saw the first frame (#12). The key changes whenever the query does.
+  const getSnapshot = useCallback(() => (skip ? undefined : client.snapshot(key)), [key, skip]);
+  const state = useSyncExternalStore(subscribe, getSnapshot);
   return { data: state?.value as T | undefined, error: state?.error };
 }
 
