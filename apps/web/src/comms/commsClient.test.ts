@@ -268,4 +268,29 @@ describe("comms client transport", { concurrent: false }, () => {
     await expect(commsCall("inbox:markRead")).rejects.toMatchObject({ status: 503 });
     expect(fetchMock).toHaveBeenCalledTimes(3); // nothing sent to staging
   });
+
+  it("stops calling a disconnected remote at once, while the reprobe is still running", async () => {
+    let primaryConfig: (() => void) | undefined;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url === "http://127.0.0.1:3773/api/comms/config" && fetchMock.mock.calls.length > 1) {
+        await new Promise<void>((resolve) => (primaryConfig = resolve)); // a slow reprobe
+      }
+      return new Response(JSON.stringify(url.endsWith("/config") ? enabledConfig : { value: 1 }), {
+        status: 200,
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(globalThis, "window", { configurable: true, value: desktopWindow({}) });
+    const { commsCall, setCommsEnvironments } = await import("./commsClient");
+    setCommsEnvironments({ activeId: "staging", list: [staging] });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0)); // staging is now the route
+    setCommsEnvironments({ activeId: null, list: [] }); // staging disconnected
+    await expect(commsCall("inbox:markRead")).rejects.toMatchObject({ status: 503 });
+    expect(fetchMock.mock.calls.some(([url]) => String(url).endsWith("8463/api/comms/call"))).toBe(
+      false,
+    );
+    primaryConfig?.();
+  });
 });

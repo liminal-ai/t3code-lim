@@ -373,6 +373,11 @@ const environmentsKey = (value: typeof environments): string =>
 export function setCommsEnvironments(next: typeof environments): void {
   if (environmentsKey(next) === environmentsKey(environments)) return;
   environments = next;
+  // A route that's no longer a candidate stops now, not when the reprobe (possibly
+  // slow) finishes: calls are refused until a new route is chosen.
+  if (route !== null && !candidateRoutes().some((candidate) => sameRoute(candidate, route))) {
+    applyRoute(null);
+  }
   configPromise = undefined;
   clearTimeout(configRetry);
   configBackoff = 2_000;
