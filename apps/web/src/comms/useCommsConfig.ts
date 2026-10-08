@@ -33,10 +33,15 @@ export function useCloseOnCommsRetarget(
   open: boolean,
   onOpenChange: (open: boolean) => void,
 ): void {
-  const key = JSON.stringify(useCommsRouteSnapshot().route);
+  const key = useCommsRouteKey();
   const openedOn = useRef(key);
   useEffect(() => {
     if (closesOnRetarget(open, openedOn.current, key)) onOpenChange(false);
     else if (!open) openedOn.current = key;
   }, [key, onOpenChange, open]);
+}
+
+/** Identifies the comms server in use (changes on failover), for keying server-scoped state. */
+export function useCommsRouteKey(): string {
+  return JSON.stringify(useCommsRouteSnapshot().route);
 }

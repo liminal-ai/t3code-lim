@@ -140,7 +140,11 @@ class CommsClient {
   private reopenTimer: ReturnType<typeof setTimeout> | undefined;
   private backoff = 250;
 
+  /** Bumped on every retarget; a call that straddles one is stale. */
+  private generation = 0;
+
   async call(kind: "query" | "mutation", name: string, args: Args = {}): Promise<unknown> {
+    const generation = this.generation;
     const response = await commsFetch("/call", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -150,6 +154,11 @@ class CommsClient {
     const body = decodeCallResponse(await response.json());
     if (body._tag === "None") throw new CommsError("comms answered in an unknown shape", 502);
     if ("error" in body.value) throw wireError(body.value.error, response.status);
+    // Comms moved to another T3 meanwhile: the answer is about the old server, so the
+    // caller mustn't act on it (navigate to its new chat, clear a draft as sent).
+    if (generation !== this.generation) {
+      throw new CommsError("comms moved to another T3; check the result there", 409);
+    }
     return body.value.value;
   }
 
@@ -242,6 +251,7 @@ class CommsClient {
 
   /** Comms moved to another server: drop what the old one said and re-watch on the new one. */
   retarget(): void {
+    this.generation += 1;
     this.stream?.abort();
     this.stream = undefined;
     for (const entry of this.entries.values()) this.set(entry, undefined);

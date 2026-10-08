@@ -10,7 +10,7 @@ import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { ManageMembersDialog } from "~/comms/CommsDialogs";
 import { commsCall, useCommsQuery } from "~/comms/commsClient";
-import { useCommsConfig } from "~/comms/useCommsConfig";
+import { useCommsConfig, useCommsRouteKey } from "~/comms/useCommsConfig";
 import type { ConversationView } from "~/comms/commsTypes";
 import {
   GroupChatComposer,
@@ -45,7 +45,12 @@ function readStored(key: string): string | null {
  */
 function GroupChatRouteView() {
   const { conversationId } = Route.useParams();
-  return <GroupChatPage key={conversationId} conversationId={conversationId} />;
+  // Keyed by the comms server too: a draft and picked recipients belong to the server they were
+  // written for, so a failover starts the page fresh.
+  const routeKey = useCommsRouteKey();
+  return (
+    <GroupChatPage key={`${routeKey}\u0000${conversationId}`} conversationId={conversationId} />
+  );
 }
 
 function GroupChatPage(props: { readonly conversationId: string }) {

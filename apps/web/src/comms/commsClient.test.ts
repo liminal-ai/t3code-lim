@@ -339,4 +339,28 @@ describe("comms client transport", { concurrent: false }, () => {
       "https://lim-builder.example:8463/api/comms/call",
     );
   });
+
+  it("rejects a call whose answer arrives after comms moved to another T3", async () => {
+    let answerCall: (() => void) | undefined;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, _init?: RequestInit) => {
+      const url = String(input);
+      if (url === "https://lim-builder.example:8463/api/comms/call") {
+        await new Promise<void>((resolve) => (answerCall = resolve));
+      }
+      return new Response(JSON.stringify(url.endsWith("/config") ? enabledConfig : { value: 1 }), {
+        status: 200,
+      });
+    });
+    vi.stubGlobal("fetch", fetchMock);
+    Object.defineProperty(globalThis, "window", { configurable: true, value: desktopWindow({}) });
+    const { commsCall, setCommsEnvironments } = await import("./commsClient");
+    setCommsEnvironments({ activeId: "staging", list: [staging] });
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
+    await new Promise((resolve) => setTimeout(resolve, 0)); // staging is now the route
+    const pending = commsCall("inbox:markRead");
+    await vi.waitFor(() => expect(answerCall).toBeDefined());
+    setCommsEnvironments({ activeId: null, list: [] }); // failover to the primary
+    answerCall?.();
+    await expect(pending).rejects.toMatchObject({ status: 409 });
+  });
 });
