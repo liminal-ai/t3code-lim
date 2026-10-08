@@ -1090,10 +1090,16 @@ effectIt.effect("retries a native session another writer still holds", () =>
   }),
 );
 
-// Fork-only (#21, Mira #178): an uncertain history delivery may replace only a
+// Fork-only (#21, Mira #178, #200): an uncertain history delivery never replaces a
 // native session with no completed turn of its own; one that has completed a
 // turn keeps its binding and the run fails.
-effectIt.effect.each(["own-turns", "interrupted-turn", "failed-turn", "cancelled-turn"] as const)(
+effectIt.effect.each([
+  "own-turns",
+  "interrupted-turn",
+  "failed-turn",
+  "cancelled-turn",
+  "no-turns",
+] as const)(
   "fails and keeps a native session with history (%s) when history delivery is uncertain",
   (uncertainDelivery) =>
     Effect.gen(function* () {
@@ -1111,23 +1117,6 @@ effectIt.effect.each(["own-turns", "interrupted-turn", "failed-turn", "cancelled
         "native-resume-thread",
       );
       expect(JSON.stringify(harness.events)).toContain("Native session resume failed");
-    }),
-);
-
-effectIt.effect(
-  "replaces a native session with no turns of its own when history delivery is uncertain",
-  () =>
-    Effect.gen(function* () {
-      const harness = makeLocalCommandHarness({
-        text: "Continue",
-        resumeFailure: "thread not found: native-resume-thread",
-        uncertainDelivery: "no-turns",
-      });
-
-      yield* Effect.ignore(harness.start);
-
-      expect(harness.fallbackEnsureThread).toHaveBeenCalled();
-      expect(JSON.stringify(harness.events)).not.toContain("Native session resume failed");
     }),
 );
 
@@ -1171,4 +1160,29 @@ effectIt.effect.each([
     ).toMatchObject({ nativeId: "native-resume-thread", strength: "strong" });
     expect(JSON.stringify(harness.events)).toContain("Native session resume failed");
   }),
+);
+
+// Fork-only (#21; Codex and Quinn on #22, Mira #200): an imported strong ref has
+// native history but no T3 provider turns; an uncertain delivery into it fails
+// and keeps the binding.
+effectIt.effect(
+  "fails and keeps an imported native session when history delivery is uncertain",
+  () =>
+    Effect.gen(function* () {
+      const harness = makeLocalCommandHarness({
+        text: "Continue",
+        resumeFailure: "thread not found: native-resume-thread",
+        importedRef: true,
+        uncertainDelivery: "no-turns",
+      });
+
+      yield* harness.startWithRetry;
+
+      expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+      expect(harness.projection().runs.at(-1)?.status).toBe("failed");
+      expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef).toMatchObject({
+        nativeId: "native-resume-thread",
+        strength: "strong",
+      });
+    }),
 );

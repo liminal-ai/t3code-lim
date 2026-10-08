@@ -907,8 +907,13 @@ describe("orchestration v2 provider switching", () => {
       }),
     ),
   );
+  // Fork-only (#21; Mira #200): upstream recovers an injection failure by
+  // replacing the native thread. The fork never replaces a strong native ref
+  // (an imported one has history T3 never recorded), so the retry fails and
+  // keeps the binding for reset-thread. Turn-start and large-missed-request
+  // failures still recover in the same native thread, as upstream.
   it.live.each(["turn-start", "injection", "large-missed-request"] as const)(
-    "recovers %s failure without duplicating history in the same native thread",
+    "handles a %s failure without duplicating history or replacing the native thread",
     (failure) =>
       Effect.scoped(
         Effect.gen(function* () {
@@ -1008,11 +1013,27 @@ describe("orchestration v2 provider switching", () => {
             const retryText =
               failure === "large-missed-request" ? "y".repeat(10_000) : "Retry target request";
             yield* dispatch(3, retryText, CLAUDE_MODEL_SELECTION);
+            if (failure === "injection") {
+              yield* wait(3, "failed");
+              const kept = yield* orchestrator.getThreadProjection(threadId);
+              const target = kept.providerThreads.find(
+                (row) => row.id === kept.runs.at(-1)?.providerThreadId,
+              );
+              assert.equal(yield* Ref.get(generation), 1);
+              assert.equal(
+                target?.nativeThreadRef?.nativeId,
+                failedHandoff.delivery?.nativeThreadId,
+              );
+              assert.equal(target?.nativeThreadRef?.strength, "strong");
+              assert.notEqual((yield* Ref.get(capturedTurns)).at(-1)?.text, retryText);
+              assert.lengthOf((yield* Ref.get(injectedHistory)).slice(historyBeforeRetry), 0);
+              return;
+            }
             yield* wait(3, "completed");
             const retried = yield* orchestrator.getThreadProjection(threadId);
             const lastTurn = (yield* Ref.get(capturedTurns)).at(-1)!;
             assert.equal(lastTurn.text, retryText);
-            if (failure !== "injection") {
+            {
               const delta = yield* encodeJson(
                 (yield* Ref.get(injectedHistory)).slice(historyBeforeRetry),
               );
@@ -1028,18 +1049,6 @@ describe("orchestration v2 provider switching", () => {
               assert.notInclude(delta, "Original request with constraints");
               assert.notInclude(delta, "Original partial work");
               assert.equal(yield* Ref.get(generation), 1);
-            } else {
-              assert.equal(yield* Ref.get(generation), 2);
-              assert.notEqual(
-                retried.contextHandoffs.at(-1)?.delivery?.nativeThreadId,
-                failedHandoff.delivery?.nativeThreadId,
-              );
-              const newHistory = yield* encodeJson(
-                (yield* Ref.get(injectedHistory)).slice(historyBeforeRetry),
-              );
-              assert.include(newHistory, "Original request with constraints");
-              assert.include(newHistory, "Original partial work");
-              assert.notInclude(newHistory, "Retry target request");
             }
             const beforeFollowup = yield* Ref.get(injectedHistory);
             const followup = "z".repeat(6_000);

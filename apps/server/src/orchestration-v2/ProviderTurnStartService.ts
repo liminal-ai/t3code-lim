@@ -664,24 +664,6 @@ export const layer: Layer.Layer<
             handoff.delivery?.nativeThreadId === providerThread.nativeThreadRef?.nativeId &&
             handoff.delivery?.status === "pending",
         );
-        // Fork-only (#21; Mira #178): an uncertain history delivery may only
-        // replace a native thread with no turn of its own on this row that
-        // started, or that completed, failed or was interrupted (any of which
-        // leaves native history, including a started turn recovery cancelled),
-        // i.e. one just created for this handoff, since nothing can be lost
-        // there. A thread with such a turn keeps its binding.
-        // (Conservative: a row whose earlier native session was replaced
-        // counts that session's turns too, so it fails closed.)
-        const nothingToLose =
-          uncertainDelivery &&
-          !projection.providerTurns.some(
-            (turn) =>
-              turn.providerThreadId === providerThread.id &&
-              (turn.startedAt !== null ||
-                turn.status === "completed" ||
-                turn.status === "interrupted" ||
-                turn.status === "failed"),
-          );
         const resumed = yield* Effect.result(
           uncertainDelivery
             ? Effect.fail(
@@ -704,19 +686,18 @@ export const layer: Layer.Layer<
           return resumed.success;
         }
 
-        // Fork-only invariant (#21; Lee 2026-10-08 12:30 ET; Mira #193, which
-        // supersedes #156 and #178's "explicit provider switch" wording): T3
-        // never replaces a strong native ref that has history, for any reason:
-        // account overlay, in-place or queued switch, import, copied ref, or a
-        // return to a provider. Only reset-thread replaces one, on an explicit
-        // decision. A failed resume retries transient errors with the same ref;
-        // anything else, or the last attempt, fails the run and keeps the ref.
-        // Upstream's fresh-session fallback below stays only for weak or missing
-        // refs and for an uncertain delivery into a native session with no turn
-        // of its own (nothingToLose). There is deliberately no inference of
-        // provider switches from run history.
-        const keepsBinding =
-          !nothingToLose && ProviderResumeFailure.keepsNativeBinding(providerThread);
+        // Fork-only invariant (#21; Lee 2026-10-08 12:30 ET; Mira #193 and #200,
+        // which supersede #156 and #178's exemptions): T3 never replaces a
+        // strong native ref, for any reason: account overlay, in-place or
+        // queued switch, import, copied ref, a return to a provider, or an
+        // uncertain history delivery (an imported session has native history
+        // T3 never recorded, so "no turns" can't prove nothing is lost). Only
+        // reset-thread replaces one, on an explicit decision. A failed resume
+        // retries transient errors with the same ref; anything else, or the last
+        // attempt, fails the run and keeps the ref. Upstream's fresh-session
+        // fallback below stays only for weak or missing refs. There is
+        // deliberately no inference of provider switches or of native history.
+        const keepsBinding = ProviderResumeFailure.keepsNativeBinding(providerThread);
         if (keepsBinding && providerThread.nativeThreadRef !== null) {
           const nativeId = providerThread.nativeThreadRef.nativeId ?? providerThread.id;
           const transient = ProviderResumeFailure.isTransientResumeFailure(resumed.failure);
