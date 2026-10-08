@@ -23,6 +23,14 @@ esac
 [ "\$1" = serve ] || exit 2
 while [ \$# -gt 0 ]; do case \$1 in --port) port=\$2; shift 2 ;; --base-dir) base=\$2; shift 2 ;; *) shift ;; esac; done
 [ -e "\$root/BROKEN" ] && { echo "fake: release is broken" >&2; exit 1; }
+# HANG: a listener that accepts every connection and never answers (a T3 that is up but wedged while starting).
+[ -e "\$root/HANG" ] && exec python3 -I -c "
+import socket,sys
+s=socket.socket(); s.setsockopt(socket.SOL_SOCKET,socket.SO_REUSEADDR,1); s.bind(('127.0.0.1',int(sys.argv[1]))); s.listen(16)
+held=[]
+while True:
+    c,_=s.accept(); held.append(c)  # keep every connection open, read nothing, write nothing
+" "\$port"
 if [ "${2:-}" = migrate ]; then
   python3 -I -c "import sqlite3,sys;c=sqlite3.connect(sys.argv[1]);c.executemany('insert or ignore into effect_sql_migrations(migration_id,name) values(?,?)',[(57,'ScheduledTaskWebhooks'),(58,'WebhookRelayDeliveries')]);c.commit()" "\$base/userdata/statev2.sqlite"
   echo "fake: Migrations ran successfully"
@@ -223,6 +231,19 @@ run_case() {
       check "decision recorded" "$OUT" "*decision recorded: accept as installed (test: accept)*"
       check "release kept" "$(current_of $c)" "releases/$NEW"
       check "connector after resume" "$(active_of jess-fake-connector-$c)" "active" ;;
+    hanging-listener) # the new release accepts connections and never answers -> the bounded health check times out -> FAILED, nothing restarted
+      setup hanging-listener 18910 yes
+      touch "$ROOT/hanging-listener/new/$NEW/HANG"; tar -C "$ROOT/hanging-listener/new" -czf "$ROOT/hanging-listener/new.tar.gz" "$NEW"
+      local t0=$SECONDS; deploy hanging-listener 18910; local took=$((SECONDS - t0))
+      report hanging-listener 18910; frozen $c
+      stopped_checks $c $NEW 56
+      check "prod unit left as installed" "$(active_of jess-fake-prod-$c)" "active"
+      check "health log" "$(cat "$R/receipt.log")" "*health check: no HTTP 200 within ${HEALTH_TIMEOUT}s (last code: 000)*"
+      check "bounded: elapsed ${took}s vs timeout ${HEALTH_TIMEOUT}s" "$(( took >= HEALTH_TIMEOUT && took < HEALTH_TIMEOUT + 30 ))" "1"
+      check "stop line" "$(cat "$R/receipt.log")" "*Nothing rolled back or restarted*"
+      check "nothing restored or restarted" "$(grep -cE 'restored |prod back up|did not start|started after|restarted unchanged' "$R/receipt.log" || true)" "0"
+      echo "-- resume-deliveries without a decision is refused:"; run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test"
+      check "resume-deliveries exit" "$RC" "1" ;;
     rollback-unhealthy) # STOPPED; the shepherd's rollback finds the old release won't restart -> ROLLBACK FAILED, deliveries paused
       setup rollback-unhealthy 18904 no
       touch "$ROOT/rollback-unhealthy/prod/releases/t3code-lim-fake-old-linux-x64/BROKEN" # running copy unaffected; a restart fails
@@ -258,7 +279,7 @@ run_case() {
   esac
   echo
 }
-CASES=("$@"); ((${#CASES[@]})) || CASES=(happy identity-changed backup-fails migration-missing accept-stopped rollback-unhealthy restore-stop-fails rollback-own-unit rollback-rev2-control)
+CASES=("$@"); ((${#CASES[@]})) || CASES=(happy identity-changed backup-fails migration-missing accept-stopped hanging-listener rollback-unhealthy restore-stop-fails rollback-own-unit rollback-rev2-control)
 for c in "${CASES[@]}"; do run_case "$c"; done
 for c in "${CASES[@]}"; do teardown "$c"; done
 echo "fake units removed; sandbox kept in $ROOT for inspection"
