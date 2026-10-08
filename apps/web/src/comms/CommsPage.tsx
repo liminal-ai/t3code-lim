@@ -16,9 +16,9 @@ import { Switch } from "~/components/ui/switch";
 import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { isElectron } from "~/env";
 import { cn } from "~/lib/utils";
-import { usePrimaryEnvironmentId } from "~/state/environments";
 
-import { commsCall, useCommsConfig, useCommsQuery } from "./commsClient";
+import { commsCall, useCommsQuery } from "./commsClient";
+import { useCommsConfig, useCommsEnvironmentId } from "./useCommsConfig";
 import {
   filterRoster,
   isOwnTestParticipant,
@@ -68,7 +68,7 @@ function AgentRow(props: {
 }) {
   const { entry, presence } = props;
   const navigate = useNavigate();
-  const environmentId = usePrimaryEnvironmentId();
+  const environmentId = useCommsEnvironmentId();
   const [editing, setEditing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const name = entry.participant.name;
@@ -337,6 +337,11 @@ export function CommsPage(props: {
             <Toggle value="agents">Agents</Toggle>
             <Toggle value="groups">Group Chats</Toggle>
           </ToggleGroup>
+          {config?.homeMachine ? (
+            <span className="shrink-0 truncate text-xs text-muted-foreground">
+              via {config.homeMachine}
+            </span>
+          ) : null}
           {config?.testMode ? (
             <span className="shrink-0 rounded-full border border-warning/60 px-1.5 text-3xs whitespace-nowrap text-warning">
               test mode

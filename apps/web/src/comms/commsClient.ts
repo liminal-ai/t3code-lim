@@ -1,8 +1,8 @@
-// Fork-only (agent comms): the page's client for /api/comms/* on this T3
-// server. Calls are one POST each; every live query rides one streaming POST
+// Fork-only (agent comms): the page's client for /api/comms/* on the T3
+// server that serves comms (commsRoute.logic.ts picks it). Calls are one POST each; every live query rides one streaming POST
 // (/api/comms/watch, NDJSON frames), reopened whenever the watched set
-// changes. The T3 session cookie is the credential; the server adds the comms
-// admin token. Ported from agent-comms' web view (apps/web/src/lib/backend.tsx).
+// changes. The T3 session cookie or the environment's bearer is the
+// credential; the server adds the comms admin token. Ported from agent-comms' web view (apps/web/src/lib/backend.tsx).
 import {
   type CommsArgs,
   CommsCallResponse,
@@ -21,6 +21,14 @@ import {
   readPrimaryEnvironmentTarget,
   resolvePrimaryEnvironmentHttpUrl,
 } from "~/environments/primary/target";
+
+import {
+  type CommsEnvironment,
+  type CommsRoute,
+  chooseRoute,
+  orderRoutes,
+  type RouteProbe,
+} from "./commsRoute.logic";
 
 export class CommsError extends Error {
   readonly status: number;
@@ -47,24 +55,69 @@ interface Entry {
   readonly listeners: Set<() => void>;
 }
 
-/**
- * Comms always goes through the primary (local) environment's server, with the
- * same credentials the environment HTTP transport uses (environments/primary/
- * httpLayer.ts): the session cookie for a same-origin browser, the desktop
- * bearer otherwise. Without a primary environment (desktop with its local server
- * disabled) there is no comms.
- */
-export const hasCommsServer = (): boolean => readPrimaryEnvironmentTarget() !== null;
+/** Connected non-primary environments and the active one; set by useCommsEnvironmentRouting. */
+let environments: {
+  readonly activeId: string | null;
+  readonly list: ReadonlyArray<CommsEnvironment>;
+  /** A disconnected primary gives way to a connected remote (orderRoutes). */
+  readonly primaryConnected?: boolean;
+} = {
+  activeId: null,
+  list: [],
+};
+let route: CommsRoute | null = null;
 
-async function commsFetch(path: string, init: RequestInit = {}): Promise<Response> {
-  const target = resolvePrimaryEnvironmentHttpUrl(`/api/comms${path}`);
+const pageOrigin = (): string | null =>
+  typeof window === "undefined" ? null : (window.location?.origin ?? null);
+
+const candidateRoutes = (): ReadonlyArray<CommsRoute> =>
+  orderRoutes({
+    hasPrimary: readPrimaryEnvironmentTarget() !== null,
+    primaryConnected: environments.primaryConnected,
+    activeId: environments.activeId,
+    environments: environments.list,
+    pageOrigin: pageOrigin(),
+  });
+
+/** Whether any connected T3 could serve comms (the primary, or a remote reachable by plain fetch). */
+export const hasCommsServer = (): boolean => candidateRoutes().length > 0;
+
+/**
+ * The primary goes through the same credentials as the environment HTTP transport
+ * (environments/primary/httpLayer.ts): the session cookie for a same-origin
+ * browser, the desktop bearer otherwise. Another environment uses its own base
+ * URL and the bearer from its prepared connection.
+ */
+async function fetchVia(via: CommsRoute, path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
+  if (via.kind === "environment") {
+    const target = new URL(`/api/comms${path}`, via.baseUrl).toString();
+    if (via.bearer === null) return fetch(target, { ...init, headers, credentials: "include" });
+    headers.set("authorization", `Bearer ${via.bearer}`);
+    return fetch(target, { ...init, headers, credentials: "omit" });
+  }
+  const target = resolvePrimaryEnvironmentHttpUrl(`/api/comms${path}`);
   if (isSameOriginBrowserPrimary()) {
     return fetch(target, { ...init, headers, credentials: "include" });
   }
   const bearer = await readDesktopPrimaryBearerToken();
   if (bearer) headers.set("authorization", `Bearer ${bearer}`);
   return fetch(target, { ...init, headers, credentials: "omit" });
+}
+
+/** Set once a probe has finished: after that, no route means no T3 serves comms. */
+let chosenOnce = false;
+/** The route as components see it (a new object per change, for useSyncExternalStore). */
+let routeState: { readonly route: CommsRoute | null; readonly chosen: boolean } = {
+  route: null,
+  chosen: false,
+};
+
+/** Calls go to the chosen route; before any probe has finished, to the first candidate. */
+async function commsFetch(path: string, init: RequestInit = {}): Promise<Response> {
+  const via = route ?? (chosenOnce ? undefined : candidateRoutes()[0]);
+  if (!via) throw new CommsError("no connected T3 serves comms", 503);
+  return fetchVia(via, path, init);
 }
 
 const decodeCallResponse = Schema.decodeUnknownOption(CommsCallResponse);
@@ -87,7 +140,11 @@ class CommsClient {
   private reopenTimer: ReturnType<typeof setTimeout> | undefined;
   private backoff = 250;
 
+  /** Bumped on every retarget; a call that straddles one is stale. */
+  private generation = 0;
+
   async call(kind: "query" | "mutation", name: string, args: Args = {}): Promise<unknown> {
+    const generation = this.generation;
     const response = await commsFetch("/call", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -97,6 +154,11 @@ class CommsClient {
     const body = decodeCallResponse(await response.json());
     if (body._tag === "None") throw new CommsError("comms answered in an unknown shape", 502);
     if ("error" in body.value) throw wireError(body.value.error, response.status);
+    // Comms moved to another T3 meanwhile: the answer is about the old server, so the
+    // caller mustn't act on it (navigate to its new chat, clear a draft as sent).
+    if (generation !== this.generation) {
+      throw new CommsError("comms moved to another T3; check the result there", 409);
+    }
     return body.value.value;
   }
 
@@ -157,14 +219,17 @@ class CommsClient {
           const line = buffer.slice(0, newline);
           buffer = buffer.slice(newline + 1);
           const frame = line ? decodeWatchFrame(JSON.parse(line)) : undefined;
-          if (frame?._tag === "Some") this.deliver(frame.value);
+          // A frame from a stream that was replaced (retarget, new watched set) is stale.
+          if (frame?._tag === "Some" && this.stream === controller) this.deliver(frame.value);
         }
       }
     } catch (error) {
       if (controller.signal.aborted) return;
-      // Configuration and auth refusals won't heal on retry: show them.
+      // Configuration and auth refusals won't heal on retry: show them, and check
+      // whether comms now lives on another connected T3.
       if (error instanceof CommsError && error.status !== 502 && error.status < 500) {
         for (const [, entry] of live) this.set(entry, { error });
+        reprobe();
         return;
       }
     }
@@ -184,7 +249,16 @@ class CommsClient {
     );
   }
 
-  private set(entry: Entry, state: EntryState): void {
+  /** Comms moved to another server: drop what the old one said and re-watch on the new one. */
+  retarget(): void {
+    this.generation += 1;
+    this.stream?.abort();
+    this.stream = undefined;
+    for (const entry of this.entries.values()) this.set(entry, undefined);
+    this.reopen();
+  }
+
+  private set(entry: Entry, state: EntryState | undefined): void {
     entry.state = state;
     for (const listener of entry.listeners) listener();
   }
@@ -228,45 +302,141 @@ function publishConfig(config: CommsConfig): void {
   for (const listener of configListeners) listener();
 }
 
+/** A probe that hasn't answered by then counts as a transient failure, so later candidates still get probed. */
+const PROBE_TIMEOUT_MS = 8_000;
+
+/** One candidate's `/config`: a 404 or `enabled: false` is a definite no; anything else may heal. */
+async function probe(via: CommsRoute): Promise<RouteProbe<CommsConfig>> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), PROBE_TIMEOUT_MS);
+  try {
+    const response = await fetchVia(via, "/config", { signal: controller.signal });
+    if (response.status === 404) return { kind: "disabled" };
+    if (!response.ok) return { kind: "failed" };
+    const config = decodeConfig(await response.json());
+    if (config._tag === "None") return { kind: "failed" };
+    return config.value.enabled ? { kind: "enabled", config: config.value } : { kind: "disabled" };
+  } catch {
+    return { kind: "failed" };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/** Same environment with a new endpoint or bearer counts as a different route. */
+const sameRoute = (a: CommsRoute | null, b: CommsRoute | null): boolean =>
+  JSON.stringify(a) === JSON.stringify(b);
+
+function applyRoute(next: CommsRoute | null): void {
+  const firstChoice = !chosenOnce;
+  chosenOnce = true;
+  const changed = !sameRoute(route, next);
+  route = next;
+  if (changed) client.retarget();
+  if (changed || firstChoice) {
+    routeState = { route, chosen: true };
+    for (const listener of configListeners) listener();
+  }
+}
+
 /**
- * Only a 404 (comms not configured on this server) or no primary environment
- * means disabled. Anything else (auth not ready, network, a restarting server)
- * is retried with backoff, so a transient failure doesn't hide comms for the session.
+ * Picks the T3 that serves comms. Only definite answers (404, or not enabled)
+ * from every candidate mean disabled. A transient failure (auth not ready,
+ * network, a restarting server) is retried with backoff, so it doesn't hide
+ * comms for the session; and while a more-preferred candidate is failing, a
+ * retry can move back to it once it recovers.
  */
 function loadConfig(): Promise<CommsConfig> {
   if (configPromise) return configPromise;
-  if (!hasCommsServer()) {
+  const routes = candidateRoutes();
+  if (routes.length === 0) {
+    applyRoute(null);
     publishConfig(DISABLED);
     configPromise = Promise.resolve(DISABLED);
     return configPromise;
   }
-  configPromise = commsFetch("/config")
-    .then(async (response) => {
-      if (response.ok) {
-        const config = decodeConfig(await response.json());
-        if (config._tag === "Some") return config.value;
-        throw new CommsError("comms config in an unknown shape", 502);
+  const attempt = (configPromise = chooseRoute(routes, probe).then((chosen) => {
+    if (configPromise !== attempt) return configValue ?? DISABLED; // superseded by a newer probe
+    if (chosen.route === null && chosen.retry) {
+      scheduleRetry();
+      // Keep the current route only if its own probe failed transiently; a route that's
+      // gone, or that just said 404 / not enabled, is dropped.
+      if (chosen.failed.some((candidate) => sameRoute(candidate, route))) {
+        return configValue ?? DISABLED;
       }
-      if (response.status === 404) return DISABLED;
-      throw new CommsError(`comms config failed (${response.status})`, response.status);
-    })
-    .then((config) => {
-      configBackoff = 2_000;
-      publishConfig(config);
-      return config;
-    })
-    .catch(() => {
-      configPromise = undefined;
-      clearTimeout(configRetry);
-      configRetry = setTimeout(() => void loadConfig(), configBackoff);
-      configBackoff = Math.min(configBackoff * 2, 60_000);
-      return configValue ?? DISABLED;
-    });
-  return configPromise;
+      applyRoute(null);
+      publishConfig(DISABLED);
+      return DISABLED;
+    }
+    if (chosen.retry) scheduleRetry();
+    else configBackoff = 2_000;
+    applyRoute(chosen.route);
+    const config = chosen.config ?? DISABLED;
+    publishConfig(config);
+    return config;
+  }));
+  return attempt;
 }
 
-/** This server's comms setup; `undefined` until known. A server without comms reports disabled. */
-export function useCommsConfig(): CommsConfig | undefined {
+function scheduleRetry(): void {
+  configPromise = undefined;
+  clearTimeout(configRetry);
+  configRetry = setTimeout(() => void loadConfig(), configBackoff);
+  configBackoff = Math.min(configBackoff * 2, 60_000);
+}
+
+const environmentsKey = (value: typeof environments): string =>
+  JSON.stringify([
+    value.activeId,
+    value.primaryConnected ?? null,
+    value.list.map((e) => [e.id, e.httpBaseUrl, e.authorization]),
+  ]);
+
+/**
+ * The connected environments changed (one connected or dropped, or the active
+ * one switched): choose the comms server again.
+ */
+/** Choose the comms server again (the current one refused a watch). */
+function reprobe(): void {
+  configPromise = undefined;
+  clearTimeout(configRetry);
+  void loadConfig();
+}
+
+export function setCommsEnvironments(next: typeof environments): void {
+  if (environmentsKey(next) === environmentsKey(environments)) return;
+  environments = next;
+  // A route that's no longer a candidate stops now, not when the reprobe (possibly
+  // slow) finishes: calls are refused until a new route is chosen.
+  if (route !== null && !candidateRoutes().some((candidate) => sameRoute(candidate, route))) {
+    applyRoute(null);
+  }
+  configPromise = undefined;
+  clearTimeout(configRetry);
+  configBackoff = 2_000;
+  void loadConfig();
+}
+
+/**
+ * The comms server's setup; `undefined` until known, disabled when no connected
+ * T3 serves comms. Components use `useCommsConfig` (useCommsConfig.ts), which
+ * also keeps the connected environments current.
+ */
+/** The chosen route, and whether routing has chosen yet (`route: null, chosen: true` = no T3 serves comms). */
+export function useCommsRouteSnapshot(): {
+  readonly route: CommsRoute | null;
+  readonly chosen: boolean;
+} {
+  return useSyncExternalStore(
+    (onChange) => {
+      configListeners.add(onChange);
+      return () => configListeners.delete(onChange);
+    },
+    () => routeState,
+  );
+}
+
+export function useCommsConfigSnapshot(): CommsConfig | undefined {
   useEffect(() => {
     void loadConfig();
   }, []);

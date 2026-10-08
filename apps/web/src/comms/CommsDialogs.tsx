@@ -28,9 +28,9 @@ import {
 import { Textarea } from "~/components/ui/textarea";
 import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { useThreadShells } from "~/state/entities";
-import { usePrimaryEnvironmentId } from "~/state/environments";
 
-import { commsCall, useCommsConfig, useCommsQuery } from "./commsClient";
+import { commsCall, useCommsQuery } from "./commsClient";
+import { useCloseOnCommsRetarget, useCommsConfig, useCommsEnvironmentId } from "./useCommsConfig";
 import {
   HARNESS_HELP,
   isOwnTestParticipant,
@@ -39,6 +39,7 @@ import {
   machineOptions,
   nameProblem,
   parseDuties,
+  pickedCandidate,
 } from "./commsAdmin.logic";
 import type { ConversationView, DirectoryList, RegistryEntry } from "./commsTypes";
 
@@ -78,10 +79,11 @@ export function RegisterAgentDialog(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }) {
+  useCloseOnCommsRetarget(props.open, props.onOpenChange);
   const config = useCommsConfig();
   const registry = useRegistry();
   const directory = useCommsQuery<DirectoryList>("directory:list", props.open ? {} : "skip");
-  const environmentId = usePrimaryEnvironmentId();
+  const environmentId = useCommsEnvironmentId();
   const threads = useThreadShells(props.open);
   const testMode = config?.testMode === true;
   const homeMachine = config?.homeMachine ?? null;
@@ -127,10 +129,13 @@ export function RegisterAgentDialog(props: {
   const submit = useSubmit();
 
   const effectiveLocator = harnessLocator(harness, name, locator);
+  // A pick only counts while it's one of the comms server's threads: if comms moves to
+  // another T3, an earlier pick must not be registered under the new home machine.
+  const pickedThread = pickedCandidate(candidateThreads, threadId);
   const home =
     source === "local"
-      ? homeMachine && threadId
-        ? { machine: homeMachine, harness: "t3", locator: threadId }
+      ? homeMachine && pickedThread
+        ? { machine: homeMachine, harness: "t3", locator: pickedThread }
         : null
       : machine && harness && effectiveLocator
         ? { machine, harness, locator: effectiveLocator }
@@ -208,7 +213,7 @@ export function RegisterAgentDialog(props: {
               <div className="grid gap-1.5">
                 <Label>T3 thread</Label>
                 <Select
-                  value={threadId}
+                  value={pickedThread}
                   onValueChange={(value) => setThreadId(String(value ?? ""))}
                 >
                   <SelectTrigger aria-label="T3 thread">
@@ -377,6 +382,7 @@ export function CreateGroupDialog(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }) {
+  useCloseOnCommsRetarget(props.open, props.onOpenChange);
   const config = useCommsConfig();
   const navigate = useNavigate();
   const joinable = useJoinable();
@@ -476,6 +482,7 @@ export function ManageMembersDialog(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }) {
+  useCloseOnCommsRetarget(props.open, props.onOpenChange);
   const config = useCommsConfig();
   const joinable = useJoinable();
   const { data: view } = useCommsQuery<ConversationView>(
@@ -567,6 +574,7 @@ export function EditProfileDialog(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }) {
+  useCloseOnCommsRetarget(props.open, props.onOpenChange);
   const [description, setDescription] = useState(props.entry.description ?? "");
   const [duties, setDuties] = useState((props.entry.duties ?? []).join("\n"));
   const submit = useSubmit();
