@@ -179,15 +179,23 @@ alert() { # alert <text>: receipt file always; issue comment and comms DM best-e
   done
 }
 hold_for_decision() { # a check failed after the first change: stop here, change nothing, hand off
-  local unit_state conn_state cmd
+  local unit_state conn_state cmd backup
   unit_state=$(systemctl --user is-active "$UNIT" || true)
   conn_state=$(systemctl --user is-active "$CONNECTOR_UNIT" || true)
-  cmd="$(readlink -f "$0") rollback $RECEIPT"
-  state rollback_command "$cmd"; state shepherd "$SHEPHERD"
+  backup=$(receipt_get backup || true)
+  state shepherd "$SHEPHERD"
   log "FAILED, stopped for the shepherd ($SHEPHERD): $1. Nothing rolled back or restarted: current -> $(readlink "$PROD/current"), $UNIT $unit_state, $CONNECTOR_UNIT $conn_state."
-  log "rollback (shepherd runs it on a decision): $cmd"
-  alert "FAILED in phase $PHASE: $1. Stopped, nothing rolled back or restarted; $UNIT is $unit_state on $(readlink "$PROD/current"); deliveries paused. Shepherd: $SHEPHERD. Roll back: '$cmd'. Or accept after manual checks: 'resume-deliveries $RECEIPT --checks-done <ref> --decision <ref>'."
-  finish "FAILED (stopped, not rolled back; shepherd $SHEPHERD): $1. Roll back: $cmd" 1
+  if [[ -n "$backup" && -f "$backup" ]]; then
+    cmd="$(readlink -f "$0") rollback $RECEIPT"
+    state rollback_command "$cmd"
+    log "rollback (shepherd runs it on a decision): $cmd"
+    alert "FAILED in phase $PHASE: $1. Stopped, nothing rolled back or restarted; $UNIT is $unit_state on $(readlink "$PROD/current"); deliveries paused. Shepherd: $SHEPHERD. Roll back: '$cmd'. Or accept after manual checks: 'resume-deliveries $RECEIPT --checks-done <ref> --decision <ref>'."
+    finish "FAILED (stopped, not rolled back; shepherd $SHEPHERD): $1. Roll back: $cmd" 1
+  else
+    log "no verified backup recorded; rollback UNAVAILABLE"
+    alert "FAILED in phase $PHASE: $1. Stopped, nothing rolled back or restarted; $UNIT is $unit_state on $(readlink "$PROD/current"); deliveries paused. Shepherd: $SHEPHERD. No backup recorded — rollback unavailable. Accept after manual checks: 'resume-deliveries $RECEIPT --checks-done <ref> --decision <ref>'."
+    finish "FAILED (stopped, not rolled back; shepherd $SHEPHERD): $1. Rollback unavailable (no backup recorded)" 1
+  fi
 }
 
 resolve_paths() {
@@ -355,6 +363,8 @@ cmd_resume() {
     *) echo "receipt result is '$result'; not resuming" >&2; exit 1 ;;
   esac
   set -- "$checks"
+  # Ensure prod is up before resuming deliveries; start it if it was left stopped.
+  systemctl --user start "$UNIT" >/dev/null 2>&1 || true
   wait_http || { log "resume refused: prod is not answering"; exit 1; }
   local cstart; cstart=$(date -u +%FT%TZ)
   systemctl --user start "$CONNECTOR_UNIT"
