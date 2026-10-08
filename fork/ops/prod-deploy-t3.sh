@@ -129,6 +129,20 @@ check_latest() { # check_latest <command>: refuse an older receipt once a newer 
   done < <(find "$RECEIPTS" -mindepth 1 -maxdepth 1 -type d -name '[0-9]*Z' -printf '%f\n' | sort)
   [[ "$newest" == "$(basename "$RECEIPT")" ]] || { echo "refusing $1: a newer deploy receipt exists ($RECEIPTS/$newest); nothing changed" >&2; return 1; }
 }
+previous_open() { # previous_open [own-ts]: why the newest other deploy receipt is still open; 1 if closed or none
+  # A deploy is closed once deliveries resumed, or the shepherd closed it with close-receipt after a manual
+  # recovery. Until then a new launch would back up and build on the half-decided state (Quinn, #22).
+  local d r
+  d=$(find "$RECEIPTS" -mindepth 1 -maxdepth 1 -type d -name '[0-9]*Z' ! -name "${1:-none}" -printf '%f\n' 2>/dev/null | sort | while IFS= read -r x; do
+    [[ "$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1])).get("result",""))' "$RECEIPTS/$x/receipt.json" 2>/dev/null)" == "failed before any change"* ]] || echo "$x"; done | tail -1)
+  [[ -n "$d" ]] || return 1
+  r=$(python3 -I -c 'import json,sys
+try: d=json.load(open(sys.argv[1]))
+except Exception: print("receipt.json unreadable"); sys.exit(0)
+if d.get("closed") or str(d.get("deliveries","")).startswith("resumed"): sys.exit(1)
+print("result: %s; deliveries: %s" % (d.get("result","(still running)")[:120], d.get("deliveries","-")))' "$RECEIPTS/$d/receipt.json" 2>/dev/null) || return 1
+  echo "previous deploy $RECEIPTS/$d is still open ($r); finish its next step, or close it with close-receipt after a manual recovery"
+}
 take_lock() { # take_lock <command>: one state-changing operation per prod at a time; never waits (Macroscope, Codex, #22)
   exec 9>>"$PROD/.prod-deploy.lock"
   flock -n 9 || { echo "refusing $1: another deploy, rollback, restart or resume holds $PROD/.prod-deploy.lock; nothing changed" >&2; return 1; }
@@ -268,6 +282,7 @@ cmd_launch() {
   esac; done
   [[ -n "$approved" ]] || { echo "--approved \"<Lee's OK, relayed by Mira: message link>\" is required" >&2; exit 2; }
   ((headsup)) || { echo "--heads-up-sent is required (prod agents were told the restart is coming; Lee does not require them to be idle)" >&2; exit 2; }
+  local open; if open=$(previous_open); then echo "refusing launch: $open; nothing changed" >&2; exit 1; fi
   take_lock launch || exit 1; exec 9>&-
   local ts unit; ts=$(date -u +%Y%m%dT%H%M%S%NZ); ts=${ts:0:19}Z; unit=jess-prod-deploy-$ts
   own_unit "$unit" run "$ts" "$approved" "$comms"
@@ -282,6 +297,7 @@ cmd_run() {
   state started "$ts"; state approved "$approved"; state candidate_run "$CANDIDATE_RUN"; state started_at "$(date "+%F %T")"
   state target "$(target_id)"
   take_lock deploy 2>>"$RECEIPT/receipt.log" || handle_failure "another prod-deploy operation holds the lock"
+  local open; if open=$(previous_open "$ts"); then handle_failure "$open"; fi
 
   # 1. Preflight (nothing changed yet)
   log "deploy unit cgroup: $(cut -d: -f3 /proc/$$/cgroup)"
@@ -476,6 +492,13 @@ cmd_restart_unchanged() { # shepherd's step after a failure before install: star
   fi
 }
 
+cmd_close_receipt() { # shepherd: mark a deploy closed after a manual recovery, so a new launch may proceed
+  RECEIPT=$(readlink -f "${1:-}"); shift || true
+  [[ -f "$RECEIPT/receipt.json" ]] || { echo "no receipt in ${RECEIPT:-}" >&2; exit 2; }
+  [[ "${1:-}" == --decision && -n "${2:-}" ]] || { echo "close-receipt <receipt-dir> --decision \"<who decided, link>\" is required" >&2; exit 2; }
+  take_lock close-receipt || exit 1
+  state closed "$2"; log "closed by the shepherd: $2 (state was: $(receipt_get result); deliveries: $(receipt_get deliveries))"
+}
 cmd_rollback() { # starts rollback-run in its own unit, so it survives stopping prod; then exits
   local receipt; receipt=$(readlink -f "${1:-}")
   [[ -f "$receipt/receipt.json" ]] || { echo "no receipt in ${1:-}" >&2; exit 2; }
@@ -514,6 +537,7 @@ case ${1:-plan} in
   rollback) shift; cmd_rollback "$@" ;;
   rollback-run) shift; cmd_rollback_run "$@" ;;
   restart-unchanged) shift; cmd_restart_unchanged "$@" ;;
+  close-receipt) shift; cmd_close_receipt "$@" ;;
   verify-identity) shift; cmd_verify_identity "$@" ;;
-  *) echo "usage: $0 plan | launch --approved <ref> --heads-up-sent [--apply-comms] | resume-deliveries <receipt-dir> --checks-done <ref> [--decision <ref>] | rollback <receipt-dir>" >&2; exit 2 ;;
+  *) echo "usage: $0 plan | launch --approved <ref> --heads-up-sent [--apply-comms] | resume-deliveries <receipt-dir> --checks-done <ref> [--decision <ref>] | rollback <receipt-dir> | restart-unchanged <receipt-dir> | close-receipt <receipt-dir> --decision <ref> | verify-identity <receipt-dir>" >&2; exit 2 ;;
 esac

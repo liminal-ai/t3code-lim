@@ -210,8 +210,6 @@ run_case() {
         run_rc "$DEPLOY" $cmd "$R" --checks-done test
         check "$cmd while locked refused" "$RC $OUT" "1 *refusing $cmd: another deploy, rollback, restart or resume holds*"
       done
-      run_rc "$DEPLOY" launch --approved "isolated test lock" --heads-up-sent
-      check "launch while locked refused" "$RC $OUT" "1 *refusing launch: another deploy*"
       kill $holder; wait $holder 2>/dev/null || true
       # A rollback-run the shepherd launched but that is refused leaves a visible receipt state and alert (Quinn, #22).
       run_rc env UNIT=jess-fake-prod-elsewhere PROD="$ROOT/elsewhere" "$DEPLOY" rollback-run "$R"
@@ -222,6 +220,11 @@ run_case() {
       echo "-- resume-deliveries:"; run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test: manual checks stand-in"
       check "resume-deliveries exit" "$RC" "0"
       check "connector after resume" "$(active_of jess-fake-connector-$c)" "active"
+      check "deploy closed by the resume" "$(receipt_of deliveries)" "resumed*"
+      flock -n -o "$ROOT/$c/prod/.prod-deploy.lock" sleep 30 & holder=$!; sleep 0.5
+      run_rc "$DEPLOY" launch --approved "isolated test lock" --heads-up-sent
+      check "launch while locked refused" "$RC $OUT" "1 *refusing launch: another deploy*"
+      kill $holder; wait $holder 2>/dev/null || true
       echo "-- verify-identity:"; run_rc "$DEPLOY" verify-identity "$R"
       check "verify-identity exit" "$RC" "0"
       check "verify-identity says PASS" "$OUT" "*identity check PASS: 2 native refs unchanged*" ;;
@@ -256,6 +259,10 @@ run_case() {
       check "alert offers no accept before install" "$(grep -c -e '--decision' "$R/ALERT.txt" || true)" "0"
       run_rc "$DEPLOY" resume-deliveries "$R" --checks-done test --decision "test: accept"
       check "accept before install refused" "$RC $OUT" "1 *before install; run its restart-unchanged step first*"
+      # A new launch over a deploy still waiting on the shepherd is refused, and leaves no receipt (Quinn, #22).
+      run_rc "$DEPLOY" launch --approved "isolated test over an open deploy" --heads-up-sent
+      check "launch over an open deploy refused" "$RC $OUT" "1 *refusing launch: previous deploy * is still open*"
+      check "no new receipt" "$(find "$ROOT/$c/receipts" -mindepth 1 -maxdepth 1 -type d | wc -l)" "1"
       echo "-- shepherd: restart-unchanged, then resume-deliveries:"
       run_rc "$DEPLOY" restart-unchanged "$R"; check "restart-unchanged exit" "$RC" "0"
       run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test"; check "resume-deliveries exit" "$RC" "0"
@@ -314,7 +321,15 @@ run_case() {
       check "connector paused" "$(active_of jess-fake-connector-$c)" "inactive"
       echo "-- resume-deliveries is refused:"; run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test"
       check "resume refused" "$RC" "1"
-      check "connector still paused" "$(active_of jess-fake-connector-$c)" "inactive" ;;
+      check "connector still paused" "$(active_of jess-fake-connector-$c)" "inactive"
+      echo "-- after a manual recovery the shepherd closes the receipt; until then a launch is refused:"
+      run_rc "$DEPLOY" launch --approved "isolated test" --heads-up-sent
+      check "launch over ROLLBACK FAILED refused" "$RC $OUT" "1 *refusing launch: previous deploy * is still open (result: ROLLBACK FAILED*"
+      run_rc "$DEPLOY" close-receipt "$R"
+      check "close-receipt needs a decision" "$RC" "2"
+      run_rc "$DEPLOY" close-receipt "$R" --decision "test: recovered by hand"
+      check "close-receipt" "$RC $(receipt_of closed)" "0 test: recovered by hand"
+      check "connector untouched by close-receipt" "$(active_of jess-fake-connector-$c)" "inactive" ;;
     restore-stop-fails) # STOPPED; the shepherd's rollback can't confirm prod stopped -> no data moved
       setup restore-stop-fails 18905 no; deploy restore-stop-fails 18905 restore_stop_fails
       rollback_by_hand restore-stop-fails; report restore-stop-fails 18905
