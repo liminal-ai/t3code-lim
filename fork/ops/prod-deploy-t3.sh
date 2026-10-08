@@ -113,13 +113,21 @@ receipt_get() { python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1])
 target_id() { echo "unit=$UNIT prod=$PROD connector=$CONNECTOR_UNIT port=$PORT"; }
 check_target() { # check_target <command>: refuse unless this shell targets what the receipt's deploy targeted
   # A fresh shell defaults to real prod; a sandbox receipt must never drive it (Macroscope, #22).
+  # Receipts from before 2026-10-08's #22 record no target and are refused; recover those by hand.
   local want; want=$(receipt_get target)
-  [[ -n "$want" ]] || { echo "refusing $1: receipt records no target; nothing changed" >&2; exit 1; }
-  [[ "$want" == "$(target_id)" ]] || { echo "refusing $1: receipt targets '$want', this shell targets '$(target_id)'; nothing changed" >&2; exit 1; }
+  [[ -n "$want" ]] || { echo "refusing $1: receipt records no target (written before #22); nothing changed" >&2; return 1; }
+  [[ "$want" == "$(target_id)" ]] || { echo "refusing $1: receipt targets '$want', this shell targets '$(target_id)'; nothing changed" >&2; return 1; }
 }
 check_latest() { # check_latest <command>: refuse an older receipt once a newer deploy exists (Macroscope, #22)
-  local newest; newest=$(find "$RECEIPTS" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort | tail -1)
-  [[ "$newest" == "$(basename "$RECEIPT")" ]] || { echo "refusing $1: a newer deploy receipt exists ($RECEIPTS/$newest); nothing changed" >&2; exit 1; }
+  # Only timestamp-named receipts count (not an archive/ or notes/ folder), and not a receipt whose deploy
+  # failed before changing anything (preflight, including losing the lock): it can't supersede an
+  # installed one (Macroscope, Codex, Quinn on #22).
+  local d newest=""
+  while IFS= read -r d; do
+    [[ "$(python3 -I -c 'import json,sys;print(json.load(open(sys.argv[1])).get("result",""))' "$RECEIPTS/$d/receipt.json" 2>/dev/null)" == "failed before any change"* ]] && continue
+    newest=$d
+  done < <(find "$RECEIPTS" -mindepth 1 -maxdepth 1 -type d -name '[0-9]*Z' -printf '%f\n' | sort)
+  [[ "$newest" == "$(basename "$RECEIPT")" ]] || { echo "refusing $1: a newer deploy receipt exists ($RECEIPTS/$newest); nothing changed" >&2; return 1; }
 }
 take_lock() { # take_lock <command>: one state-changing operation per prod at a time; never waits (Macroscope, Codex, #22)
   exec 9>>"$PROD/.prod-deploy.lock"
@@ -372,7 +380,7 @@ cmd_resume() {
     *) echo "unknown flag $1" >&2; exit 2 ;;
   esac; done
   [[ -n "$checks" ]] || { echo "--checks-done \"<who checked, link>\" is required" >&2; exit 2; }
-  check_target resume-deliveries; check_latest resume-deliveries
+  check_target resume-deliveries || exit 1; check_latest resume-deliveries || exit 1
   take_lock resume-deliveries || exit 1
   local result want accept=0; result=$(receipt_get result)
   case $result in
@@ -413,7 +421,7 @@ cmd_resume() {
 
 cmd_verify_identity() { # T-9: every provider row keeps its pre-deploy native ref; no fresh-session fallback
   RECEIPT=$1; [[ -f "$RECEIPT/native-refs-before.json" ]] || { echo "no native-refs-before.json in $RECEIPT" >&2; exit 2; }
-  check_target verify-identity
+  check_target verify-identity || exit 1
   native_refs > "$RECEIPT/native-refs-after.json"
   local changed fallbacks since
   changed=$(python3 -I - "$RECEIPT/native-refs-before.json" "$RECEIPT/native-refs-after.json" <<'EOF2'
@@ -455,7 +463,7 @@ EOF2
 
 cmd_restart_unchanged() { # shepherd's step after a failure before install: start the same old release again
   RECEIPT=$1; [[ -f "$RECEIPT/receipt.json" ]] || { echo "no receipt in ${1:-}" >&2; exit 2; }
-  check_target restart-unchanged; check_latest restart-unchanged
+  check_target restart-unchanged || exit 1; check_latest restart-unchanged || exit 1
   take_lock restart-unchanged || exit 1
   OLD_RELEASE=$(receipt_get old_release); MIG_BEFORE=$(receipt_get migrations_before)
   [[ "$(readlink "$PROD/current")" == "$OLD_RELEASE" ]] || { log "refusing restart-unchanged: current is not $OLD_RELEASE; use rollback"; exit 1; }
@@ -471,7 +479,7 @@ cmd_restart_unchanged() { # shepherd's step after a failure before install: star
 cmd_rollback() { # starts rollback-run in its own unit, so it survives stopping prod; then exits
   local receipt; receipt=$(readlink -f "${1:-}")
   [[ -f "$receipt/receipt.json" ]] || { echo "no receipt in ${1:-}" >&2; exit 2; }
-  RECEIPT=$receipt; check_target rollback; check_latest rollback
+  RECEIPT=$receipt; check_target rollback || exit 1; check_latest rollback || exit 1
   take_lock rollback || exit 1; exec 9>&-
   local ts unit; ts=$(date -u +%Y%m%dT%H%M%S%NZ); unit=jess-prod-rollback-${ts:0:19}Z
   own_unit "$unit" rollback-run "$receipt"
@@ -480,8 +488,13 @@ cmd_rollback() { # starts rollback-run in its own unit, so it survives stopping 
 
 cmd_rollback_run() {
   RECEIPT=$1; [[ -f "$RECEIPT/receipt.json" ]] || { echo "no receipt in $RECEIPT" >&2; exit 2; }
-  check_target rollback-run; check_latest rollback-run
-  take_lock rollback-run || { log "refusing rollback: another prod-deploy operation holds the lock"; exit 1; }
+  # The shepherd already saw 'started'; a refusal here goes into the receipt and an alert (Quinn, #22).
+  local refusal
+  if ! refusal=$({ check_target rollback-run && check_latest rollback-run; } 2>&1); then
+    state rollback "refused, nothing changed: $refusal"; log "rollback refused, nothing changed: $refusal"
+    alert "Rollback of $RECEIPT refused, nothing changed: $refusal"; exit 1
+  fi
+  take_lock rollback-run || { state rollback "refused, nothing changed: lock taken"; log "rollback refused: lock taken"; alert "Rollback of $RECEIPT refused, nothing changed: another prod-deploy operation holds the lock"; exit 1; }
   log "rollback by hand, running in cgroup: $(cut -d: -f3 /proc/$$/cgroup)"
   not_in_prod_cgroup || { log "refusing: rollback-run is inside $UNIT's cgroup and would be killed with it; use rollback"; exit 1; }
   OLD_RELEASE=$(receipt_get old_release); MIG_BEFORE=$(receipt_get migrations_before)

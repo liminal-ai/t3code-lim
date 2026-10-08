@@ -198,6 +198,12 @@ run_case() {
       run_rc "$DEPLOY" rollback "$R"
       check "rollback with an older receipt refused" "$RC $OUT" "1 *refusing rollback: a newer deploy receipt exists*"
       rmdir "$ROOT/$c/receipts/99991231T000000000Z"
+      # Neither a non-timestamp folder nor a deploy that failed before changing anything supersedes this receipt.
+      mkdir "$ROOT/$c/receipts/archive" "$ROOT/$c/receipts/99991231T000000001Z"
+      echo '{"result": "failed before any change: another prod-deploy operation holds the lock"}' > "$ROOT/$c/receipts/99991231T000000001Z/receipt.json"
+      run_rc "$DEPLOY" restart-unchanged "$R" # refuses later, on current (still the new release), without changing anything
+      check "a preflight-failed receipt and an archive/ folder don't make this one stale" "$RC $(grep -c 'newer deploy receipt' <<<"$OUT" || true)" "1 0"
+      rm -rf "$ROOT/$c/receipts/archive" "$ROOT/$c/receipts/99991231T000000001Z"
       # -o: the lock is held by flock itself, so killing it releases the lock (sleep doesn't inherit it).
       flock -n -o "$ROOT/$c/prod/.prod-deploy.lock" sleep 30 & local holder=$!; sleep 0.5
       for cmd in resume-deliveries rollback restart-unchanged; do
@@ -207,6 +213,11 @@ run_case() {
       run_rc "$DEPLOY" launch --approved "isolated test lock" --heads-up-sent
       check "launch while locked refused" "$RC $OUT" "1 *refusing launch: another deploy*"
       kill $holder; wait $holder 2>/dev/null || true
+      # A rollback-run the shepherd launched but that is refused leaves a visible receipt state and alert (Quinn, #22).
+      run_rc env UNIT=jess-fake-prod-elsewhere PROD="$ROOT/elsewhere" "$DEPLOY" rollback-run "$R"
+      check "refused rollback-run is in the receipt" "$RC $(receipt_of rollback)" "1 refused, nothing changed: refusing rollback-run: receipt targets*"
+      check "refused rollback-run alerts" "$(cat "$R/ALERT.txt" 2>/dev/null)" "*Rollback of * refused, nothing changed*"
+      rm -f "$R/ALERT.txt"
       check "guards changed nothing" "$(current_of $c) $(active_of jess-fake-prod-$c) $(active_of jess-fake-connector-$c)" "$before_guards"
       echo "-- resume-deliveries:"; run_rc "$DEPLOY" resume-deliveries "$R" --checks-done "test: manual checks stand-in"
       check "resume-deliveries exit" "$RC" "0"
