@@ -291,9 +291,21 @@ async function probe(via: CommsRoute): Promise<RouteProbe<CommsConfig>> {
   }
 }
 
+function routesEqual(a: CommsRoute | null, b: CommsRoute | null): boolean {
+  if (a === b) return true;
+  if (a === null || b === null) return false;
+  if (a.kind !== b.kind) return false;
+  if (a.kind === "environment" && b.kind === "environment") {
+    return a.id === b.id && a.baseUrl === b.baseUrl && a.bearer === b.bearer;
+  }
+  // Primary has no varying fields relevant to routing the stream.
+  return true;
+}
+
 function applyRoute(next: CommsRoute | null): void {
   const changed =
-    (route === null ? null : routeKey(route)) !== (next === null ? null : routeKey(next));
+    (route === null ? null : routeKey(route)) !== (next === null ? null : routeKey(next)) ||
+    !routesEqual(route, next);
   route = next;
   if (changed) client.retarget();
 }
@@ -317,6 +329,8 @@ function loadConfig(): Promise<CommsConfig> {
   const attempt = (configPromise = chooseRoute(routes, probe).then((chosen) => {
     if (configPromise !== attempt) return configValue ?? DISABLED; // superseded by a newer probe
     if (chosen.route === null && chosen.retry) {
+      // All current candidates failed transiently: clear any stale route and retry.
+      applyRoute(null);
       scheduleRetry();
       return configValue ?? DISABLED;
     }

@@ -1,10 +1,10 @@
 import { ArrowLeftIcon, ChartNoAxesColumnIcon, RadioTowerIcon, SettingsIcon } from "lucide-react";
 // Fork-only (agent comms): the Comms button reads whether comms is configured.
 import { useCommsConfig } from "~/comms/commsClient";
-import { useCommsEnvironmentRouting } from "~/comms/useCommsEnvironmentRouting";
 import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
+import { useCommsEnvironmentRouting } from "~/comms/useCommsEnvironmentRouting";
 
 import { useEnvironmentIdentificationMode } from "../../hooks/useSettings";
 import { cn } from "../../lib/utils";
@@ -167,10 +167,7 @@ function SidebarUtilityItem({
   );
 }
 
-// Fork-only (agent comms): the Comms button. Always mounted, so it also keeps
-// comms routed to whichever connected T3 serves it.
 function CommsSidebarItem(props: { readonly onNavigate: () => void }) {
-  useCommsEnvironmentRouting();
   const config = useCommsConfig();
   const navigate = useNavigate();
   if (!config?.enabled) return null;
@@ -187,6 +184,9 @@ function CommsSidebarItem(props: { readonly onNavigate: () => void }) {
 }
 
 export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
+  // Fork-only (agent comms): keep comms routed even on utility pages like /comms.
+  // Mounted regardless of the current page, so routing stays current.
+  useCommsEnvironmentRouting();
   const navigate = useNavigate();
   const navigateToMainApp = useNavigateToMainApp();
   const { isMobile, setOpenMobile } = useSidebar();
