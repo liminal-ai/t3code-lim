@@ -162,6 +162,11 @@ class CommsClient {
     return body.value.value;
   }
 
+  /** A query's current state, read by key (see useCommsQuery). */
+  snapshot(key: string): EntryState | undefined {
+    return this.entries.get(key)?.state;
+  }
+
   entry(key: string, name: string, args: Args): Entry {
     let entry = this.entries.get(key);
     if (!entry) {
@@ -171,7 +176,15 @@ class CommsClient {
     return entry;
   }
 
-  listen(key: string, entry: Entry, onChange: () => void): () => void {
+  listen(key: string, held: Entry, onChange: () => void): () => void {
+    // Listen on the entry stored under the key, which open(), deliver() and snapshot()
+    // all use: a component can hold one the 1 s eviction already dropped (put it back
+    // only if nothing replaced it), or another component may have made a newer one.
+    let entry = this.entries.get(key);
+    if (!entry) {
+      entry = held;
+      this.entries.set(key, entry);
+    }
     entry.listeners.add(onChange);
     if (entry.listeners.size === 1) this.reopen();
     return () => {
@@ -285,7 +298,11 @@ export function useCommsQuery<T>(
     (onChange: () => void) => (entry ? client.listen(key, entry, onChange) : () => {}),
     [entry, key],
   );
-  const state = useSyncExternalStore(subscribe, () => entry?.state);
+  // Read by key, not through `entry`: compiled, a `() => entry?.state` closure is
+  // memoized on `entry?.state`, so after a skip it kept the old (missing) entry and
+  // never saw the first frame (#12). The key changes whenever the query does.
+  const getSnapshot = useCallback(() => (skip ? undefined : client.snapshot(key)), [key, skip]);
+  const state = useSyncExternalStore(subscribe, getSnapshot);
   return { data: state?.value as T | undefined, error: state?.error };
 }
 
