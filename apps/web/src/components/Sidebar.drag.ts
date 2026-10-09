@@ -144,9 +144,12 @@ export function createSidebarSortingStrategy(input: {
         }
         continue;
       }
-      if (item.section === "pinned" || item.section === "active" || item.section === "working")
+      // Pinned rows are slim (36px). Only Active/Working are full-height cards.
+      if (item.section === "active" || item.section === "working") {
         cardHeight ??= rects[index]?.height;
-      else slimHeight ??= rects[index]?.height;
+      } else {
+        slimHeight ??= rects[index]?.height;
+      }
       if (item.key !== active.key) groups[item.section].push(item);
     }
     // Cards are 4.875rem + 0.25rem padding; slim rows/placeholders are h-9.
@@ -208,7 +211,7 @@ export function createSidebarSortingStrategy(input: {
       const rect = index === undefined ? undefined : rects[index];
       const fallback =
         item.kind === "thread" &&
-        (item.section === "pinned" || item.section === "active" || item.section === "working")
+        (item.section === "active" || item.section === "working")
           ? cardHeight
           : slimHeight;
       const moved = item.kind === "thread" && item.key === active.key;

@@ -208,7 +208,10 @@ import {
   sidebarMarkerId,
   sidebarThreadKeyAtY,
   sortInboxThreadsByReturn,
-  sortPinnedThreadsForSidebar,
+  agentsSectionLabel,
+  resolveAgentsSectionThreads,
+  resolvePinnedActivityTimestamp,
+  sortPinnedThreadsByActivity,
   sortSidebarV2ProjectGroups,
   sortThreadsForSidebar,
   sortWorkingThreadsBySend,
@@ -292,6 +295,8 @@ const SETTLED_TAIL_PAGE_COUNT = 25;
 // Fresh keys deliberately reset both shelves to collapsed for existing users.
 const SETTLED_SHELF_EXPANDED_KEY = "t3code:sidebar:settled-expanded";
 const SNOOZED_SHELF_EXPANDED_KEY = "t3code:sidebar:snoozed-expanded";
+// Fork-only (t3code-lim; Lee, 2026-10-09): the pinned block is the "Agents" section.
+const AGENTS_SECTION_EXPANDED_KEY = "t3code-lim:sidebar:agents-expanded";
 const WORKING_SHELF_EXPANDED_KEY = "t3code:sidebar:working-expanded";
 
 // Working beta: when this client saw each thread leave the Working shelf.
@@ -311,6 +316,11 @@ function threadTimeLabel(thread: SidebarThreadSummary): string {
 // Settled rows read "how long ago did this wrap up", matching their sort
 // key: both go through resolveSettledThreadTimestamp so label and order can't
 // disagree.
+// Fork-only (t3code-lim): Agents rows read their activity age, matching their sort.
+function pinnedTimeLabel(thread: SidebarThreadSummary): string {
+  return compactSidebarTimeLabel(formatRelativeTimeLabel(resolvePinnedActivityTimestamp(thread)));
+}
+
 function settledTimeLabel(thread: SidebarThreadSummary): string {
   const timestamp = resolveSettledThreadTimestamp(thread);
   return timestamp === null ? "" : compactSidebarTimeLabel(formatRelativeTimeLabel(timestamp));
@@ -1602,6 +1612,10 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     isActive: props.isActive,
   });
 
+  // Fork-only (Lee, 2026-10-08): a pinned thread in the Agents block. It uses
+  // the one-line slim row but, unlike settled and snoozed rows, doesn't recede:
+  // card-strength title, undimmed icon, live status and the provider glyph.
+  const pinnedCompact = variant === "slim" && props.isPinned && variantAction === "settle";
   const title = isRenaming ? (
     <input
       autoFocus
@@ -1621,7 +1635,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       className={cn(
         "min-w-0 flex-1 text-sm transition-opacity motion-reduce:transition-none",
         shouldRecede ? "font-normal" : "font-medium",
-        variant === "card"
+        variant === "card" || pinnedCompact
           ? cn(
               "truncate",
               shouldRecede
@@ -1779,7 +1793,8 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
             <span
               className={cn(
                 "shrink-0 transition-opacity",
-                (!props.isActive || variantAction === "unsettle") &&
+                !pinnedCompact &&
+                  (!props.isActive || variantAction === "unsettle") &&
                   "opacity-40 grayscale group-focus-within/sidebar-row:opacity-100 group-focus-within/sidebar-row:grayscale-0 group-hover/sidebar-row:opacity-100 group-hover/sidebar-row:grayscale-0",
               )}
             >
@@ -1787,7 +1802,13 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
             </span>
             {draftIndicator}
             {title}
-            {pinIndicator}
+            {pinnedCompact && pinIndicator ? (
+              <span className="flex shrink-0 opacity-0 transition-opacity group-focus-within/sidebar-row:opacity-100 group-any-hover/sidebar-row:opacity-100">
+                {pinIndicator}
+              </span>
+            ) : (
+              pinIndicator
+            )}
             {terminalStatusIcon}
             {isRegeneratingTitle ? (
               <span role="status" className="sr-only">
@@ -1798,6 +1819,14 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
               remain visible AND clickable while the row is hovered. Only
               the time/jump label yields to the settle affordance. */}
             {prBadge}
+            {pinnedCompact ? (
+              <span aria-hidden className="pointer-events-none inline-flex shrink-0 items-center">
+                <SidebarProviderStack
+                  thread={thread}
+                  providerEntryByInstanceId={props.providerEntryByInstanceId}
+                />
+              </span>
+            ) : null}
             {sortable?.isDragging ? (
               dragDestination
             ) : (
@@ -1838,11 +1867,33 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                       />
                       <TooltipPopup side="top">Dismiss Woke notification</TooltipPopup>
                     </Tooltip>
+                  ) : pinnedCompact && topStatus ? (
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1 text-xs font-medium",
+                        topStatus.className,
+                      )}
+                    >
+                      {topStatus.icon === "working" ? (
+                        <CircleDashedIcon aria-hidden className="size-3.5 shrink-0" />
+                      ) : topStatus.icon === "input" ? (
+                        <MessageCircleQuestionIcon aria-hidden className="size-3.5 shrink-0" />
+                      ) : topStatus.icon === "approval" ? (
+                        <ShieldQuestionIcon aria-hidden className="size-3.5 shrink-0" />
+                      ) : topStatus.icon === "failed" ? (
+                        <CircleAlertIcon aria-hidden className="size-3.5 shrink-0" />
+                      ) : topStatus.icon === "done" ? (
+                        <CircleCheckIcon aria-hidden className="size-3.5 shrink-0" />
+                      ) : null}
+                      <span role="status">{topStatus.label}</span>
+                    </span>
                   ) : (
                     <span className="text-xs">
                       {variantAction === "unsettle"
                         ? settledTimeLabel(thread)
-                        : threadTimeLabel(thread)}
+                        : pinnedCompact
+                          ? pinnedTimeLabel(thread)
+                          : threadTimeLabel(thread)}
                     </span>
                   )}
                 </span>
@@ -2775,19 +2826,14 @@ export default function Sidebar() {
     // Server capability only gates DRAGGING — it must not influence the
     // sort, or mixed-version fleets would render different pinned orders on
     // web and mobile from the same data.
-    const sortedPinned = sortPinnedThreadsForSidebar(pinned);
+    // Fork-only: the Agents block sorts by activity (sortPinnedThreadsByActivity).
+    const sortedPinned = sortPinnedThreadsByActivity(pinned);
     const sortedActive = workingShelfEnabled
       ? sortInboxThreadsByReturn(active, inboxReturns.returnedAt)
       : sortThreadsForSidebar(active);
     return {
-      pinnedThreads:
-        optimisticDrop?.section !== "pinned" || optimisticDrop.order === null
-          ? sortedPinned
-          : orderItemsByPreferredIds({
-              items: sortedPinned,
-              preferredIds: optimisticDrop.order,
-              getId: (thread) => scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
-            }),
+      // Activity order wins over where a pinned row was dropped.
+      pinnedThreads: sortedPinned,
       draggableThreadKeys: draggable,
       activeReorderableThreadKeys: activeReorderable,
       activeThreads:
@@ -2936,6 +2982,28 @@ export default function Sidebar() {
     return routeThread === undefined ? EMPTY_THREADS : [routeThread];
   }, [routeThreadKey, settledShelfExpanded, visibleSettledThreads]);
 
+  // Fork-only (Lee, 2026-10-09): the Agents (pinned) block collapses; open by
+  // default. Same route exception as the shelves: the open thread keeps its row.
+  const [agentsSectionExpanded, setAgentsSectionExpanded] = useLocalStorage(
+    AGENTS_SECTION_EXPANDED_KEY,
+    true,
+    Schema.Boolean,
+  );
+  const toggleAgentsSection = useCallback(
+    () => setAgentsSectionExpanded((value) => !value),
+    [setAgentsSectionExpanded],
+  );
+  const visiblePinnedThreads = useMemo(
+    () =>
+      resolveAgentsSectionThreads({
+        threads: pinnedThreads,
+        expanded: agentsSectionExpanded,
+        routeThreadKey,
+        keyOf: (thread) => scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
+      }),
+    [agentsSectionExpanded, pinnedThreads, routeThreadKey],
+  );
+
   // The snoozed shelf is collapsed by default: out of the way, never gone.
   // Collapsed threads don't render (and so don't participate in jump
   // shortcuts or multi-select), matching the settled tail's paging model.
@@ -2986,14 +3054,14 @@ export default function Sidebar() {
 
   const orderedThreads = useMemo(
     () => [
-      ...pinnedThreads,
+      ...visiblePinnedThreads,
       ...activeThreads,
       ...visibleWorkingThreads,
       ...visibleSnoozedThreads,
       ...renderedSettledThreads,
     ],
     [
-      pinnedThreads,
+      visiblePinnedThreads,
       activeThreads,
       visibleWorkingThreads,
       visibleSnoozedThreads,
@@ -3726,7 +3794,7 @@ export default function Sidebar() {
       return [];
     }
     const items: SidebarListItem[] = [{ kind: "marker", marker: "pinned-header" }];
-    const pinnedRows = rowsOf(pinnedThreads, "pinned");
+    const pinnedRows = rowsOf(visiblePinnedThreads, "pinned");
     items.push(...pinnedRows);
     items.push({ kind: "marker", marker: "pinned-divider" });
     const activeRows = rowsOf(activeThreads, "active");
@@ -3748,6 +3816,7 @@ export default function Sidebar() {
   }, [
     activeThreads,
     pinnedThreads,
+    visiblePinnedThreads,
     renderedSettledThreads,
     settledThreads.length,
     snoozedThreads.length,
@@ -3884,25 +3953,24 @@ export default function Sidebar() {
       (id) => {
         const target = resolveSidebarDropTarget(sidebarListItems, draggedThreadKey, id);
         if (target === null) return false;
-        return (
-          planSidebarThreadDrop({
-            activeKey: draggedThreadKey,
-            activeSection: draggedFromSection,
-            activePinned: source.pinnedAt != null,
-            activeSettled: source.settledOverride === "settled",
-            supportsSettlement:
-              serverConfigs.get(source.environmentId)?.environment.capabilities.threadSettlement ===
-              true,
-            target,
-            pinnedOrder: pinnedKeys,
-            pinnedKeysById,
-            reorderableKeys: draggableThreadKeys,
-            activeOrder: activeKeys,
-            activeKeysById,
-            activeReorderableKeys: activeReorderableThreadKeys,
-            activeTimeOrdered: workingShelfEnabled,
-          }).kind !== "none"
-        );
+        const plan = planSidebarThreadDrop({
+          activeKey: draggedThreadKey,
+          activeSection: draggedFromSection,
+          activePinned: source.pinnedAt != null,
+          activeSettled: source.settledOverride === "settled",
+          supportsSettlement:
+            serverConfigs.get(source.environmentId)?.environment.capabilities.threadSettlement ===
+            true,
+          target,
+          pinnedOrder: pinnedKeys,
+          pinnedKeysById,
+          reorderableKeys: draggableThreadKeys,
+          activeOrder: activeKeys,
+          activeKeysById,
+          activeReorderableKeys: activeReorderableThreadKeys,
+          activeTimeOrdered: workingShelfEnabled,
+        });
+        return plan.kind !== "none" && plan.kind !== "reorder-pinned";
       },
       {
         items: sidebarListItems,
@@ -3952,7 +4020,8 @@ export default function Sidebar() {
         activeReorderableKeys: activeReorderableThreadKeys,
         activeTimeOrdered: workingShelfEnabled,
       });
-      if (plan.kind === "none") return;
+      // Fork-only: pinned rows sort by activity, so reordering within them is a no-op.
+      if (plan.kind === "none" || plan.kind === "reorder-pinned") return;
       if (plan.kind === "settle" && settlingThreadKeysRef.current.has(activeKey)) return;
       const assignments =
         plan.kind === "pin"
@@ -3960,7 +4029,7 @@ export default function Sidebar() {
               ...(plan.orderKey === undefined ? [] : [{ id: activeKey, orderKey: plan.orderKey }]),
               ...plan.extraAssignments,
             ]
-          : plan.kind === "reorder-pinned" || plan.kind === "move-active"
+          : plan.kind === "move-active"
             ? plan.assignments
             : [];
       const drop = {
@@ -4041,8 +4110,6 @@ export default function Sidebar() {
               ))
             )
               return;
-            break;
-          case "reorder-pinned":
             break;
         }
         // Stop on failure; each successful key write remains a valid placement.
@@ -5114,8 +5181,9 @@ export default function Sidebar() {
                         // from users (or the auto rules) actually parking work,
                         // not from the sidebar second-guessing what still matters.
                         // Working rows stay cards so their live status shows.
-                        const isCard =
-                          section === "active" || section === "pinned" || section === "working";
+                        // Fork-only (Lee, 2026-10-08): pinned threads (the Agents
+                        // block) render as compact one-line rows too.
+                        const isCard = section === "active" || section === "working";
                         const rowVariant = isCard ? "card" : "slim";
                         return (
                           <SidebarThreadRow
@@ -5261,11 +5329,29 @@ export default function Sidebar() {
                         }
                         switch (item.marker) {
                           case "pinned-header":
+                            // Fork-only (Lee, 2026-10-09): pinned threads are the
+                            // collapsible "Agents" block.
+                            if (pinnedThreads.length > 0) {
+                              items.push(
+                                <li key="agents-section-header" className="mx-0.5 list-none">
+                                  <CollapsibleSectionHeader
+                                    onClick={toggleAgentsSection}
+                                    expanded={agentsSectionExpanded}
+                                    data-testid="sidebar-agents-section-toggle"
+                                  >
+                                    {agentsSectionLabel(
+                                      agentsSectionExpanded,
+                                      pinnedThreads.length,
+                                    )}
+                                  </CollapsibleSectionHeader>
+                                </li>,
+                              );
+                            }
                             items.push(
                               <SidebarDragBoundary
                                 key="pinned-header"
                                 marker="pinned-header"
-                                label="Pinned"
+                                label="Agents"
                                 visible={from !== null}
                                 isDropTarget={dragTargetSection === "pinned"}
                               />,

@@ -11,7 +11,10 @@ import { threadSearchMatchKey } from "@t3tools/client-runtime/state/thread-searc
 import type { ContextMenuItem, EnvironmentId, ThreadId } from "@t3tools/contracts";
 import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@t3tools/contracts/settings";
 import type { AsyncResult } from "effect/reactivity";
-import { planPinnedReorder } from "@t3tools/client-runtime/state/thread-sort";
+import {
+  planPinnedReorder,
+  type SettledThreadTimestampInput,
+} from "@t3tools/client-runtime/state/thread-sort";
 import {
   effectiveSnoozed,
   type ThreadSnoozeShell,
@@ -1068,6 +1071,60 @@ export {
 // (state/thread-sort) so web and mobile compute identical pinned orders.
 export { pinOrderKeyBetween } from "@t3tools/client-runtime/state/thread-sort";
 export { sortPinnedThreadsByOrderKey as sortPinnedThreadsForSidebar } from "@t3tools/client-runtime/state/thread-sort";
+
+// Fork-only (t3code-lim; Lee, 2026-10-08/09): pinned threads are the "Agents"
+// block and sort by most recent activity, newest first: the latest user
+// message or run request, start or completion. updatedAt only counts when a
+// thread has none of those, so renames and visits don't reorder agents.
+type PinnedActivityInput = Pick<
+  SettledThreadTimestampInput,
+  "latestUserMessageAt" | "latestRun" | "updatedAt"
+>;
+
+// The compact row's age label uses this too, so label and order can't disagree.
+export function resolvePinnedActivityTimestamp(thread: PinnedActivityInput): string {
+  let latest: { value: string; time: number } | null = null;
+  for (const value of [
+    thread.latestUserMessageAt,
+    thread.latestRun?.requestedAt,
+    thread.latestRun?.startedAt,
+    thread.latestRun?.completedAt,
+  ]) {
+    const time = toSortableTimestamp(value ?? undefined);
+    if (value && time !== null && (latest === null || time > latest.time)) {
+      latest = { value, time };
+    }
+  }
+  return latest?.value ?? thread.updatedAt;
+}
+
+export function sortPinnedThreadsByActivity<
+  T extends PinnedActivityInput & { readonly id: string },
+>(threads: ReadonlyArray<T>): T[] {
+  const stamp = (thread: T): number =>
+    toSortableTimestamp(resolvePinnedActivityTimestamp(thread)) ?? Number.NEGATIVE_INFINITY;
+  return [...threads].sort(
+    (left, right) => stamp(right) - stamp(left) || left.id.localeCompare(right.id),
+  );
+}
+
+// Fork-only (t3code-lim; Lee, 2026-10-09): the Agents block collapses (open by
+// default). Collapsed, only the open thread keeps its row, like the shelves.
+export function resolveAgentsSectionThreads<T>(input: {
+  readonly threads: ReadonlyArray<T>;
+  readonly expanded: boolean;
+  readonly routeThreadKey: string | null;
+  readonly keyOf: (thread: T) => string;
+}): ReadonlyArray<T> {
+  if (input.expanded) return input.threads;
+  if (input.routeThreadKey === null) return [];
+  const routeThread = input.threads.find((thread) => input.keyOf(thread) === input.routeThreadKey);
+  return routeThread === undefined ? [] : [routeThread];
+}
+
+export function agentsSectionLabel(expanded: boolean, count: number): string {
+  return expanded ? "Agents" : `Agents (${count})`;
+}
 
 const EMPTY_CONTENT_MATCH_KEYS: ReadonlySet<string> = new Set<string>();
 

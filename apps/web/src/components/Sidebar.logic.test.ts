@@ -48,6 +48,10 @@ import {
   sortInboxThreadsByReturn,
   resolveSidebarDropTarget,
   planSidebarThreadDrop,
+  agentsSectionLabel,
+  resolveAgentsSectionThreads,
+  resolvePinnedActivityTimestamp,
+  sortPinnedThreadsByActivity,
   sortPinnedThreadsForSidebar,
   sortProjectsForSidebar,
   sortScopedProjectsForSidebar,
@@ -2012,6 +2016,123 @@ describe("sortPinnedThreadsForSidebar", () => {
     ]);
 
     expect(sorted.map((thread) => thread.id)).toEqual(["a", "b"]);
+  });
+});
+
+// Fork-only (t3code-lim; Lee, 2026-10-08/09): the Agents block sorts by activity.
+describe("sortPinnedThreadsByActivity", () => {
+  const thread = (input: {
+    id: string;
+    updatedAt: string;
+    latestUserMessageAt?: string | null;
+    latestRun?: {
+      requestedAt: string;
+      startedAt: string | null;
+      completedAt: string | null;
+    } | null;
+  }) => ({
+    id: input.id,
+    updatedAt: input.updatedAt,
+    latestUserMessageAt: input.latestUserMessageAt ?? null,
+    latestRun: (input.latestRun ?? null) as never,
+  });
+
+  it("puts the most recently active thread first, by message or run stamps", () => {
+    const sorted = sortPinnedThreadsByActivity([
+      thread({
+        id: "quiet",
+        updatedAt: "2026-10-09T09:00:00.000Z",
+        latestUserMessageAt: "2026-10-08T09:00:00.000Z",
+      }),
+      thread({
+        id: "just-finished",
+        updatedAt: "2026-10-09T08:00:00.000Z",
+        latestRun: {
+          requestedAt: "2026-10-09T10:00:00.000Z",
+          startedAt: "2026-10-09T10:00:01.000Z",
+          completedAt: "2026-10-09T10:05:00.000Z",
+        },
+      }),
+      thread({
+        id: "messaged",
+        updatedAt: "2026-10-09T07:00:00.000Z",
+        latestUserMessageAt: "2026-10-09T10:01:00.000Z",
+      }),
+    ]);
+
+    expect(sorted.map((entry) => entry.id)).toEqual(["just-finished", "messaged", "quiet"]);
+  });
+
+  it("ignores updatedAt when a thread has activity, so a rename or visit doesn't reorder it", () => {
+    const sorted = sortPinnedThreadsByActivity([
+      thread({
+        id: "renamed",
+        updatedAt: "2026-10-09T12:00:00.000Z",
+        latestUserMessageAt: "2026-10-09T08:00:00.000Z",
+      }),
+      thread({
+        id: "active",
+        updatedAt: "2026-10-09T09:00:00.000Z",
+        latestUserMessageAt: "2026-10-09T09:00:00.000Z",
+      }),
+    ]);
+
+    expect(sorted.map((entry) => entry.id)).toEqual(["active", "renamed"]);
+  });
+
+  it("falls back to updatedAt for threads with no activity, and breaks ties by id", () => {
+    const sorted = sortPinnedThreadsByActivity([
+      thread({ id: "b", updatedAt: "2026-10-09T09:00:00.000Z" }),
+      thread({ id: "a", updatedAt: "2026-10-09T09:00:00.000Z" }),
+      thread({ id: "newer", updatedAt: "2026-10-09T10:00:00.000Z" }),
+    ]);
+
+    expect(sorted.map((entry) => entry.id)).toEqual(["newer", "a", "b"]);
+  });
+
+  it("gives the age label the same timestamp the sort uses", () => {
+    const backgroundRun = thread({
+      id: "background",
+      updatedAt: "2026-10-09T08:00:00.000Z",
+      latestUserMessageAt: "2026-10-09T06:00:00.000Z",
+      latestRun: {
+        requestedAt: "2026-10-09T06:00:01.000Z",
+        startedAt: "2026-10-09T06:00:02.000Z",
+        completedAt: "2026-10-09T11:00:00.000Z",
+      },
+    });
+    const quiet = thread({ id: "quiet", updatedAt: "2026-10-09T12:00:00.000Z" });
+
+    expect(resolvePinnedActivityTimestamp(backgroundRun)).toBe("2026-10-09T11:00:00.000Z");
+    expect(resolvePinnedActivityTimestamp(quiet)).toBe("2026-10-09T12:00:00.000Z");
+  });
+});
+
+// Fork-only (t3code-lim; Lee, 2026-10-09): the collapsible Agents block.
+describe("resolveAgentsSectionThreads", () => {
+  const agents = [{ key: "env:a" }, { key: "env:b" }, { key: "env:c" }];
+  const resolve = (expanded: boolean, routeThreadKey: string | null) =>
+    resolveAgentsSectionThreads({
+      threads: agents,
+      expanded,
+      routeThreadKey,
+      keyOf: (thread) => thread.key,
+    }).map((thread) => thread.key);
+
+  it("shows every agent when expanded, the default", () => {
+    expect(resolve(true, null)).toEqual(["env:a", "env:b", "env:c"]);
+    expect(resolve(true, "env:b")).toEqual(["env:a", "env:b", "env:c"]);
+  });
+
+  it("hides every agent when collapsed, except the open one", () => {
+    expect(resolve(false, null)).toEqual([]);
+    expect(resolve(false, "env:b")).toEqual(["env:b"]);
+    expect(resolve(false, "env:elsewhere")).toEqual([]);
+  });
+
+  it("labels the header with the full count only when collapsed", () => {
+    expect(agentsSectionLabel(true, 3)).toBe("Agents");
+    expect(agentsSectionLabel(false, 3)).toBe("Agents (3)");
   });
 });
 
