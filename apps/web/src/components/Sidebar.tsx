@@ -1604,6 +1604,10 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
     isActive: props.isActive,
   });
 
+  // Fork-only (Lee, 2026-10-08): a pinned thread in the Agents block. It uses
+  // the one-line slim row but, unlike settled and snoozed rows, doesn't recede:
+  // card-strength title, undimmed icon, live status and the provider glyph.
+  const pinnedCompact = variant === "slim" && props.isPinned && variantAction === "settle";
   const title = isRenaming ? (
     <input
       autoFocus
@@ -1623,7 +1627,7 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
       className={cn(
         "min-w-0 flex-1 text-sm transition-opacity motion-reduce:transition-none",
         shouldRecede ? "font-normal" : "font-medium",
-        variant === "card"
+        variant === "card" || pinnedCompact
           ? cn(
               "truncate",
               shouldRecede
@@ -1745,10 +1749,6 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
   ) : null;
 
   if (variant === "slim") {
-    // Fork-only (Lee, 2026-10-08): a pinned thread in the Agents block. Unlike
-    // settled and snoozed rows it doesn't recede, shows live status, and keeps
-    // the provider glyph; the pin glyph (unpin) appears on hover only.
-    const pinnedCompact = props.isPinned && variantAction === "settle";
     return (
       <li
         data-thread-item={threadKey}
