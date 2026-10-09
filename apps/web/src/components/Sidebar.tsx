@@ -208,6 +208,8 @@ import {
   sidebarMarkerId,
   sidebarThreadKeyAtY,
   sortInboxThreadsByReturn,
+  agentsSectionLabel,
+  resolveAgentsSectionThreads,
   resolvePinnedActivityTimestamp,
   sortPinnedThreadsByActivity,
   sortSidebarV2ProjectGroups,
@@ -2991,15 +2993,16 @@ export default function Sidebar() {
     () => setAgentsSectionExpanded((value) => !value),
     [setAgentsSectionExpanded],
   );
-  const visiblePinnedThreads = useMemo(() => {
-    if (agentsSectionExpanded) return pinnedThreads;
-    if (routeThreadKey === null) return EMPTY_THREADS;
-    const routeThread = pinnedThreads.find(
-      (thread) =>
-        scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)) === routeThreadKey,
-    );
-    return routeThread === undefined ? EMPTY_THREADS : [routeThread];
-  }, [agentsSectionExpanded, pinnedThreads, routeThreadKey]);
+  const visiblePinnedThreads = useMemo(
+    () =>
+      resolveAgentsSectionThreads({
+        threads: pinnedThreads,
+        expanded: agentsSectionExpanded,
+        routeThreadKey,
+        keyOf: (thread) => scopedThreadKey(scopeThreadRef(thread.environmentId, thread.id)),
+      }),
+    [agentsSectionExpanded, pinnedThreads, routeThreadKey],
+  );
 
   // The snoozed shelf is collapsed by default: out of the way, never gone.
   // Collapsed threads don't render (and so don't participate in jump
@@ -5336,9 +5339,10 @@ export default function Sidebar() {
                                     expanded={agentsSectionExpanded}
                                     data-testid="sidebar-agents-section-toggle"
                                   >
-                                    {agentsSectionExpanded
-                                      ? "Agents"
-                                      : `Agents (${pinnedThreads.length})`}
+                                    {agentsSectionLabel(
+                                      agentsSectionExpanded,
+                                      pinnedThreads.length,
+                                    )}
                                   </CollapsibleSectionHeader>
                                 </li>,
                               );

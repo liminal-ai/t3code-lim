@@ -48,6 +48,8 @@ import {
   sortInboxThreadsByReturn,
   resolveSidebarDropTarget,
   planSidebarThreadDrop,
+  agentsSectionLabel,
+  resolveAgentsSectionThreads,
   resolvePinnedActivityTimestamp,
   sortPinnedThreadsByActivity,
   sortPinnedThreadsForSidebar,
@@ -2103,6 +2105,34 @@ describe("sortPinnedThreadsByActivity", () => {
 
     expect(resolvePinnedActivityTimestamp(backgroundRun)).toBe("2026-10-09T11:00:00.000Z");
     expect(resolvePinnedActivityTimestamp(quiet)).toBe("2026-10-09T12:00:00.000Z");
+  });
+});
+
+// Fork-only (t3code-lim; Lee, 2026-10-09): the collapsible Agents block.
+describe("resolveAgentsSectionThreads", () => {
+  const agents = [{ key: "env:a" }, { key: "env:b" }, { key: "env:c" }];
+  const resolve = (expanded: boolean, routeThreadKey: string | null) =>
+    resolveAgentsSectionThreads({
+      threads: agents,
+      expanded,
+      routeThreadKey,
+      keyOf: (thread) => thread.key,
+    }).map((thread) => thread.key);
+
+  it("shows every agent when expanded, the default", () => {
+    expect(resolve(true, null)).toEqual(["env:a", "env:b", "env:c"]);
+    expect(resolve(true, "env:b")).toEqual(["env:a", "env:b", "env:c"]);
+  });
+
+  it("hides every agent when collapsed, except the open one", () => {
+    expect(resolve(false, null)).toEqual([]);
+    expect(resolve(false, "env:b")).toEqual(["env:b"]);
+    expect(resolve(false, "env:elsewhere")).toEqual([]);
+  });
+
+  it("labels the header with the full count only when collapsed", () => {
+    expect(agentsSectionLabel(true, 3)).toBe("Agents");
+    expect(agentsSectionLabel(false, 3)).toBe("Agents (3)");
   });
 });
 

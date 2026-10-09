@@ -1108,6 +1108,24 @@ export function sortPinnedThreadsByActivity<
   );
 }
 
+// Fork-only (t3code-lim; Lee, 2026-10-09): the Agents block collapses (open by
+// default). Collapsed, only the open thread keeps its row, like the shelves.
+export function resolveAgentsSectionThreads<T>(input: {
+  readonly threads: ReadonlyArray<T>;
+  readonly expanded: boolean;
+  readonly routeThreadKey: string | null;
+  readonly keyOf: (thread: T) => string;
+}): ReadonlyArray<T> {
+  if (input.expanded) return input.threads;
+  if (input.routeThreadKey === null) return [];
+  const routeThread = input.threads.find((thread) => input.keyOf(thread) === input.routeThreadKey);
+  return routeThread === undefined ? [] : [routeThread];
+}
+
+export function agentsSectionLabel(expanded: boolean, count: number): string {
+  return expanded ? "Agents" : `Agents (${count})`;
+}
+
 const EMPTY_CONTENT_MATCH_KEYS: ReadonlySet<string> = new Set<string>();
 
 /**
