@@ -63,3 +63,5 @@ export * from "./resourceTelemetry.ts";
 export * from "./rpc.ts";
 export * from "./worktreeSetup.ts";
 export * from "./secretRequest.ts";
+// Fork-only (agent comms): the /api/comms wire.
+export * from "./comms.ts";

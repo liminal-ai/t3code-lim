@@ -1,0 +1,3 @@
+# Fork-only (agent comms): commsClient.query.test.tsx writes a React Compiler build of
+# commsClient.ts here and removes it afterwards; a killed run can leave it behind.
+*.compiled.test-output.js

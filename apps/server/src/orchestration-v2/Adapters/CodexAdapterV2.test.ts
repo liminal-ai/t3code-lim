@@ -1687,26 +1687,46 @@ describe("CodexAdapterV2 session initialize", () => {
         beforeEmitInbound === undefined ? {} : { beforeEmitInbound },
       );
       let initializeRequests = 0;
+      let threadStartRequests = 0;
+      let injectItemsRequests = 0;
+      let sessionOpens = 0;
+      const resumeRequests: Array<unknown> = [];
       const adapter = CodexAdapterV2.makeCodexAdapterV2({
         instanceId: CodexAdapterV2.CODEX_DEFAULT_INSTANCE_ID,
         settings: DEFAULT_CODEX_SETTINGS,
         environment: {},
         clientFactory: {
           open: (openInput) =>
-            Layer.build(CodexReplay.layerReplayWithDriver(driver)).pipe(
+            Effect.sync(() => {
+              sessionOpens++;
+            }).pipe(
+              Effect.andThen(Layer.build(CodexReplay.layerReplayWithDriver(driver))),
               Effect.flatMap((context) =>
                 Effect.service(CodexClient.CodexAppServerClient).pipe(Effect.provide(context)),
               ),
-              Effect.map(
-                (client) =>
-                  ({
-                    ...client,
+              Effect.map((client) => {
+                // `thread/resume` goes through `raw`, the rest through `request`;
+                // count on both surfaces so no outbound method is missed.
+                const count = (method: string, params: unknown) =>
+                  Effect.sync(() => {
+                    if (method === "initialize") initializeRequests++;
+                    if (method === "thread/start") threadStartRequests++;
+                    if (method === "thread/inject_items") injectItemsRequests++;
+                    if (method === "thread/resume") resumeRequests.push(params);
+                  });
+                return {
+                  ...client,
+                  request: (method, params) =>
+                    count(method, params).pipe(Effect.andThen(client.request(method, params))),
+                  raw: {
+                    ...client.raw,
                     request: (method, params) =>
-                      Effect.sync(() => {
-                        if (method === "initialize") initializeRequests++;
-                      }).pipe(Effect.andThen(client.request(method, params))),
-                  }) satisfies CodexClient.CodexAppServerClient["Service"],
-              ),
+                      count(method, params).pipe(
+                        Effect.andThen(client.raw.request(method, params)),
+                      ),
+                  },
+                } satisfies CodexClient.CodexAppServerClient["Service"];
+              }),
               Effect.mapError(
                 (cause) =>
                   new ProviderAdapterOpenSessionError({
@@ -1735,7 +1755,46 @@ describe("CodexAdapterV2 session initialize", () => {
             modelSelection: CODEX_TEST_MODEL_SELECTION,
             runtimePolicy: CODEX_TEST_RUNTIME_POLICY,
           }),
+        // A bound thread, as the comms wake path sees it: already created on a
+        // previous session, so the only legal request is `thread/resume`.
+        resumeThread: (threadId: string, nativeThreadId: string) =>
+          DateTime.now.pipe(
+            Effect.flatMap((now) =>
+              runtime.resumeThread({
+                providerThread: {
+                  id: ProviderThreadId.make(`provider-${threadId}`),
+                  driver: CodexAdapterV2.CODEX_DRIVER_KIND,
+                  providerInstanceId: CodexAdapterV2.CODEX_DEFAULT_INSTANCE_ID,
+                  providerSessionId: ProviderSessionId.make(
+                    `provider-session-${transcript.scenario}`,
+                  ),
+                  appThreadId: ThreadId.make(threadId),
+                  ownerNodeId: null,
+                  nativeThreadRef: {
+                    driver: CodexAdapterV2.CODEX_DRIVER_KIND,
+                    nativeId: nativeThreadId,
+                    strength: "strong",
+                  },
+                  nativeConversationHeadRef: null,
+                  status: "idle",
+                  firstRunOrdinal: 1,
+                  lastRunOrdinal: 1,
+                  handoffIds: [],
+                  forkedFrom: null,
+                  createdAt: now,
+                  updatedAt: now,
+                },
+                threadId: ThreadId.make(threadId),
+                modelSelection: CODEX_TEST_MODEL_SELECTION,
+                runtimePolicy: CODEX_TEST_RUNTIME_POLICY,
+              }),
+            ),
+          ),
         initializeRequests: () => initializeRequests,
+        threadStartRequests: () => threadStartRequests,
+        injectItemsRequests: () => injectItemsRequests,
+        resumeRequests: () => resumeRequests,
+        sessionOpens: () => sessionOpens,
       };
     });
 
@@ -1852,6 +1911,101 @@ describe("CodexAdapterV2 session initialize", () => {
       assert.equal(providerThread.nativeThreadRef?.nativeId, "initialize-interrupted");
       assert.equal(session.initializeRequests(), 2);
     }).pipe(Effect.scoped, Effect.provide(Layer.merge(IdAllocator.layer, NodeServices.layer))),
+  );
+
+  // 2026-10-08 11:34:04Z prod incident: comms woke several bound threads on a
+  // shared app-server at once; the losing `initialize` calls came back
+  // -32600 "Already initialized", were read as resume failures, and two agents
+  // silently got fresh sessions. Three wakes must share one handshake and
+  // resume their own threads; nothing may be started or re-opened.
+  it.effect(
+    "resumes three bound threads woken at once with one initialize and no thread/start",
+    () =>
+      Effect.gen(function* () {
+        const initializeAwaitingResponse = yield* Deferred.make<void>();
+        const releaseInitialize = yield* Deferred.make<void>();
+        const wakes = ["native-alder", "native-macky", "native-winnie"] as const;
+        const resumeEntries = (
+          nativeThreadId: string,
+          requestId: number,
+        ): Array<CodexReplay.CodexAppServerReplayEntry> => [
+          {
+            type: "expect_outbound",
+            label: "thread/resume",
+            frame: {
+              id: requestId,
+              method: "thread/resume",
+              params: {
+                threadId: nativeThreadId,
+                excludeTurns: true,
+                config: CodexAdapterV2.CODEX_THREAD_CONFIG,
+              },
+            },
+          },
+          {
+            type: "emit_inbound",
+            label: "thread/resume",
+            frame: {
+              id: requestId,
+              result: { thread: { id: nativeThreadId, updatedAt: 1782622450 } },
+            },
+          },
+        ];
+        // The transcript allows exactly one handshake and no `thread/start`: a
+        // second `initialize` or any `thread/start` frame fails the replay.
+        const session = yield* openReplaySession(
+          makeCodexReplayTranscript({
+            scenario: "concurrent-wake-resume",
+            entries: [
+              ...replayPreamble("unused").slice(0, 3),
+              ...wakes.flatMap((nativeThreadId, index) => resumeEntries(nativeThreadId, index + 2)),
+            ],
+          }),
+          (entry) =>
+            entry.label === "initialize"
+              ? Deferred.succeed(initializeAwaitingResponse, undefined).pipe(
+                  Effect.andThen(Deferred.await(releaseInitialize)),
+                )
+              : Effect.void,
+        );
+
+        const first = yield* session
+          .resumeThread("thread-alder", "native-alder")
+          .pipe(Effect.forkChild({ startImmediately: true }));
+        yield* Deferred.await(initializeAwaitingResponse);
+        // The other two wakes arrive while the handshake is still unanswered.
+        const second = yield* session
+          .resumeThread("thread-macky", "native-macky")
+          .pipe(Effect.forkChild({ startImmediately: true }));
+        const third = yield* session
+          .resumeThread("thread-winnie", "native-winnie")
+          .pipe(Effect.forkChild({ startImmediately: true }));
+        yield* Deferred.succeed(releaseInitialize, undefined);
+
+        const resumed = [
+          yield* Fiber.join(first),
+          yield* Fiber.join(second),
+          yield* Fiber.join(third),
+        ];
+        assert.equal(session.initializeRequests(), 1);
+        assert.equal(session.threadStartRequests(), 0);
+        assert.equal(session.injectItemsRequests(), 0);
+        assert.equal(session.sessionOpens(), 1);
+        assert.sameMembers(
+          session
+            .resumeRequests()
+            .map((params) => (params as { readonly threadId: string }).threadId),
+          [...wakes],
+        );
+        assert.deepEqual(
+          resumed.map((providerThread) => providerThread.nativeThreadRef?.nativeId),
+          [...wakes],
+        );
+        for (const providerThread of resumed) {
+          assert.equal(providerThread.status, "idle");
+          assert.equal(DateTime.toEpochMillis(providerThread.updatedAt), 1782622450000);
+        }
+      }).pipe(Effect.scoped, Effect.provide(Layer.merge(IdAllocator.layer, NodeServices.layer))),
   );
 });
 

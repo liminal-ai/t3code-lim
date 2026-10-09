@@ -2,6 +2,7 @@ import { expect, it, vi } from "vite-plus/test";
 import { it as effectIt } from "@effect/vitest";
 import {
   CheckpointScopeId,
+  ContextHandoffId,
   MessageId,
   NodeId,
   ProviderSessionId,
@@ -9,6 +10,7 @@ import {
   ProviderDriverKind,
   ProviderInstanceId,
   ProviderSetupError,
+  ProviderTurnId,
   RunAttemptId,
   RunId,
   ThreadId,
@@ -166,6 +168,33 @@ function makeLocalCommandHarness(input: {
    * fallback succeeds, then reading history for its handoff fails.
    */
   readonly historyReadFailureAfterFallback?: unknown;
+  /** Fork-only (#21): resumes a strong native ref, and resume fails with this cause. */
+  readonly resumeFailure?: unknown;
+  /** Fork-only (#21): the ref was copied from another instance, which ran the previous turn. */
+  readonly copiedFromOtherInstance?: boolean;
+  /** Fork-only (#21): the strong ref was imported; no run has started yet. */
+  readonly importedRef?: boolean;
+  /** Fork-only (#21): imported, then switched to this instance before any run: another row has the ref. */
+  readonly importedThenSwitched?: boolean;
+  /** Fork-only (#21): the other instance's previous run started, then was cancelled. */
+  readonly copiedRunCancelled?: boolean;
+  /** Fork-only (#21): a run for another instance was cancelled before it started. */
+  readonly cancelledBeforeStart?: boolean;
+  /** Fork-only (#21): another provider ran after this row's run; this run returns here. */
+  readonly returningAfterOtherProvider?: boolean;
+  /** Fork-only (#21): in-place account switch: the row is still on the other instance. */
+  readonly rowOnOtherInstance?: boolean;
+  /**
+   * Fork-only (#21, Mira #178): an earlier history injection into the native
+   * session is still pending; "own-turns" adds a turn the session completed,
+   * "interrupted-turn" and "failed-turn" one that ended that way.
+   */
+  readonly uncertainDelivery?:
+    | "own-turns"
+    | "interrupted-turn"
+    | "failed-turn"
+    | "cancelled-turn"
+    | "no-turns";
   readonly interruptOpen?: boolean;
   readonly interruptRunBeforeOpenFailure?: boolean;
   readonly writeFailure?: unknown;
@@ -187,7 +216,8 @@ function makeLocalCommandHarness(input: {
   const run: OrchestrationV2ThreadProjection["runs"][number] = {
     id: runId,
     threadId,
-    ordinal: 2,
+    ordinal:
+      input.cancelledBeforeStart === true || input.returningAfterOtherProvider === true ? 3 : 2,
     providerInstanceId: newInstanceId,
     modelSelection: { instanceId: newInstanceId, model: "gpt-5.4" },
     providerThreadId,
@@ -342,17 +372,132 @@ function makeLocalCommandHarness(input: {
     checkpoints: [],
     updatedAt: now,
   };
-  if ("historyReadFailureAfterFallback" in input) {
+  if ("historyReadFailureAfterFallback" in input || "resumeFailure" in input) {
     const nativeThreadRef = {
       driver: providerThread.driver,
       nativeId: "native-resume-thread",
-      strength: "strong" as const,
+      // Fork-only (#21): only a weak ref still falls back to a fresh session,
+      // so the upstream fallback test binds a weak one.
+      strength: "resumeFailure" in input ? ("strong" as const) : ("weak" as const),
     };
     projection = {
       ...projection,
-      providerThreads: projection.providerThreads.map((candidate) =>
-        candidate.id === providerThreadId ? { ...candidate, nativeThreadRef } : candidate,
-      ),
+      providerThreads: [
+        ...(input.importedThenSwitched === true
+          ? [
+              {
+                ...providerThread,
+                id: oldProviderThreadId,
+                providerInstanceId: oldInstanceId,
+                nativeThreadRef,
+              },
+            ]
+          : []),
+        ...projection.providerThreads.map((candidate) =>
+          candidate.id === providerThreadId
+            ? {
+                ...candidate,
+                nativeThreadRef,
+                ...(input.rowOnOtherInstance === true ? { providerInstanceId: oldInstanceId } : {}),
+              }
+            : candidate,
+        ),
+      ],
+      // Fork-only (#21): the previous started run, by default this instance
+      // on this row; copied: another instance on its own row; imported: none.
+      runs:
+        !("resumeFailure" in input) ||
+        input.importedRef === true ||
+        input.importedThenSwitched === true
+          ? projection.runs
+          : [
+              input.copiedFromOtherInstance === true
+                ? {
+                    ...run,
+                    id: RunId.make("earlier-other-instance-run"),
+                    ordinal: 1,
+                    status:
+                      input.copiedRunCancelled === true
+                        ? ("cancelled" as const)
+                        : ("completed" as const),
+                    startedAt: now,
+                    providerInstanceId: oldInstanceId,
+                    providerThreadId: oldProviderThreadId,
+                  }
+                : {
+                    ...run,
+                    id: RunId.make("earlier-same-instance-run"),
+                    ordinal: 1,
+                    status: "completed" as const,
+                    startedAt: now,
+                  },
+              ...(input.cancelledBeforeStart === true || input.returningAfterOtherProvider === true
+                ? [
+                    {
+                      ...run,
+                      id: RunId.make("between-other-instance-run"),
+                      ordinal: 2,
+                      status:
+                        input.returningAfterOtherProvider === true
+                          ? ("completed" as const)
+                          : ("cancelled" as const),
+                      startedAt: input.returningAfterOtherProvider === true ? now : null,
+                      providerInstanceId: oldInstanceId,
+                      providerThreadId: oldProviderThreadId,
+                    },
+                  ]
+                : []),
+              ...projection.runs,
+            ],
+      ...(input.uncertainDelivery === undefined
+        ? {}
+        : {
+            contextHandoffs: [
+              {
+                id: ContextHandoffId.make("pending-history-handoff"),
+                threadId,
+                targetRunId: RunId.make("earlier-same-instance-run"),
+                fromProviderThreadIds: [],
+                toProviderThreadId: providerThreadId,
+                coveredRunOrdinals: { from: 1, to: 1 },
+                strategy: "full_thread_summary" as const,
+                status: "ready" as const,
+                summaryMessageId: null,
+                summaryText: "earlier history",
+                delivery: {
+                  nativeThreadId: "native-resume-thread",
+                  status: "pending" as const,
+                  itemIds: [],
+                },
+                createdByProviderInstanceId: null,
+                createdAt: now,
+                updatedAt: now,
+              },
+            ],
+            providerTurns:
+              input.uncertainDelivery !== "no-turns"
+                ? [
+                    {
+                      id: ProviderTurnId.make("own-completed-turn"),
+                      providerThreadId,
+                      nodeId: rootNodeId,
+                      runAttemptId: null,
+                      nativeTurnRef: null,
+                      ordinal: 1,
+                      status:
+                        input.uncertainDelivery === "own-turns"
+                          ? ("completed" as const)
+                          : input.uncertainDelivery === "failed-turn"
+                            ? ("failed" as const)
+                            : input.uncertainDelivery === "cancelled-turn"
+                              ? ("cancelled" as const)
+                              : ("interrupted" as const),
+                      startedAt: now,
+                      completedAt: now,
+                    },
+                  ]
+                : [],
+          }),
     };
   }
   const events: Array<OrchestrationV2DomainEvent> = [];
@@ -381,6 +526,7 @@ function makeLocalCommandHarness(input: {
       ),
     ),
   );
+  const fallbackEnsureThread = vi.fn(() => Effect.succeed(providerThread));
   const resumeFallbackSession = {
     driver: providerThread.driver,
     resumeThread: () =>
@@ -388,15 +534,15 @@ function makeLocalCommandHarness(input: {
         new ProviderAdapterEventStreamError({
           driver: providerThread.driver,
           providerSessionId,
-          cause: "native thread is gone",
+          cause: "resumeFailure" in input ? input.resumeFailure : "native thread is gone",
         }),
       ),
-    ensureThread: () => Effect.succeed(providerThread),
+    ensureThread: fallbackEnsureThread,
   };
   const open = vi.fn(() =>
     input.interruptOpen === true
       ? Effect.interrupt
-      : "historyReadFailureAfterFallback" in input
+      : "historyReadFailureAfterFallback" in input || "resumeFailure" in input
         ? Effect.succeed(resumeFallbackSession as never)
         : "ensureThreadFailure" in input
           ? Effect.succeed({ driver: providerThread.driver, ensureThread } as never)
@@ -532,6 +678,7 @@ function makeLocalCommandHarness(input: {
   );
   return {
     open,
+    fallbackEnsureThread,
     writeIfRunCurrent,
     startRootRun,
     tryHandlePromptCommand,
@@ -855,3 +1002,187 @@ for (const previousMessages of [[], ["/compact", " /COMPACT "]]) {
       }),
   );
 }
+
+// Fork-only (#21): on 2026-10-08 a shared Codex app-server rejected a racing
+// `initialize` with "Already initialized", and two agents silently lost their
+// native sessions. A transient resume failure must keep the strong ref.
+const alreadyInitialized = { code: -32600, errorMessage: "Already initialized" };
+
+effectIt.effect("retries a transient native resume failure without replacing the session", () =>
+  Effect.gen(function* () {
+    const harness = makeLocalCommandHarness({
+      text: "Continue",
+      resumeFailure: alreadyInitialized,
+    });
+
+    const error = yield* harness.startWithRetry.pipe(Effect.flip);
+
+    expect(error._tag).toBe("ProviderTurnStartError");
+    expect((error.cause as { _tag?: string } | undefined)?._tag).toBe(
+      "ProviderAdapterEventStreamError",
+    );
+    expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+    expect(harness.events).toEqual([]);
+    expect(harness.projection().runs.at(-1)?.status).toBe("starting");
+    expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef?.nativeId).toBe(
+      "native-resume-thread",
+    );
+  }),
+);
+
+effectIt.effect(
+  "fails the run and keeps the native session when a transient resume keeps failing",
+  () =>
+    Effect.gen(function* () {
+      const harness = makeLocalCommandHarness({
+        text: "Continue",
+        resumeFailure: alreadyInitialized,
+      });
+
+      yield* harness.start;
+
+      expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+      expect(harness.projection().runs.at(-1)?.status).toBe("failed");
+      expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef?.nativeId).toBe(
+        "native-resume-thread",
+      );
+      const written = JSON.stringify(harness.events);
+      expect(written).toContain("Native session resume failed");
+      expect(written).toContain("native-resume-thread");
+    }),
+);
+
+// Fork-only (#21; Lee 2026-10-08): no failure of a same-provider strong-ref
+// resume swaps in a fresh session, transient or not.
+effectIt.effect.each([
+  ["a definitive failure (native thread gone)", "thread not found: native-resume-thread"],
+  ["an unknown failure", "something unexpected"],
+])("fails at once and keeps the native session after %s, even with retries left", ([, cause]) =>
+  Effect.gen(function* () {
+    const harness = makeLocalCommandHarness({ text: "Continue", resumeFailure: cause });
+
+    yield* harness.startWithRetry;
+
+    expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+    expect(harness.projection().runs.at(-1)?.status).toBe("failed");
+    expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef?.nativeId).toBe(
+      "native-resume-thread",
+    );
+    expect(JSON.stringify(harness.events)).toContain("Native session resume failed");
+  }),
+);
+
+effectIt.effect("retries a native session another writer still holds", () =>
+  Effect.gen(function* () {
+    const harness = makeLocalCommandHarness({
+      text: "Continue",
+      resumeFailure: {
+        code: -32600,
+        errorMessage: "thread native-resume-thread already has an active writer",
+      },
+    });
+
+    const error = yield* harness.startWithRetry.pipe(Effect.flip);
+
+    expect(error._tag).toBe("ProviderTurnStartError");
+    expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+    expect(harness.projection().runs.at(-1)?.status).toBe("starting");
+  }),
+);
+
+// Fork-only (#21, Mira #178, #200): an uncertain history delivery never replaces a
+// native session with no completed turn of its own; one that has completed a
+// turn keeps its binding and the run fails.
+effectIt.effect.each([
+  "own-turns",
+  "interrupted-turn",
+  "failed-turn",
+  "cancelled-turn",
+  "no-turns",
+] as const)(
+  "fails and keeps a native session with history (%s) when history delivery is uncertain",
+  (uncertainDelivery) =>
+    Effect.gen(function* () {
+      const harness = makeLocalCommandHarness({
+        text: "Continue",
+        resumeFailure: "thread not found: native-resume-thread",
+        uncertainDelivery,
+      });
+
+      yield* harness.startWithRetry;
+
+      expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+      expect(harness.projection().runs.at(-1)?.status).toBe("failed");
+      expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef?.nativeId).toBe(
+        "native-resume-thread",
+      );
+      expect(JSON.stringify(harness.events)).toContain("Native session resume failed");
+    }),
+);
+
+// Fork-only invariant (#21; Mira #193, superseding #156): T3 never replaces a
+// strong native ref that has history, for any reason. These are the seven cases
+// the review of #22 hit; each fails the run and keeps the binding. (Weak or
+// missing refs and a no-turn uncertain delivery still fall back: see the
+// upstream fallback test above and the "no-turns" case.)
+effectIt.effect.each([
+  [
+    "a ref copied from another instance by a queued restart_and_resume",
+    { copiedFromOtherInstance: true },
+  ],
+  ["a return to this provider after another one ran", { returningAfterOtherProvider: true }],
+  ["an imported ref on its first run", { importedRef: true }],
+  ["a run for another instance cancelled before it started", { cancelledBeforeStart: true }],
+  ["an imported ref switched here before any run", { importedThenSwitched: true }],
+  [
+    "a ref copied after the other instance's run started and was cancelled",
+    { copiedFromOtherInstance: true, copiedRunCancelled: true },
+  ],
+  [
+    "an in-place account switch before the first run",
+    { importedRef: true, rowOnOtherInstance: true },
+  ],
+] as const)("fails and keeps the native session after %s", ([, options]) =>
+  Effect.gen(function* () {
+    const harness = makeLocalCommandHarness({
+      text: "Continue",
+      resumeFailure: "thread not found: native-resume-thread",
+      ...options,
+    });
+
+    yield* harness.startWithRetry;
+
+    expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+    expect(harness.projection().runs.at(-1)?.status).toBe("failed");
+    expect(
+      harness.projection().providerThreads.find((row) => row.id === "new-provider-thread")
+        ?.nativeThreadRef,
+    ).toMatchObject({ nativeId: "native-resume-thread", strength: "strong" });
+    expect(JSON.stringify(harness.events)).toContain("Native session resume failed");
+  }),
+);
+
+// Fork-only (#21; Codex and Quinn on #22, Mira #200): an imported strong ref has
+// native history but no T3 provider turns; an uncertain delivery into it fails
+// and keeps the binding.
+effectIt.effect(
+  "fails and keeps an imported native session when history delivery is uncertain",
+  () =>
+    Effect.gen(function* () {
+      const harness = makeLocalCommandHarness({
+        text: "Continue",
+        resumeFailure: "thread not found: native-resume-thread",
+        importedRef: true,
+        uncertainDelivery: "no-turns",
+      });
+
+      yield* harness.startWithRetry;
+
+      expect(harness.fallbackEnsureThread).not.toHaveBeenCalled();
+      expect(harness.projection().runs.at(-1)?.status).toBe("failed");
+      expect(harness.projection().providerThreads.at(-1)?.nativeThreadRef).toMatchObject({
+        nativeId: "native-resume-thread",
+        strength: "strong",
+      });
+    }),
+);

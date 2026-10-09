@@ -140,6 +140,8 @@ import { startNewThreadFromContext } from "../lib/chatThreadActions";
 import { useClientSettings } from "../hooks/useSettings";
 import { useCopyToClipboard } from "../hooks/useCopyToClipboard";
 import { useLocalStorage } from "../hooks/useLocalStorage";
+// Fork-only (agent comms): the Group Chats shelf above Settled.
+import { GroupChatsShelf, useGroupChatsShelfVisible } from "../comms/GroupChatsShelf";
 import { useNowMinute } from "../hooks/useNowMinute";
 import {
   useEnvironmentIdentities,
@@ -2914,6 +2916,7 @@ export default function Sidebar() {
     () => setSettledVisibleCount((count) => count + SETTLED_TAIL_PAGE_COUNT),
     [],
   );
+  const groupChatsShelfVisible = useGroupChatsShelfVisible(); // Fork seam (agent comms)
   const [settledShelfExpanded, setSettledShelfExpanded] = useLocalStorage(
     SETTLED_SHELF_EXPANDED_KEY,
     false,
@@ -5334,12 +5337,23 @@ export default function Sidebar() {
                             );
                             break;
                           case "settled-header":
+                            // Fork seam (agent comms): Group Chats sits above Settled and takes its bottom anchor.
+                            items.push(
+                              <GroupChatsShelf
+                                key="group-chats-shelf"
+                                className={cn(
+                                  workingThreads.length + snoozedThreads.length === 0 && "mt-auto",
+                                )}
+                              />,
+                            );
                             items.push(
                               <SidebarSectionHeader
                                 key="settled-shelf-header"
                                 marker="settled-header"
                                 className={cn(
-                                  workingThreads.length + snoozedThreads.length === 0 && "mt-auto",
+                                  workingThreads.length + snoozedThreads.length === 0 &&
+                                    !groupChatsShelfVisible &&
+                                    "mt-auto",
                                 )}
                                 label={
                                   settledShelfExpanded
@@ -5421,6 +5435,13 @@ export default function Sidebar() {
                 "No threads yet"
               )}
             </div>
+          ) : null}
+          {/* Fork seam (agent comms): with no thread list there's no Settled header to sit above,
+              so Group Chats shows at the bottom on its own. */}
+          {!isSearchingThreads && sidebarListItems.length === 0 ? (
+            <ul role="presentation" className="mt-auto">
+              <GroupChatsShelf key="group-chats-shelf-empty" />
+            </ul>
           ) : null}
         </SidebarGroup>
       </SidebarContent>

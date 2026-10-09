@@ -101,6 +101,34 @@ describe("DesktopEnvironment", () => {
     }),
   );
 
+  // Fork-only: T3CODE_DESKTOP_USER_DATA_DIR (see fork/README.md).
+  it.effect("resolves a dedicated profile directory only when configured", () =>
+    Effect.gen(function* () {
+      const unset = yield* makeEnvironment();
+      assert.isUndefined(unset.userDataDirOverride);
+      const set = yield* makeEnvironment(
+        { dirname: "/repo/apps/desktop/src" },
+        {
+          T3CODE_DESKTOP_USER_DATA_DIR: " /tmp/t3-candidate/../t3-candidate/profile ",
+          T3CODE_HOME: "/tmp/t3-candidate/home",
+        },
+      );
+      assert.equal(set.userDataDirOverride, "/tmp/t3-candidate/profile");
+      assert.equal(set.stateDir, "/tmp/t3-candidate/home/userdata");
+      assert.equal(set.appDataDirectory, "/Users/alice/Library/Application Support");
+    }),
+  );
+
+  it.effect("refuses a dedicated profile without a dedicated T3 home", () =>
+    Effect.gen(function* () {
+      const error = yield* makeEnvironment(
+        {},
+        { T3CODE_DESKTOP_USER_DATA_DIR: "/tmp/t3-candidate/profile" },
+      ).pipe(Effect.flip);
+      assert.include(String(error), "T3CODE_DESKTOP_USER_DATA_DIR requires T3CODE_HOME");
+    }),
+  );
+
   it.effect("stores production state under userdata in an explicit home", () =>
     Effect.gen(function* () {
       const environment = yield* makeEnvironment(
