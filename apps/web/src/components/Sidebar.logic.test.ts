@@ -48,6 +48,7 @@ import {
   sortInboxThreadsByReturn,
   resolveSidebarDropTarget,
   planSidebarThreadDrop,
+  sortPinnedThreadsByActivity,
   sortPinnedThreadsForSidebar,
   sortProjectsForSidebar,
   sortScopedProjectsForSidebar,
@@ -2012,6 +2013,78 @@ describe("sortPinnedThreadsForSidebar", () => {
     ]);
 
     expect(sorted.map((thread) => thread.id)).toEqual(["a", "b"]);
+  });
+});
+
+// Fork-only (t3code-lim; Lee, 2026-10-08/09): the Agents block sorts by activity.
+describe("sortPinnedThreadsByActivity", () => {
+  const thread = (input: {
+    id: string;
+    updatedAt: string;
+    latestUserMessageAt?: string | null;
+    latestRun?: {
+      requestedAt: string;
+      startedAt: string | null;
+      completedAt: string | null;
+    } | null;
+  }) => ({
+    id: input.id,
+    updatedAt: input.updatedAt,
+    latestUserMessageAt: input.latestUserMessageAt ?? null,
+    latestRun: (input.latestRun ?? null) as never,
+  });
+
+  it("puts the most recently active thread first, by message or run stamps", () => {
+    const sorted = sortPinnedThreadsByActivity([
+      thread({
+        id: "quiet",
+        updatedAt: "2026-10-09T09:00:00.000Z",
+        latestUserMessageAt: "2026-10-08T09:00:00.000Z",
+      }),
+      thread({
+        id: "just-finished",
+        updatedAt: "2026-10-09T08:00:00.000Z",
+        latestRun: {
+          requestedAt: "2026-10-09T10:00:00.000Z",
+          startedAt: "2026-10-09T10:00:01.000Z",
+          completedAt: "2026-10-09T10:05:00.000Z",
+        },
+      }),
+      thread({
+        id: "messaged",
+        updatedAt: "2026-10-09T07:00:00.000Z",
+        latestUserMessageAt: "2026-10-09T10:01:00.000Z",
+      }),
+    ]);
+
+    expect(sorted.map((entry) => entry.id)).toEqual(["just-finished", "messaged", "quiet"]);
+  });
+
+  it("ignores updatedAt when a thread has activity, so a rename or visit doesn't reorder it", () => {
+    const sorted = sortPinnedThreadsByActivity([
+      thread({
+        id: "renamed",
+        updatedAt: "2026-10-09T12:00:00.000Z",
+        latestUserMessageAt: "2026-10-09T08:00:00.000Z",
+      }),
+      thread({
+        id: "active",
+        updatedAt: "2026-10-09T09:00:00.000Z",
+        latestUserMessageAt: "2026-10-09T09:00:00.000Z",
+      }),
+    ]);
+
+    expect(sorted.map((entry) => entry.id)).toEqual(["active", "renamed"]);
+  });
+
+  it("falls back to updatedAt for threads with no activity, and breaks ties by id", () => {
+    const sorted = sortPinnedThreadsByActivity([
+      thread({ id: "b", updatedAt: "2026-10-09T09:00:00.000Z" }),
+      thread({ id: "a", updatedAt: "2026-10-09T09:00:00.000Z" }),
+      thread({ id: "newer", updatedAt: "2026-10-09T10:00:00.000Z" }),
+    ]);
+
+    expect(sorted.map((entry) => entry.id)).toEqual(["newer", "a", "b"]);
   });
 });
 

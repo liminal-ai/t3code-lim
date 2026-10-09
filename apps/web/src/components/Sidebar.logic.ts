@@ -11,7 +11,10 @@ import { threadSearchMatchKey } from "@t3tools/client-runtime/state/thread-searc
 import type { ContextMenuItem, EnvironmentId, ThreadId } from "@t3tools/contracts";
 import type { SidebarProjectSortOrder, SidebarThreadSortOrder } from "@t3tools/contracts/settings";
 import type { AsyncResult } from "effect/reactivity";
-import { planPinnedReorder } from "@t3tools/client-runtime/state/thread-sort";
+import {
+  planPinnedReorder,
+  type SettledThreadTimestampInput,
+} from "@t3tools/client-runtime/state/thread-sort";
 import {
   effectiveSnoozed,
   type ThreadSnoozeShell,
@@ -1068,6 +1071,33 @@ export {
 // (state/thread-sort) so web and mobile compute identical pinned orders.
 export { pinOrderKeyBetween } from "@t3tools/client-runtime/state/thread-sort";
 export { sortPinnedThreadsByOrderKey as sortPinnedThreadsForSidebar } from "@t3tools/client-runtime/state/thread-sort";
+
+// Fork-only (t3code-lim; Lee, 2026-10-08/09): pinned threads are the "Agents"
+// block and sort by most recent activity, newest first: the latest user
+// message or run request, start or completion. updatedAt only counts when a
+// thread has none of those, so renames and visits don't reorder agents.
+export function sortPinnedThreadsByActivity<
+  T extends Pick<SettledThreadTimestampInput, "latestUserMessageAt" | "latestRun" | "updatedAt"> & {
+    readonly id: string;
+  },
+>(threads: ReadonlyArray<T>): T[] {
+  const stamp = (thread: T): number => {
+    const activity = [
+      thread.latestUserMessageAt,
+      thread.latestRun?.requestedAt,
+      thread.latestRun?.startedAt,
+      thread.latestRun?.completedAt,
+    ]
+      .map((value) => toSortableTimestamp(value ?? undefined))
+      .filter((value): value is number => value !== null);
+    return activity.length > 0
+      ? Math.max(...activity)
+      : (toSortableTimestamp(thread.updatedAt) ?? Number.NEGATIVE_INFINITY);
+  };
+  return [...threads].sort(
+    (left, right) => stamp(right) - stamp(left) || left.id.localeCompare(right.id),
+  );
+}
 
 const EMPTY_CONTENT_MATCH_KEYS: ReadonlySet<string> = new Set<string>();
 
