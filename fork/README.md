@@ -8,6 +8,9 @@ This repository preserves upstream T3 Code history and the deployed Claude-LHC p
 - Release packaging: bundles the LHC sidecar, Node runtime for standalone servers, and native runtime dependencies. Packaged Electron locates its bundled sidecar automatically. Desktop identity is `ai.liminal.t3code`, displayed as T3 Code Lim; update metadata targets this repository, never upstream.
 - Fork release/CI workflows and this documentation.
 - Agent comms: chat and administrative UI for agent comms can live in this fork. Comms server and connector code should generally stay outside T3; the connector reaches T3 through the orchestration API. (Source: Lee, 2026-10-07.) See [Agent comms UI](#agent-comms-ui).
+- Native session resume fails closed (#21, #22). A strong native ref is never replaced by a fresh session; a resume that fails fails the run and keeps the binding. Diverges from upstream: upstream's replacement-path tests are rewritten as fork-only. (Source: Lee, 2026-10-08 12:30 ET; Mira #156/#193/#200.) Note under [lim-builder installations](#lim-builder-installations).
+- Re-importing a native session after its thread was deleted (#26). Before writing a provider turn, the projection releases a row at the same provider-thread id and ordinal that belongs to a deleted thread. Fork-only; carry it through upstream updates until upstream scopes provider-thread ids by thread or cleans up turns on delete. (Source: Lee via Grok #7, 2026-10-09; Mira #238.) Note under [lim-builder installations](#lim-builder-installations); test in `ProjectionStore.test.ts` ("re-imported").
+- Sidebar Agents block (#27). Pinned threads are a collapsible "Agents" section of compact one-line rows sorted by activity. (Source: Lee, 2026-10-08/09.) Note under [lim-builder installations](#lim-builder-installations).
 
 The LHC provider has the same existing limitations documented in LHC-PATCH.md. Model context choice remains configuration. LHC changes should stay at the provider boundary; do not rewrite orchestration to accommodate the LHC patch. Fork UI features such as views, settings and sidebar sections are in scope (source: Lee, 2026-10-07). Where practical, keep them in their own files so upstream merges stay cheap.
 
@@ -29,7 +32,7 @@ The exact baseline is recorded in [upstream.json](upstream.json). Preserve histo
 
 1. Fetch upstream tags: `git fetch upstream --tags`.
 2. Create a worktree under `~/lim/wt/t3code-lim/<task>` with an update branch.
-3. Merge the selected upstream release tag into that branch. Keep the existing small patch and resolve conflicts explicitly.
+3. Merge the selected upstream release tag into that branch. Keep every patch listed under [Differences](#differences), resolve conflicts explicitly, and run each patch's tests. (Source for listing every T3 patch there: Lee via Grok #7, 2026-10-09.)
 4. Update upstream.json and the README baseline. Review new upstream workflows before enabling any in this fork.
 5. Open a PR into main. Run checks, build an untagged candidate and qualify staging with an independent tester before Lee reviews functional changes. Tag only after that review.
 
