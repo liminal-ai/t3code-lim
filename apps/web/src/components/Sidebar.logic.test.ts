@@ -48,6 +48,7 @@ import {
   sortInboxThreadsByReturn,
   resolveSidebarDropTarget,
   planSidebarThreadDrop,
+  resolvePinnedActivityTimestamp,
   sortPinnedThreadsByActivity,
   sortPinnedThreadsForSidebar,
   sortProjectsForSidebar,
@@ -2085,6 +2086,23 @@ describe("sortPinnedThreadsByActivity", () => {
     ]);
 
     expect(sorted.map((entry) => entry.id)).toEqual(["newer", "a", "b"]);
+  });
+
+  it("gives the age label the same timestamp the sort uses", () => {
+    const backgroundRun = thread({
+      id: "background",
+      updatedAt: "2026-10-09T08:00:00.000Z",
+      latestUserMessageAt: "2026-10-09T06:00:00.000Z",
+      latestRun: {
+        requestedAt: "2026-10-09T06:00:01.000Z",
+        startedAt: "2026-10-09T06:00:02.000Z",
+        completedAt: "2026-10-09T11:00:00.000Z",
+      },
+    });
+    const quiet = thread({ id: "quiet", updatedAt: "2026-10-09T12:00:00.000Z" });
+
+    expect(resolvePinnedActivityTimestamp(backgroundRun)).toBe("2026-10-09T11:00:00.000Z");
+    expect(resolvePinnedActivityTimestamp(quiet)).toBe("2026-10-09T12:00:00.000Z");
   });
 });
 

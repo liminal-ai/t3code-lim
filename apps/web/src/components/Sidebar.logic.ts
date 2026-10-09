@@ -1076,24 +1076,33 @@ export { sortPinnedThreadsByOrderKey as sortPinnedThreadsForSidebar } from "@t3t
 // block and sort by most recent activity, newest first: the latest user
 // message or run request, start or completion. updatedAt only counts when a
 // thread has none of those, so renames and visits don't reorder agents.
+type PinnedActivityInput = Pick<
+  SettledThreadTimestampInput,
+  "latestUserMessageAt" | "latestRun" | "updatedAt"
+>;
+
+// The compact row's age label uses this too, so label and order can't disagree.
+export function resolvePinnedActivityTimestamp(thread: PinnedActivityInput): string {
+  let latest: { value: string; time: number } | null = null;
+  for (const value of [
+    thread.latestUserMessageAt,
+    thread.latestRun?.requestedAt,
+    thread.latestRun?.startedAt,
+    thread.latestRun?.completedAt,
+  ]) {
+    const time = toSortableTimestamp(value ?? undefined);
+    if (value && time !== null && (latest === null || time > latest.time)) {
+      latest = { value, time };
+    }
+  }
+  return latest?.value ?? thread.updatedAt;
+}
+
 export function sortPinnedThreadsByActivity<
-  T extends Pick<SettledThreadTimestampInput, "latestUserMessageAt" | "latestRun" | "updatedAt"> & {
-    readonly id: string;
-  },
+  T extends PinnedActivityInput & { readonly id: string },
 >(threads: ReadonlyArray<T>): T[] {
-  const stamp = (thread: T): number => {
-    const activity = [
-      thread.latestUserMessageAt,
-      thread.latestRun?.requestedAt,
-      thread.latestRun?.startedAt,
-      thread.latestRun?.completedAt,
-    ]
-      .map((value) => toSortableTimestamp(value ?? undefined))
-      .filter((value): value is number => value !== null);
-    return activity.length > 0
-      ? Math.max(...activity)
-      : (toSortableTimestamp(thread.updatedAt) ?? Number.NEGATIVE_INFINITY);
-  };
+  const stamp = (thread: T): number =>
+    toSortableTimestamp(resolvePinnedActivityTimestamp(thread)) ?? Number.NEGATIVE_INFINITY;
   return [...threads].sort(
     (left, right) => stamp(right) - stamp(left) || left.id.localeCompare(right.id),
   );

@@ -208,6 +208,7 @@ import {
   sidebarMarkerId,
   sidebarThreadKeyAtY,
   sortInboxThreadsByReturn,
+  resolvePinnedActivityTimestamp,
   sortPinnedThreadsByActivity,
   sortSidebarV2ProjectGroups,
   sortThreadsForSidebar,
@@ -313,6 +314,11 @@ function threadTimeLabel(thread: SidebarThreadSummary): string {
 // Settled rows read "how long ago did this wrap up", matching their sort
 // key: both go through resolveSettledThreadTimestamp so label and order can't
 // disagree.
+// Fork-only (t3code-lim): Agents rows read their activity age, matching their sort.
+function pinnedTimeLabel(thread: SidebarThreadSummary): string {
+  return compactSidebarTimeLabel(formatRelativeTimeLabel(resolvePinnedActivityTimestamp(thread)));
+}
+
 function settledTimeLabel(thread: SidebarThreadSummary): string {
   const timestamp = resolveSettledThreadTimestamp(thread);
   return timestamp === null ? "" : compactSidebarTimeLabel(formatRelativeTimeLabel(timestamp));
@@ -1883,7 +1889,9 @@ const SidebarThreadRow = memo(function SidebarThreadRow(props: {
                     <span className="text-xs">
                       {variantAction === "unsettle"
                         ? settledTimeLabel(thread)
-                        : threadTimeLabel(thread)}
+                        : pinnedCompact
+                          ? pinnedTimeLabel(thread)
+                          : threadTimeLabel(thread)}
                     </span>
                   )}
                 </span>
