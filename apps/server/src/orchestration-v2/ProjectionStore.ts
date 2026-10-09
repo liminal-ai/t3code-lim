@@ -2208,6 +2208,24 @@ export const layer: Layer.Layer<ProjectionStoreV2, never, SqlClient.SqlClient> =
                   )[0]!;
             const payloadJson = yield* encodeProviderTurnPayload(providerTurn);
             const payload = parseEncodedPayload(payloadJson);
+            // Fork-only (t3code-lim, Winnie 2026-10-09): provider-thread ids derive
+            // from driver, instance and native id only, so a native session
+            // imported again into a new thread shares the provider-thread id with
+            // the earlier thread. If that thread is deleted, its turns still hold
+            // (provider_thread_id, ordinal) and the new thread's turn hits the
+            // unique index. Release a deleted thread's row at that key; a live
+            // thread's row still conflicts and fails loudly.
+            yield* sql`
+              DELETE FROM orchestration_v2_projection_provider_turns
+              WHERE provider_thread_id = ${providerTurn.providerThreadId}
+                AND ordinal = ${providerTurn.ordinal}
+                AND provider_turn_id <> ${event.payload.id}
+                AND thread_id <> ${event.threadId}
+                AND thread_id IN (
+                  SELECT thread_id FROM orchestration_v2_projection_threads
+                  WHERE deleted_at IS NOT NULL
+                )
+            `;
             yield* sql`
               INSERT INTO orchestration_v2_projection_provider_turns (
                 provider_turn_id,

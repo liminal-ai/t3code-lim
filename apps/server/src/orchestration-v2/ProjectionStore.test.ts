@@ -490,6 +490,115 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
     }),
   );
 
+  // Fork-only (t3code-lim, Winnie 2026-10-09): a native session imported again
+  // into a new thread shares its provider-thread id with an earlier, deleted
+  // thread whose turns still hold (provider_thread_id, ordinal).
+  it.effect("lets a re-imported native session reuse ordinals held by a deleted thread", () =>
+    Effect.gen(function* () {
+      const projectionStore = yield* ProjectionStore.ProjectionStoreV2;
+      const now = yield* DateTime.now;
+      const providerThreadId = ProviderThreadId.make(
+        "provider-thread:provider:codex:provider-instance:codex:native-thread:native-reimport",
+      );
+      const nodeId = NodeId.make("node:reimport");
+      const thread = (id: ThreadId, deletedAt: DateTime.Utc | null) => ({
+        createdBy: "user" as const,
+        creationSource: "web" as const,
+        id,
+        projectId: ProjectId.make("project:reimport"),
+        title: "Winnie",
+        providerInstanceId,
+        modelSelection,
+        runtimeMode: "full-access" as const,
+        interactionMode: "default" as const,
+        branch: null,
+        worktreePath: null,
+        activeProviderThreadId: null,
+        lineage: { parentThreadId: null, relationshipToParent: null, rootThreadId: id },
+        forkedFrom: null,
+        createdAt: now,
+        updatedAt: now,
+        archivedAt: null,
+        settledOverride: null,
+        settledAt: null,
+        lastVisitedAt: null,
+        deletedAt,
+      });
+      const turn = (threadId: ThreadId, ordinal: number, suffix: string) =>
+        projectionStore.apply({
+          id: EventId.make(`event:reimport:turn:${suffix}`),
+          type: "provider-turn.updated",
+          threadId,
+          nodeId,
+          driver,
+          occurredAt: now,
+          payload: {
+            id: ProviderTurnId.make(`provider-turn:reimport:${suffix}`),
+            providerThreadId,
+            nodeId,
+            runAttemptId: null,
+            nativeTurnRef: null,
+            ordinal,
+            status: "completed" as const,
+            startedAt: now,
+            completedAt: now,
+          },
+        });
+      const oldThreadId = ThreadId.make("thread:reimport:old");
+      const newThreadId = ThreadId.make("thread:reimport:new");
+      const liveThreadId = ThreadId.make("thread:reimport:live");
+
+      yield* projectionStore.apply({
+        id: EventId.make("event:reimport:old-created"),
+        type: "thread.created",
+        threadId: oldThreadId,
+        occurredAt: now,
+        payload: thread(oldThreadId, null),
+      });
+      yield* turn(oldThreadId, 1, "old-1");
+      yield* turn(oldThreadId, 2, "old-2");
+      yield* projectionStore.apply({
+        id: EventId.make("event:reimport:old-deleted"),
+        type: "thread.deleted",
+        threadId: oldThreadId,
+        occurredAt: now,
+        payload: thread(oldThreadId, now),
+      });
+      yield* projectionStore.apply({
+        id: EventId.make("event:reimport:new-created"),
+        type: "thread.created",
+        threadId: newThreadId,
+        occurredAt: now,
+        payload: thread(newThreadId, null),
+      });
+
+      // The new thread's first and second turns land at ordinals 1 and 2.
+      yield* turn(newThreadId, 1, "new-1");
+      yield* turn(newThreadId, 2, "new-2");
+      const reimported = yield* projectionStore.getThreadProjection(newThreadId);
+      assert.deepEqual(
+        reimported.providerTurns.map((providerTurn) => providerTurn.ordinal),
+        [1, 2],
+      );
+
+      // A live thread's turn at the same key still conflicts.
+      yield* projectionStore.apply({
+        id: EventId.make("event:reimport:live-created"),
+        type: "thread.created",
+        threadId: liveThreadId,
+        occurredAt: now,
+        payload: thread(liveThreadId, null),
+      });
+      const conflict = yield* Effect.flip(turn(liveThreadId, 1, "live-1"));
+      assert.strictEqual(conflict._tag, "ProjectionStoreApplyEventError");
+      const kept = yield* projectionStore.getThreadProjection(newThreadId);
+      assert.deepEqual(
+        kept.providerTurns.map((providerTurn) => providerTurn.ordinal),
+        [1, 2],
+      );
+    }).pipe(Effect.provide(layerTest)),
+  );
+
   it.effect("pages complete user turns through SQL regardless of tool count or payload size", () =>
     Effect.gen(function* () {
       const projectionStore = yield* ProjectionStore.ProjectionStoreV2;
