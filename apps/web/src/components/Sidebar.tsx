@@ -3942,25 +3942,24 @@ export default function Sidebar() {
       (id) => {
         const target = resolveSidebarDropTarget(sidebarListItems, draggedThreadKey, id);
         if (target === null) return false;
-        return (
-          planSidebarThreadDrop({
-            activeKey: draggedThreadKey,
-            activeSection: draggedFromSection,
-            activePinned: source.pinnedAt != null,
-            activeSettled: source.settledOverride === "settled",
-            supportsSettlement:
-              serverConfigs.get(source.environmentId)?.environment.capabilities.threadSettlement ===
-              true,
-            target,
-            pinnedOrder: pinnedKeys,
-            pinnedKeysById,
-            reorderableKeys: draggableThreadKeys,
-            activeOrder: activeKeys,
-            activeKeysById,
-            activeReorderableKeys: activeReorderableThreadKeys,
-            activeTimeOrdered: workingShelfEnabled,
-          }).kind !== "none"
-        );
+        const plan = planSidebarThreadDrop({
+          activeKey: draggedThreadKey,
+          activeSection: draggedFromSection,
+          activePinned: source.pinnedAt != null,
+          activeSettled: source.settledOverride === "settled",
+          supportsSettlement:
+            serverConfigs.get(source.environmentId)?.environment.capabilities.threadSettlement ===
+            true,
+          target,
+          pinnedOrder: pinnedKeys,
+          pinnedKeysById,
+          reorderableKeys: draggableThreadKeys,
+          activeOrder: activeKeys,
+          activeKeysById,
+          activeReorderableKeys: activeReorderableThreadKeys,
+          activeTimeOrdered: workingShelfEnabled,
+        });
+        return plan.kind !== "none" && plan.kind !== "reorder-pinned";
       },
       {
         items: sidebarListItems,
