@@ -1,6 +1,6 @@
 # T3 Code Lim — Liminal fork
 
-This is Liminal's fork of [T3 Code](https://github.com/pingdotgg/t3code), based on **v0.0.46-nightly.20261006.2752**.
+This is Liminal's fork of [T3 Code](https://github.com/pingdotgg/t3code), based on **v0.0.46-nightly.20261008.2833**.
 
 - Adds the **Claude-LHC provider** alongside upstream providers.
 - Ships versioned server/web and Electron builds for Linux x64, macOS arm64, Windows arm64 and Windows x64.
