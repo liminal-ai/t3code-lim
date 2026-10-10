@@ -21,6 +21,7 @@ function renderPendingActions(isRunning: boolean) {
   return renderToStaticMarkup(
     createElement(ComposerPrimaryActions, {
       compact: true,
+      canOperateThread: true,
       pendingAction: {
         questionIndex: 0,
         isLastQuestion: true,
@@ -49,6 +50,7 @@ function renderSendButton(sendDisabledReason: string | null = null) {
   return renderToStaticMarkup(
     createElement(ComposerPrimaryActions, {
       compact: true,
+      canOperateThread: true,
       pendingAction: null,
       isRunning: false,
       canInterrupt: false,
@@ -70,6 +72,48 @@ function renderSendButton(sendDisabledReason: string | null = null) {
 afterEach(() => {
   stageArtworkState.mode = "none";
   stageArtworkState.variant = null;
+});
+
+function renderCompactOffer(keepFullHistory?: boolean) {
+  return renderToStaticMarkup(
+    createElement(ComposerPrimaryActions, {
+      compact: true,
+      canOperateThread: true,
+      pendingAction: null,
+      isRunning: false,
+      canInterrupt: false,
+      showPlanFollowUpPrompt: false,
+      promptHasText: true,
+      isSendBusy: false,
+      sendDisabledReason: null,
+      isConnecting: false,
+      isEnvironmentUnavailable: false,
+      isPreparingWorktree: false,
+      hasSendableContent: true,
+      compactBeforeSendTokens: 420_000,
+      ...(keepFullHistory === undefined ? {} : { keepFullHistory }),
+      onToggleKeepFullHistory: () => {},
+      onPreviousPendingQuestion: () => {},
+      onInterrupt: () => {},
+      onImplementPlanInNewThread: () => {},
+    }),
+  );
+}
+
+// Fork-only (Lee, 2026-10-10): compact-before-send is opt-in.
+describe("ComposerPrimaryActions compact chip", () => {
+  it("offers the chip unarmed by default: Full, and a plain send", () => {
+    const markup = renderCompactOffer();
+    expect(markup).toContain(">Full<");
+    expect(markup).toContain('aria-pressed="false"');
+    expect(markup).not.toContain("Compact and send");
+  });
+
+  it("compacts first only once armed", () => {
+    const markup = renderCompactOffer(false);
+    expect(markup).toContain('aria-pressed="true"');
+    expect(markup).toContain("Compact and send");
+  });
 });
 
 describe("ComposerPrimaryActions", () => {

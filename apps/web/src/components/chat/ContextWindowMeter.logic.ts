@@ -82,6 +82,37 @@ export function shouldOfferResumeCompaction(input: {
   );
 }
 
+// Fork-only (t3code-lim; Lee, 2026-10-10 via Alder #105 and Mira #281):
+// compact-before-send is opt-in. The chip is offered on a stale thread but
+// starts off, so a plain Send or Enter never compacts first; the person arms it
+// for one message, and a send that starts its turn disarms it again. Upstream
+// (#16631, #17127) has it on by default and re-arms after each send.
+export function resolveCompactBeforeSend(input: {
+  readonly offeredTokens: number | null;
+  readonly armed: boolean;
+  readonly text: string;
+}): boolean {
+  return input.offeredTokens !== null && input.armed && input.text.toLowerCase() !== "/compact";
+}
+
+/** Whether a thread's next send keeps full history: true unless the person armed the chip. */
+export function keepsFullHistory(armedThreadKeys: ReadonlySet<string>, threadKey: string): boolean {
+  return !armedThreadKeys.has(threadKey);
+}
+
+/** The armed set after a choice for one thread; returns the same set when nothing changes. */
+export function setCompactArmed(
+  armedThreadKeys: ReadonlySet<string>,
+  threadKey: string,
+  armed: boolean,
+): ReadonlySet<string> {
+  if (armedThreadKeys.has(threadKey) === armed) return armedThreadKeys;
+  const next = new Set(armedThreadKeys);
+  if (armed) next.add(threadKey);
+  else next.delete(threadKey);
+  return next;
+}
+
 export function resolveContextWindowModelDisplayName(
   selection: ModelSelection | null | undefined,
   modelOptionsByInstance: ReadonlyMap<ProviderInstanceId, ReadonlyArray<ModelEsque>>,
