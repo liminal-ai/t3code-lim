@@ -26,6 +26,7 @@ import {
   SelectValue,
 } from "~/components/ui/select";
 import { Textarea } from "~/components/ui/textarea";
+import { toastManager } from "~/components/ui/toast";
 import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { useThreadShells } from "~/state/entities";
 
@@ -506,8 +507,7 @@ export function ManageMembersDialog(props: {
         <DialogHeader>
           <DialogTitle>Members of {view?.conversation.title ?? "this chat"}</DialogTitle>
           <DialogDescription>
-            New members start with earlier messages counted as read. Comms can't rename or delete a
-            group yet.
+            New members start with earlier messages counted as read. Comms can't rename a group yet.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>
@@ -564,6 +564,81 @@ export function ManageMembersDialog(props: {
             <FormError error={submit.error} />
           </div>
         </DialogPanel>
+      </DialogPopup>
+    </Dialog>
+  );
+}
+
+// Group delete (Lee, 2026-10-09; Mira #256): agent-comms archives the group.
+// It leaves everyone's list; messages, deliveries and wakes are kept, and the
+// toast's Undo unarchives it.
+export function DeleteGroupDialog(props: {
+  readonly conversationId: string;
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+}) {
+  useCloseOnCommsRetarget(props.open, props.onOpenChange);
+  const config = useCommsConfig();
+  const navigate = useNavigate();
+  const { data: view } = useCommsQuery<ConversationView>(
+    "conversations:view",
+    props.open ? { conversationId: props.conversationId, limit: 1 } : "skip",
+  );
+  const submit = useSubmit();
+  const as = config?.postAs ?? null;
+  const title = view?.conversation.title ?? "this group";
+  const args = { as, conversationIds: [props.conversationId] };
+
+  const remove = async () => {
+    if (!(await submit.run(() => commsCall("conversations:archiveConversation", args)))) return;
+    props.onOpenChange(false);
+    void navigate({ to: "/comms", search: { tab: "groups" } });
+    toastManager.add({
+      type: "success",
+      title: `Deleted ${title}`,
+      description: "Messages are kept.",
+      actionProps: {
+        children: "Undo",
+        onClick: () =>
+          void commsCall("conversations:unarchiveConversation", args).catch((cause: unknown) =>
+            toastManager.add({
+              type: "error",
+              title: `Couldn't restore ${title}`,
+              description: cause instanceof Error ? cause.message : String(cause),
+            }),
+          ),
+      },
+    });
+  };
+
+  return (
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogPopup className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Delete {title}?</DialogTitle>
+          <DialogDescription>
+            Removes this group from everyone's list; messages are kept.
+            {view ? ` It has ${view.members.length} members.` : null}
+          </DialogDescription>
+        </DialogHeader>
+        <DialogPanel>
+          <FormError
+            error={as === null ? "No post-as person is configured for comms." : submit.error}
+          />
+        </DialogPanel>
+        <DialogFooter>
+          <Button variant="ghost" autoFocus onClick={() => props.onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            data-testid="comms-delete-group-confirm"
+            disabled={as === null || submit.busy}
+            onClick={() => void remove()}
+          >
+            Delete
+          </Button>
+        </DialogFooter>
       </DialogPopup>
     </Dialog>
   );

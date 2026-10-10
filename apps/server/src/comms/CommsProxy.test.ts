@@ -338,6 +338,33 @@ describe("comms proxy", () => {
     ]);
   });
 
+  it("test mode: archives a group only when every named conversation is a test group", async () => {
+    const realGroup = { id: "g2", kind: "group", title: "team", members: [{ name: "lee" }] };
+    const { call, calls } = fixture({
+      query: (name, args) =>
+        name === "registry:list"
+          ? ownRegistry
+          : {
+              conversation: args.conversationId === "g2" ? realGroup : testGroup,
+              members: [],
+              messages: [],
+            },
+    });
+    const archive = (conversationIds: string[]) =>
+      call("conversations:archiveConversation", { as: "lee", conversationIds });
+    expect((await archive(["g1", "g2"])).status).toBe(403);
+    expect((await archive(["g2"])).status).toBe(403);
+    expect((await archive(["g1"])).status).toBe(200);
+    expect(
+      (await call("conversations:unarchiveConversation", { as: "lee", conversationIds: ["g1"] }))
+        .status,
+    ).toBe(200);
+    expect(calls.filter((c) => c.kind === "mutation").map((c) => c.name)).toEqual([
+      "conversations:archiveConversation",
+      "conversations:unarchiveConversation",
+    ]);
+  });
+
   it("refuses a watch that names the same query id twice", async () => {
     const { handler, calls } = fixture();
     const response = await handler(
