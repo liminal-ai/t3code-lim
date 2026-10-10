@@ -592,7 +592,10 @@ export function DeleteGroupDialog(props: {
   const title = props.title;
 
   const remove = async () => {
-    const deleted = await submit.run(() => deleteGroupChats(as, [props.conversationId]));
+    const deleted = await submit.run(async () => {
+      const { error } = await deleteGroupChats(as, [props.conversationId]);
+      if (error !== null) throw error;
+    });
     if (!deleted) return;
     props.onOpenChange(false);
     void navigate({ to: "/comms", search: { tab: "groups" } });
@@ -631,27 +634,30 @@ export function DeleteGroupDialog(props: {
   );
 }
 
-/** Deletes groups as `as`, at most DELETE_BATCH_SIZE per call; each call is all or nothing. */
-async function deleteGroupChats(as: string | null, ids: ReadonlyArray<string>): Promise<void> {
-  // Minimize confusing UX on partial failures: if any batch succeeds, treat the
-  // overall operation as a success so the dialog closes and the success path runs.
-  // Each server call is all-or-nothing for that batch; this loop is best-effort.
-  let succeeded = 0;
-  let firstError: unknown = null;
+/**
+ * Deletes groups as `as`, at most DELETE_BATCH_SIZE per call. Each call is all
+ * or nothing, and a delete can't be undone, so every batch is tried and the
+ * caller learns exactly how many went (Cursor Agent: don't stop at the first
+ * failed batch).
+ */
+async function deleteGroupChats(
+  as: string | null,
+  ids: ReadonlyArray<string>,
+): Promise<{ readonly deleted: number; readonly error: unknown }> {
+  let deleted = 0;
+  let error: unknown = null;
   for (const conversationIds of deleteBatches(ids)) {
     try {
       await commsCall("conversations:deleteConversation", { as, conversationIds });
-      succeeded += conversationIds.length;
-    } catch (error) {
-      if (firstError === null) firstError = error;
-      // Continue to try remaining batches so we delete as many as possible.
+      deleted += conversationIds.length;
+    } catch (cause) {
+      error ??= cause;
     }
   }
-  if (succeeded === 0 && firstError !== null) {
-    // Nothing was deleted; surface the error so the form shows it.
-    throw firstError;
-  }
+  return { deleted, error };
 }
+
+const errorText = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
 
 /** Bulk delete from Comms > Groups (Lee clears test chats in bulk; Mira #262). */
 export function DeleteGroupsDialog(props: {
@@ -669,10 +675,23 @@ export function DeleteGroupsDialog(props: {
 
   const remove = async () => {
     const ids = props.groups.map((group) => group.id);
-    if (!(await submit.run(() => deleteGroupChats(as, ids)))) return;
-    props.onOpenChange(false);
-    props.onDeleted();
-    toastManager.add({ type: "success", title: `Deleted ${count} ${noun}` });
+    // A failed batch keeps the dialog open and says how many went; deleted
+    // groups leave the list (and so the selection) as the list updates.
+    await submit
+      .run(async () => {
+        const { deleted, error } = await deleteGroupChats(as, ids);
+        if (error === null) return;
+        if (deleted === 0) throw error;
+        throw new Error(
+          `Deleted ${deleted} of ${count}; the rest weren't deleted: ${errorText(error)}`,
+        );
+      })
+      .then((ok) => {
+        if (!ok) return;
+        props.onOpenChange(false);
+        props.onDeleted();
+        toastManager.add({ type: "success", title: `Deleted ${count} ${noun}` });
+      });
   };
 
   return (
