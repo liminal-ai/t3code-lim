@@ -211,6 +211,28 @@ describe("comms proxy", () => {
     expect(calls.filter((c) => c.kind === "mutation").map((c) => c.args.name)).toEqual(["ta-mine"]);
   });
 
+  it("test mode: archives a batch only when every conversation in it is a test conversation", async () => {
+    const realGroup = { ...testGroup, id: "g2", title: "ops", members: [{ name: "kit" }] };
+    const { call, calls } = fixture({
+      query: (name, args) =>
+        name === "registry:list"
+          ? ownRegistry
+          : { conversation: args.conversationId === "g2" ? realGroup : testGroup },
+    });
+    const archive = (conversationIds: unknown) =>
+      call("conversations:archiveConversation", { as: "lee", conversationIds });
+    expect((await archive(["g1"])).status).toBe(200);
+    const refused = await archive(["g1", "g2"]);
+    expect(refused.status).toBe(403);
+    expect(((await refused.json()) as { error: { message: string } }).error.message).toMatch(
+      /isn't a test conversation/,
+    );
+    expect((await archive([])).status).toBe(400);
+    expect(calls.filter((c) => c.kind === "mutation").map((c) => c.args.conversationIds)).toEqual([
+      ["g1"],
+    ]);
+  });
+
   const openWatch = async (handler: (request: Request) => Promise<Response>, queries: unknown) => {
     const response = await handler(
       new Request("http://t3.test/api/comms/watch", {

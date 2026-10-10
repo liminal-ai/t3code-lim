@@ -67,6 +67,12 @@ export const CONVERSATION_SCOPED = new Set([
   "inbox:markRead",
 ]);
 
+/** Calls whose `conversationIds` must each name a test conversation (checked by the proxy). */
+export const CONVERSATIONS_SCOPED = new Set([
+  "conversations:archiveConversation",
+  "conversations:unarchiveConversation",
+]);
+
 type Args = Readonly<Record<string, unknown>>;
 
 const str = (value: unknown): string => (typeof value === "string" ? value : "");
@@ -128,6 +134,11 @@ export function testModeRefusal(
         ? undefined
         : "test mode: every recipient must be a test participant";
     }
+    case "conversations:archiveConversation":
+    case "conversations:unarchiveConversation":
+      return !options.human || str(args.as) !== options.human
+        ? `test mode: archive as @${options.human ?? "(no post-as person)"}`
+        : undefined;
     case "inbox:markRead":
       // Opening a test chat clears the person's inbox items for it; nothing wider.
       if (!options.human || str(args.human) !== options.human) {

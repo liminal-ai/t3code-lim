@@ -1,13 +1,14 @@
 // Fork-only (agent comms): the Comms page behind the sidebar's Comms button.
 // Agents (the registry: presence, homes, state, profiles, registering) and
-// Group Chats (every group: members, activity, create, membership). Activity
+// Group Chats (every group: members, activity, create, membership, archive). Activity
 // waits for the comms server's activity:recent query.
 import { useNavigate } from "@tanstack/react-router";
-import { MessagesSquareIcon, PlusIcon } from "lucide-react";
+import { ArchiveIcon, ArchiveRestoreIcon, MessagesSquareIcon, PlusIcon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { SidebarInset } from "~/components/ui/sidebar";
@@ -35,7 +36,8 @@ import {
   RegisterAgentDialog,
 } from "./CommsDialogs";
 import type { ConversationSummary, DirectoryList, RegistryEntry } from "./commsTypes";
-import { chatTitle } from "./groupChat.logic";
+import { chatTitle, filterGroupChats } from "./groupChat.logic";
+import { setGroupChatsArchived } from "./groupChatArchive";
 
 export type CommsTab = "agents" | "groups";
 
@@ -245,24 +247,125 @@ function AgentsTab() {
 function GroupsTab() {
   const config = useCommsConfig();
   const navigate = useNavigate();
+  const [showArchived, setShowArchived] = useState(false);
   const { data, error } = useCommsQuery<{ conversations: ReadonlyArray<ConversationSummary> }>(
     "conversations:list",
+    showArchived ? { includeArchived: true } : {},
   );
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set());
   const [creating, setCreating] = useState(false);
   const [managing, setManaging] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const postAs = config?.postAs ?? null;
   const groups = useMemo(
     () => (data?.conversations ?? []).filter((c) => c.kind === "group"),
     [data],
   );
+  const shown = useMemo(() => filterGroupChats(groups, query), [groups, query]);
+  // Only chats on screen count: a filter or the archived toggle never acts on hidden ones.
+  const picked = shown.filter((group) => selected.has(group.id));
+  const pickedActive = picked.filter((group) => group.archivedAt === undefined);
+  const pickedArchived = picked.filter((group) => group.archivedAt !== undefined);
+  const archivedCount = groups.filter((group) => group.archivedAt !== undefined).length;
+  const setPicked = (ids: ReadonlyArray<string>, value: boolean) =>
+    setSelected((previous) => {
+      const next = new Set(previous);
+      for (const id of ids) {
+        if (value) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
+  const apply = async (targets: ReadonlyArray<ConversationSummary>, archived: boolean) => {
+    if (!postAs || targets.length === 0) return;
+    setBusy(true);
+    setActionError(null);
+    try {
+      await setGroupChatsArchived(
+        postAs,
+        targets.map((group) => group.id),
+        archived,
+      );
+      setPicked(
+        targets.map((group) => group.id),
+        false,
+      );
+    } catch (cause) {
+      setActionError(cause instanceof Error ? cause.message : String(cause));
+    } finally {
+      setBusy(false);
+    }
+  };
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
-        <span className="text-xs text-muted-foreground">{groups.length} group chats</span>
+        {postAs ? (
+          <Checkbox
+            aria-label="Select every group chat shown"
+            checked={shown.length > 0 && picked.length === shown.length}
+            indeterminate={picked.length > 0 && picked.length < shown.length}
+            disabled={shown.length === 0 || busy}
+            onCheckedChange={(value) =>
+              setPicked(
+                shown.map((group) => group.id),
+                value === true,
+              )
+            }
+          />
+        ) : null}
+        <div className="w-full sm:w-64">
+          <Input
+            type="search"
+            aria-label="Filter group chats"
+            placeholder="Filter by title or member"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+          />
+        </div>
+        <label className="flex items-center gap-2 text-xs text-muted-foreground select-none">
+          <Switch checked={showArchived} onCheckedChange={setShowArchived} />
+          Show archived
+        </label>
+        <span className="text-xs text-muted-foreground">
+          {shown.length} group chats
+          {showArchived && archivedCount ? ` · ${archivedCount} archived` : ""}
+        </span>
         <div className="flex-1" />
+        {postAs && picked.length ? (
+          <>
+            {pickedActive.length ? (
+              <Button
+                size="compact"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void apply(pickedActive, true)}
+                data-testid="comms-groups-archive"
+              >
+                <ArchiveIcon /> Archive {pickedActive.length}
+              </Button>
+            ) : null}
+            {pickedArchived.length ? (
+              <Button
+                size="compact"
+                variant="outline"
+                disabled={busy}
+                onClick={() => void apply(pickedArchived, false)}
+                data-testid="comms-groups-unarchive"
+              >
+                <ArchiveRestoreIcon /> Unarchive {pickedArchived.length}
+              </Button>
+            ) : null}
+          </>
+        ) : null}
         <Button size="compact" onClick={() => setCreating(true)}>
           <PlusIcon /> New group chat
         </Button>
       </div>
+      {actionError ? (
+        <p className="border-b border-border px-4 py-1.5 text-xs text-destructive">{actionError}</p>
+      ) : null}
       <ScrollArea className="min-h-0 flex-1">
         {error ? (
           <p className="p-6 text-sm text-destructive">{error.message}</p>
@@ -272,39 +375,60 @@ function GroupsTab() {
           </div>
         ) : groups.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">No group chats yet.</p>
+        ) : shown.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">No group chats match.</p>
         ) : (
           <ul>
-            {groups.map((group) => (
-              <li
-                key={group.id}
-                className="flex items-center gap-4 border-b border-border px-4 py-2.5 text-sm"
-                data-testid={`comms-group-${group.id}`}
-              >
-                <MessagesSquareIcon className="size-4 shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <div className="truncate font-medium">{chatTitle(group)}</div>
-                  <div className="truncate text-xs text-muted-foreground">
-                    {group.members.map((m) => `@${m.name}`).join(", ")}
-                  </div>
-                </div>
-                <span className="text-xs text-muted-foreground">{group.lastSeq} messages</span>
-                <Button size="compact" variant="ghost" onClick={() => setManaging(group.id)}>
-                  Members
-                </Button>
-                <Button
-                  size="compact"
-                  variant="outline"
-                  onClick={() =>
-                    void navigate({
-                      to: "/group-chats/$conversationId",
-                      params: { conversationId: group.id },
-                    })
-                  }
+            {shown.map((group) => {
+              const archived = group.archivedAt !== undefined;
+              return (
+                <li
+                  key={group.id}
+                  className="flex items-center gap-4 border-b border-border px-4 py-2.5 text-sm"
+                  data-testid={`comms-group-${group.id}`}
+                  data-archived={archived || undefined}
                 >
-                  Open
-                </Button>
-              </li>
-            ))}
+                  {postAs ? (
+                    <Checkbox
+                      aria-label={`Select ${chatTitle(group)}`}
+                      checked={selected.has(group.id)}
+                      disabled={busy}
+                      onCheckedChange={(value) => setPicked([group.id], value === true)}
+                    />
+                  ) : null}
+                  <MessagesSquareIcon className="size-4 shrink-0 text-muted-foreground" />
+                  <div className={cn("min-w-0 flex-1", archived && "opacity-60")}>
+                    <div className="flex items-center gap-2">
+                      <span className="truncate font-medium">{chatTitle(group)}</span>
+                      {archived ? (
+                        <span className="shrink-0 rounded-full border border-border px-1.5 text-3xs text-muted-foreground">
+                          archived
+                        </span>
+                      ) : null}
+                    </div>
+                    <div className="truncate text-xs text-muted-foreground">
+                      {group.members.map((m) => `@${m.name}`).join(", ")}
+                    </div>
+                  </div>
+                  <span className="text-xs text-muted-foreground">{group.lastSeq} messages</span>
+                  <Button size="compact" variant="ghost" onClick={() => setManaging(group.id)}>
+                    Members
+                  </Button>
+                  <Button
+                    size="compact"
+                    variant="outline"
+                    onClick={() =>
+                      void navigate({
+                        to: "/group-chats/$conversationId",
+                        params: { conversationId: group.id },
+                      })
+                    }
+                  >
+                    Open
+                  </Button>
+                </li>
+              );
+            })}
           </ul>
         )}
       </ScrollArea>

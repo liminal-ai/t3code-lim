@@ -189,6 +189,36 @@ export function groupChats(
   );
 }
 
+/** The most ids one archive or unarchive call takes (the comms server's limit). */
+export const ARCHIVE_BATCH_SIZE = 100;
+
+/** Ids split into batches of at most `size`, duplicates dropped. */
+export function archiveBatches(
+  ids: Iterable<string>,
+  size = ARCHIVE_BATCH_SIZE,
+): ReadonlyArray<ReadonlyArray<string>> {
+  const unique = [...new Set(ids)];
+  const batches: string[][] = [];
+  for (let start = 0; start < unique.length; start += size) {
+    batches.push(unique.slice(start, start + size));
+  }
+  return batches;
+}
+
+/** Group chats whose title or member names contain the query (case-insensitive). */
+export function filterGroupChats(
+  chats: ReadonlyArray<ConversationSummary>,
+  query: string,
+): ReadonlyArray<ConversationSummary> {
+  const q = query.trim().toLowerCase();
+  if (!q) return chats;
+  return chats.filter(
+    (chat) =>
+      (chat.title ?? "").toLowerCase().includes(q) ||
+      chat.members.some((member) => member.name.toLowerCase().includes(q)),
+  );
+}
+
 /** localStorage key for the highest seq a person has seen in a chat on this device. */
 export function seenStorageKey(conversationId: string): string {
   return `t3code:comms:group:${conversationId}:seenSeq`;

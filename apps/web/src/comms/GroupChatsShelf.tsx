@@ -1,13 +1,15 @@
 // Fork-only (agent comms): the sidebar's Group Chats shelf, above Settled.
 // Lists the comms server's group chats (test mode: only test ones), newest
-// activity first; a row opens the chat page. Hidden on a server without comms
-// or with no group chats. Expanded by default, remembered per browser.
+// activity first; a row opens the chat page and, on hover, archives it (the
+// Comms page lists archived chats and unarchives). Hidden on a server without
+// comms or with no group chats. Expanded by default, remembered per browser.
 import { useNavigate, useParams } from "@tanstack/react-router";
 import * as Schema from "effect/Schema";
-import { PlusIcon, UsersIcon } from "lucide-react";
+import { ArchiveIcon, PlusIcon, UsersIcon } from "lucide-react";
 import { useCallback, useMemo, useState } from "react";
 
 import { CollapsibleSectionHeader } from "~/components/ui/collapsible-section-header";
+import { toastManager } from "~/components/ui/toast";
 import { useLocalStorage } from "~/hooks/useLocalStorage";
 import { cn } from "~/lib/utils";
 
@@ -16,6 +18,7 @@ import { useCommsQuery } from "./commsClient";
 import { useCommsConfig } from "./useCommsConfig";
 import type { ConversationSummary, ConversationView } from "./commsTypes";
 import { chatTitle, groupChats, memberActivity } from "./groupChat.logic";
+import { setGroupChatsArchived } from "./groupChatArchive";
 import { readGroupChatSeen, useGroupChatSeenVersion } from "./groupChatSeen";
 
 const EXPANDED_KEY = "t3code:sidebar:group-chats-expanded";
@@ -54,6 +57,8 @@ function GroupChatRow(props: {
   readonly unseen: boolean;
   readonly watch: boolean;
   readonly onOpen: () => void;
+  /** Absent when this server can't write (no post-as person). */
+  readonly onArchive: (() => void) | undefined;
 }) {
   const { chat } = props;
   const { data: view } = useCommsQuery<ConversationView>(
@@ -64,7 +69,7 @@ function GroupChatRow(props: {
   const working = [...activity].filter(([, a]) => a === "working").map(([name]) => name);
   const failed = [...activity].filter(([, a]) => a === "failed").map(([name]) => name);
   return (
-    <li className="list-none">
+    <li className="group/chat-row relative list-none">
       <button
         type="button"
         data-testid={`sidebar-group-chat-${chat.id}`}
@@ -99,11 +104,27 @@ function GroupChatRow(props: {
         ) : props.unseen ? (
           <span aria-label="new messages" className="size-1.5 shrink-0 rounded-full bg-primary" />
         ) : (
-          <span className="shrink-0 text-xs text-sidebar-muted-foreground/60">
+          <span
+            className={cn(
+              "shrink-0 text-xs text-sidebar-muted-foreground/60",
+              props.onArchive && "group-hover/chat-row:invisible",
+            )}
+          >
             {chat.members.length}
           </span>
         )}
       </button>
+      {props.onArchive ? (
+        <button
+          type="button"
+          aria-label={`Archive ${chatTitle(chat)}`}
+          data-testid={`sidebar-group-chat-archive-${chat.id}`}
+          onClick={props.onArchive}
+          className="absolute top-1/2 right-1.5 flex size-6 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-sidebar-muted-foreground opacity-0 outline-none group-hover/chat-row:opacity-100 hover:bg-sidebar-row-hover hover:text-sidebar-foreground focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring/70"
+        >
+          <ArchiveIcon className="size-3.5" />
+        </button>
+      ) : null}
     </li>
   );
 }
@@ -121,6 +142,20 @@ export function GroupChatsShelf(props: { readonly className?: string }) {
     select: (params) => (params as { conversationId?: string }).conversationId ?? null,
   });
   useGroupChatSeenVersion();
+  const postAs = config?.postAs ?? null;
+  const archive = useCallback(
+    (chat: ConversationSummary) => {
+      if (!postAs) return;
+      setGroupChatsArchived(postAs, [chat.id], true).catch((error: unknown) =>
+        toastManager.add({
+          type: "error",
+          title: `Couldn't archive ${chatTitle(chat)}`,
+          description: error instanceof Error ? error.message : String(error),
+        }),
+      );
+    },
+    [postAs],
+  );
   if (!config?.enabled || !chats) return null;
   // The open chat is being read, whichever of its updates arrives first.
   const isUnread = (chat: ConversationSummary) =>
@@ -172,6 +207,7 @@ export function GroupChatsShelf(props: { readonly className?: string }) {
                     params: { conversationId: chat.id },
                   })
                 }
+                onArchive={postAs ? () => archive(chat) : undefined}
               />
             ))}
             {hiddenCount > 0 ? (

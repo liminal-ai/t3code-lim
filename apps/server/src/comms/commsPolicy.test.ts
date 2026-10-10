@@ -69,6 +69,18 @@ describe("testModeRefusal", () => {
     ).toBeDefined();
   });
 
+  it("archives only as the post-as person", () => {
+    for (const name of [
+      "conversations:archiveConversation",
+      "conversations:unarchiveConversation",
+    ]) {
+      expect(testModeRefusal(name, { as: "lee", conversationIds: ["c"] }, options)).toBeUndefined();
+      expect(testModeRefusal(name, { as: "kit", conversationIds: ["c"] }, options)).toMatch(
+        /archive as @lee/,
+      );
+    }
+  });
+
   it("refuses reminders and alerts outright", () => {
     expect(testModeRefusal("reminders:create", {}, options)).toMatch(/unavailable/);
     expect(testModeRefusal("alerts:setConfig", {}, options)).toMatch(/unavailable/);

@@ -28,6 +28,8 @@ export const COMMS_FUNCTIONS = {
   "conversations:addMember": "mutation",
   "conversations:removeMember": "mutation",
   "conversations:postAs": "mutation",
+  "conversations:archiveConversation": "mutation",
+  "conversations:unarchiveConversation": "mutation",
   "inbox:markRead": "mutation",
   "reminders:create": "mutation",
   "reminders:update": "mutation",

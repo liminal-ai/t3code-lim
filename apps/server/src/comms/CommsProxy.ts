@@ -46,6 +46,7 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { authenticateHttpRequestScope } from "./commsAuth.ts";
 import {
   CONVERSATION_SCOPED,
+  CONVERSATIONS_SCOPED,
   describeCommsError,
   isTestConversation,
   namedTestAgents,
@@ -228,6 +229,21 @@ const requireTestConversation = (session: Session, conversationId: unknown) =>
       .filter((name) => name.startsWith(TEST_AGENT_PREFIX));
   });
 
+/** Test mode: every conversation a batch call names must be a test conversation. */
+const requireTestConversations = (session: Session, conversationIds: unknown) =>
+  Effect.gen(function* () {
+    if (!Array.isArray(conversationIds) || conversationIds.length === 0) {
+      return yield* callError(400, "conversationIds is required");
+    }
+    const members = new Set<string>();
+    for (const conversationId of new Set(conversationIds)) {
+      for (const name of yield* requireTestConversation(session, conversationId)) {
+        members.add(name);
+      }
+    }
+    return [...members];
+  });
+
 /** Test mode: every test agent a call touches must be one this instance owns and homes. */
 const requireOwnTestAgents = (session: Session, names: ReadonlyArray<string>) =>
   Effect.gen(function* () {
@@ -249,7 +265,9 @@ const checkCall = (session: Session, name: string, args: Args) =>
     if (refusal) return yield* callError(403, refusal);
     const members = CONVERSATION_SCOPED.has(name)
       ? yield* requireTestConversation(session, args.conversationId)
-      : [];
+      : CONVERSATIONS_SCOPED.has(name)
+        ? yield* requireTestConversations(session, args.conversationIds)
+        : [];
     yield* requireOwnTestAgents(session, [
       ...new Set([...namedTestAgents(name, args), ...members]),
     ]);

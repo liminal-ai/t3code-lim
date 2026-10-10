@@ -1,6 +1,7 @@
 // Fork-only (agent comms): one group chat, live from the comms server through
 // this T3 server's /api/comms proxy. Based on the old Roundtable page.
 import { createFileRoute } from "@tanstack/react-router";
+import { ArchiveIcon, ArchiveRestoreIcon } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import ChatMarkdown from "~/components/ChatMarkdown";
@@ -8,6 +9,7 @@ import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
 import { SidebarInset } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
+import { toastManager } from "~/components/ui/toast";
 import { ManageMembersDialog } from "~/comms/CommsDialogs";
 import { commsCall, useCommsQuery } from "~/comms/commsClient";
 import { useCommsConfig, useCommsRouteKey } from "~/comms/useCommsConfig";
@@ -24,6 +26,7 @@ import {
   recipientsStorageKey,
   wakeableMembers,
 } from "~/comms/groupChat.logic";
+import { setGroupChatsArchived, useAllConversations } from "~/comms/groupChatArchive";
 import { markGroupChatSeen } from "~/comms/groupChatSeen";
 import { APP_BASE_NAME } from "~/branding";
 import { isElectron } from "~/env";
@@ -58,6 +61,24 @@ function GroupChatPage(props: { readonly conversationId: string }) {
   const config = useCommsConfig();
   const [managing, setManaging] = useState(false);
   const self = config?.postAs ?? null;
+  // Archived state comes from the full list (the view doesn't carry it); unknown until it loads.
+  const all = useAllConversations(config?.enabled === true);
+  const summary = all.data?.find((conversation) => conversation.id === conversationId);
+  const archived = summary?.archivedAt !== undefined;
+  const [archiving, setArchiving] = useState(false);
+  const toggleArchived = useCallback(() => {
+    if (!self || !summary) return;
+    setArchiving(true);
+    setGroupChatsArchived(self, [conversationId], !archived)
+      .catch((cause: unknown) =>
+        toastManager.add({
+          type: "error",
+          title: archived ? "Couldn't unarchive this chat" : "Couldn't archive this chat",
+          description: cause instanceof Error ? cause.message : String(cause),
+        }),
+      )
+      .finally(() => setArchiving(false));
+  }, [archived, conversationId, self, summary]);
   const { data: view, error } = useCommsQuery<ConversationView>("conversations:view", {
     conversationId,
     limit: VIEW_LIMIT,
@@ -148,12 +169,29 @@ function GroupChatPage(props: { readonly conversationId: string }) {
           <div className="flex min-w-0 flex-1 items-baseline gap-3 truncate">
             <h1 className="truncate text-sm font-medium">{title}</h1>
             {members.length ? <GroupChatMemberStrip members={members} activity={activity} /> : null}
+            {archived ? (
+              <span className="rounded-full border border-border px-1.5 text-3xs text-secondary-label">
+                archived
+              </span>
+            ) : null}
             {config?.testMode ? (
               <span className="rounded-full border border-warning/60 px-1.5 text-3xs text-warning">
                 test mode
               </span>
             ) : null}
           </div>
+          {self && summary?.kind === "group" ? (
+            <Button
+              size="compact"
+              variant="ghost"
+              disabled={archiving}
+              onClick={toggleArchived}
+              data-testid="comms-group-archive"
+            >
+              {archived ? <ArchiveRestoreIcon /> : <ArchiveIcon />}
+              {archived ? "Unarchive" : "Archive"}
+            </Button>
+          ) : null}
           <Button size="compact" variant="ghost" onClick={() => setManaging(true)}>
             Members
           </Button>

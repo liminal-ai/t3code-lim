@@ -3,7 +3,9 @@ import { describe, expect, it } from "vite-plus/test";
 import type { ConversationMessage, ParticipantRef } from "./commsTypes";
 import {
   applyMention,
+  archiveBatches,
   draftRecipients,
+  filterGroupChats,
   memberActivity,
   mentionQueryAt,
   parseRecipients,
@@ -99,5 +101,38 @@ describe("memberActivity", () => {
         message({ "ta-ash": "replied" }),
       ]).get("ta-ash"),
     ).toBe("idle");
+  });
+});
+
+describe("archiving", () => {
+  const chat = (id: string, title: string | undefined, names: string[]) =>
+    ({
+      id,
+      kind: "group",
+      title,
+      members: names.map((name) => ref(name)),
+      lastSeq: 0,
+      readSeq: 0,
+      unread: 0,
+    }) as const;
+
+  it("splits ids into server-sized batches without duplicates", () => {
+    expect(archiveBatches(["a", "b", "a", "c"], 2)).toEqual([["a", "b"], ["c"]]);
+    expect(archiveBatches([])).toEqual([]);
+    expect(
+      archiveBatches(Array.from({ length: 205 }, (_, i) => `c${i}`)).map((b) => b.length),
+    ).toEqual([100, 100, 5]);
+  });
+
+  it("filters group chats by title or member name", () => {
+    const chats = [
+      chat("1", "tg-smoke", ["lee"]),
+      chat("2", "ops", ["kit"]),
+      chat("3", undefined, ["ta-ash"]),
+    ];
+    expect(filterGroupChats(chats, " TG- ").map((c) => c.id)).toEqual(["1"]);
+    expect(filterGroupChats(chats, "kit").map((c) => c.id)).toEqual(["2"]);
+    expect(filterGroupChats(chats, "ta-").map((c) => c.id)).toEqual(["3"]);
+    expect(filterGroupChats(chats, "")).toHaveLength(3);
   });
 });

@@ -44,6 +44,9 @@ export interface ConversationSummary {
   readonly lastSeq: number;
   readonly readSeq: number;
   readonly unread: number;
+  /** Set on archived groups (conversations:list only; `includeArchived` lists them). */
+  readonly archivedAt?: number;
+  readonly archivedBy?: string;
 }
 
 export type DeliveryState =
