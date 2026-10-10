@@ -297,13 +297,15 @@ const watchHandler = Effect.gen(function* () {
         }
         Queue.offerUnsafe(queue, frame);
       };
-      offer({ ready: { seq: store.lastSeq() } });
       yield* Effect.acquireRelease(
-        Effect.sync(() =>
-          store.subscribe((change) => {
+        Effect.sync(() => {
+          const unsubscribe = store.subscribe((change) => {
             if (!ids || ids.has(change.artifactId)) offer({ change });
-          }),
-        ),
+          });
+          // Subscribe first, then announce the ready seq to avoid dropping events.
+          offer({ ready: { seq: store.lastSeq() } });
+          return unsubscribe;
+        }),
         (unsubscribe) => Effect.sync(unsubscribe),
       );
       // Heartbeats keep idle streams open through proxies.

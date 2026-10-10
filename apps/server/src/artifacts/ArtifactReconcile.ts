@@ -261,12 +261,17 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     files.push({ path, state, fileId: parseMarkdownFile(state.text).frontMatter?.id ?? null });
   }
   // When two files carry one id (a copy), the file the index or links.json
-  // already knows at that path keeps it, then committed files, then new ones.
+  // already knows at that path keeps it, then other files carrying that id,
+  // then id-less new ones.
   const claim = (file: (typeof files)[number]) => {
-    if (file.fileId === null) return 1;
-    const known = ctx.index.get(file.fileId)?.path ?? idPathFromLinks.get(file.fileId);
-    if (known === file.path) return 0;
-    return dirty.has(file.path) ? 2 : 1;
+    if (file.fileId !== null) {
+      const known = ctx.index.get(file.fileId)?.path ?? idPathFromLinks.get(file.fileId);
+      if (known === file.path) return 0;
+      // Prefer files that carry the id themselves over id-less occupants.
+      return 1;
+    }
+    // Id-less files claim last to avoid stealing identity from moved files.
+    return 2;
   };
   files.sort((a, b) => claim(a) - claim(b));
 
