@@ -16,10 +16,13 @@ import {
   claudeLhcSidecarUnavailableReason,
   FORK_LHC_HOME,
   fitLhcCompactionToContextWindow,
+  lhcFitContextWindow,
   REFUSED_LHC_HOMES,
   makeClaudeLhcCreateQuery,
   resolveClaudeLhcSidecarPath,
   type SidecarPin,
+  UNCATALOGUED_CONTEXT_WINDOW,
+  withContextWindowEnv,
 } from "./ClaudeLhcSidecar.ts";
 
 const PIN: SidecarPin = { package: "claude-lhc", version: "9.9.9", integrity: "sha512-test" };
@@ -39,7 +42,7 @@ readline.createInterface({ input: process.stdin }).on("line", (line) => {
   const frame = JSON.parse(line);
   if (frame.type === "start") {
     permissionMode = frame.options.permissionMode ?? "default";
-    write({ type: "msg", message: { type: "system", subtype: "init", session_id: frame.options.sessionId, model: frame.options.model, has_callbacks: typeof frame.options.canUseTool, env_marker: frame.options.env && frame.options.env.SIDECAR_TEST_MARKER, settings: frame.options.settings, lhc_home: process.env.T3CODE_LHC_HOME } });
+    write({ type: "msg", message: { type: "system", subtype: "init", session_id: frame.options.sessionId, model: frame.options.model, has_callbacks: typeof frame.options.canUseTool, env_marker: frame.options.env && frame.options.env.SIDECAR_TEST_MARKER, env_window: frame.options.env && frame.options.env.CLAUDE_CODE_MAX_CONTEXT_TOKENS, settings: frame.options.settings, lhc_home: process.env.T3CODE_LHC_HOME } });
   } else if (frame.type === "user") {
     const text = frame.message.message.content[0].text;
     if (permissionMode === "bypassPermissions") {
@@ -171,6 +174,188 @@ describe("ClaudeLhcSidecar", () => {
         contextWindow: undefined,
       }),
     ).toEqual({ autoCompactWindow: 380_000, lhcLowerBound: 150_000 });
+  });
+
+  it("an uncatalogued model without a contextWindow fits as 200k, never uncapped", () => {
+    expect(lhcFitContextWindow("glm-5.3", undefined)).toBe(UNCATALOGUED_CONTEXT_WINDOW);
+    expect(lhcFitContextWindow("glm-5.3", ["glm-5.3"])).toBe(UNCATALOGUED_CONTEXT_WINDOW);
+    expect(
+      fitLhcCompactionToContextWindow({
+        autoCompactWindow: 700_000,
+        lhcLowerBound: 120_000,
+        contextWindow: lhcFitContextWindow("glm-5.3", [{ slug: "glm-5.3" }]),
+      }),
+    ).toEqual({ autoCompactWindow: 160_000, lhcLowerBound: 80_000 });
+    // Claude Code's own default model stays unfitted, as before.
+    expect(lhcFitContextWindow("", undefined)).toBeUndefined();
+  });
+
+  it("each model fits to its own declared contextWindow", () => {
+    const models = [
+      { slug: "glm-5.3", contextWindow: 1_000_000 },
+      { slug: "glm-5.3-flash-local", contextWindow: 128_000 },
+      "other-model",
+      "claude-opus-5-5",
+    ];
+    expect(lhcFitContextWindow("glm-5.3", models)).toBe(1_000_000);
+    expect(lhcFitContextWindow("glm-5.3-flash-local", models)).toBe(128_000);
+    expect(
+      fitLhcCompactionToContextWindow({
+        autoCompactWindow: 700_000,
+        lhcLowerBound: 120_000,
+        contextWindow: lhcFitContextWindow("glm-5.3-flash-local", models),
+      }),
+    ).toEqual({ autoCompactWindow: 102_400, lhcLowerBound: 51_200 });
+    // A bare uncatalogued entry fits as 200k; its neighbours' windows don't touch it.
+    expect(lhcFitContextWindow("other-model", models)).toBe(UNCATALOGUED_CONTEXT_WINDOW);
+    // Catalogued models keep their catalog window.
+    expect(lhcFitContextWindow("claude-opus-5-5", models)).toBe(
+      resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {
+        instanceId: ProviderInstanceId.make("claude-lhc"),
+        model: "claude-opus-5-5",
+      }),
+    );
+  });
+
+  it("a custom entry that declares a window overrides the catalog, even for a catalog alias", () => {
+    // "sonnet" is a catalog alias; a custom entry reusing it for another model declares its own window.
+    const models = [{ slug: "sonnet", contextWindow: 128_000 }];
+    expect(lhcFitContextWindow("sonnet", models)).toBe(128_000);
+    // A shadowing entry with an explicit env value fits to the smaller of the two.
+    expect(
+      lhcFitContextWindow("sonnet", [{ slug: "sonnet", contextWindow: 1_000_000 }], {
+        CLAUDE_CODE_MAX_CONTEXT_TOKENS: "128000",
+      }),
+    ).toBe(128_000);
+    // Even a slug ending in "[1m]" fits to its declared window.
+    expect(
+      lhcFitContextWindow("proxy-model[1m]", [{ slug: "proxy-model[1m]", contextWindow: 128_000 }]),
+    ).toBe(128_000);
+    expect(lhcFitContextWindow("proxy-model[1m]", ["proxy-model[1m]"])).toBe(1_000_000);
+    // A bare entry for the alias still uses the catalog.
+    expect(lhcFitContextWindow("sonnet", ["sonnet"])).toBe(
+      resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {
+        instanceId: ProviderInstanceId.make("claude-lhc"),
+        model: "sonnet",
+      }),
+    );
+  });
+
+  it("an explicit CLAUDE_CODE_MAX_CONTEXT_TOKENS sizes uncatalogued models, as Claude Code does", () => {
+    const models = [{ slug: "glm-5.3", contextWindow: 1_000_000 }];
+    expect(
+      lhcFitContextWindow("glm-5.3", models, { CLAUDE_CODE_MAX_CONTEXT_TOKENS: "200000" }),
+    ).toBe(200_000);
+    expect(
+      lhcFitContextWindow("glm-5.3", undefined, { CLAUDE_CODE_MAX_CONTEXT_TOKENS: "300000" }),
+    ).toBe(300_000);
+    // Not a positive integer: ignored.
+    expect(lhcFitContextWindow("glm-5.3", models, { CLAUDE_CODE_MAX_CONTEXT_TOKENS: "0" })).toBe(
+      1_000_000,
+    );
+    // Catalogued models keep the catalog window.
+    expect(
+      lhcFitContextWindow("claude-opus-5-5", models, { CLAUDE_CODE_MAX_CONTEXT_TOKENS: "200000" }),
+    ).toBe(
+      resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {
+        instanceId: ProviderInstanceId.make("claude-lhc"),
+        model: "claude-opus-5-5",
+      }),
+    );
+  });
+
+  it("passes the opened model's declared window to Claude Code as CLAUDE_CODE_MAX_CONTEXT_TOKENS", () => {
+    const models = [{ slug: "glm-5.3", contextWindow: 1_000_000 }, "glm-5.3-flash-local"];
+    expect(withContextWindowEnv({ A: "1" }, "glm-5.3", models)).toEqual({
+      A: "1",
+      CLAUDE_CODE_MAX_CONTEXT_TOKENS: "1000000",
+    });
+    // No declared window for this model: Claude Code already assumes 200k, so leave the env alone.
+    expect(withContextWindowEnv({ A: "1" }, "glm-5.3-flash-local", models)).toEqual({ A: "1" });
+    // An explicit setting in the environment wins.
+    expect(
+      withContextWindowEnv({ CLAUDE_CODE_MAX_CONTEXT_TOKENS: "300000" }, "glm-5.3", models)
+        .CLAUDE_CODE_MAX_CONTEXT_TOKENS,
+    ).toBe("300000");
+  });
+
+  it("V2: an explicit CLAUDE_CODE_MAX_CONTEXT_TOKENS in the environment drives the fit", async () => {
+    const createQuery = makeClaudeLhcCreateQuery({
+      environment: {
+        ...process.env,
+        CLAUDE_LHC_SIDECAR: makeFakeSidecar(),
+        CLAUDE_CODE_MAX_CONTEXT_TOKENS: "200000",
+      },
+      baseDir: BASE_DIR,
+      pin: PIN,
+      windows: { autoCompactWindow: "700000", lhcLowerBound: "120000" },
+      customModels: [{ slug: "glm-5.3", contextWindow: 1_000_000 }],
+    });
+    const prompts = (async function* () {
+      await new Promise<void>(() => {});
+    })();
+    const runtime = createQuery({
+      prompt: prompts as never,
+      options: { sessionId: "sess-glm-env", model: "glm-5.3", settings: {} as never },
+    });
+    const init = (await runtime[Symbol.asyncIterator]().next()).value as unknown as {
+      settings: Record<string, unknown>;
+    };
+    expect(init.settings).toEqual({ autoCompactWindow: 160_000, lhcLowerBound: 80_000 });
+    runtime.close();
+  });
+
+  it("V2: an uncatalogued custom model's query settings are fitted to its contextWindow", async () => {
+    const createQuery = makeClaudeLhcCreateQuery({
+      environment: { ...process.env, CLAUDE_LHC_SIDECAR: makeFakeSidecar() },
+      baseDir: BASE_DIR,
+      pin: PIN,
+      windows: { autoCompactWindow: "700000", lhcLowerBound: "120000" },
+      customModels: [{ slug: "glm-5.3", contextWindow: 500_000 }],
+    });
+    const prompts = (async function* () {
+      await new Promise<void>(() => {});
+    })();
+    const runtime = createQuery({
+      prompt: prompts as never,
+      options: { sessionId: "sess-glm", model: "glm-5.3", settings: {} as never },
+    });
+    const init = (await runtime[Symbol.asyncIterator]().next()).value as unknown as {
+      settings: Record<string, unknown>;
+    };
+    expect(init.settings).toEqual({ autoCompactWindow: 400_000, lhcLowerBound: 120_000 });
+    runtime.close();
+  });
+
+  it("V2: the declared window reaches Claude Code through the query's env option", async () => {
+    // claude-lhc gives Claude Code the wire `env` instead of its own environment when one is
+    // passed, so the derived CLAUDE_CODE_MAX_CONTEXT_TOKENS has to be in it.
+    const createQuery = makeClaudeLhcCreateQuery({
+      environment: { ...process.env, CLAUDE_LHC_SIDECAR: makeFakeSidecar() },
+      baseDir: BASE_DIR,
+      pin: PIN,
+      windows: { autoCompactWindow: "700000", lhcLowerBound: "120000" },
+      customModels: [{ slug: "glm-5.3", contextWindow: 1_000_000 }],
+    });
+    const prompts = (async function* () {
+      await new Promise<void>(() => {});
+    })();
+    const runtime = createQuery({
+      prompt: prompts as never,
+      options: {
+        sessionId: "sess-glm-wire-env",
+        model: "glm-5.3",
+        env: { SIDECAR_TEST_MARKER: "kept" },
+        settings: {} as never,
+      },
+    });
+    const init = (await runtime[Symbol.asyncIterator]().next()).value as unknown as {
+      env_marker: unknown;
+      env_window: unknown;
+    };
+    expect(init.env_marker).toBe("kept");
+    expect(init.env_window).toBe("1000000");
+    runtime.close();
   });
 
   it.each(["claude-sonnet-4-6", "claude-haiku-4-5", "claude-opus-5-5"])(

@@ -33,6 +33,7 @@ export const ClaudeLhcDriver = makeClaudeDriver({
       environment,
       baseDir,
       windows: { autoCompactWindow: config.autoCompactWindow, lhcLowerBound: config.lhcLowerBound },
+      customModels: config.customModels,
     }),
   forkRefusal: CLAUDE_LHC_FORK_REFUSAL,
   unavailableReason: claudeLhcSidecarUnavailableReason,

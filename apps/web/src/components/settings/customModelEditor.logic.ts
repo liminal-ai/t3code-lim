@@ -31,6 +31,8 @@ export interface CustomModelDraft {
   readonly slug: string;
   readonly name: string;
   readonly descriptors: ReadonlyArray<EditorDescriptor>;
+  /** Not shown in the editor; carried so a save keeps it (fork, Mira #305). */
+  readonly contextWindow?: number;
 }
 
 export interface DescriptorPreset {
@@ -197,6 +199,7 @@ export function draftFromDefinition(entry: CustomModelDefinition): CustomModelDr
     slug: entry.slug,
     name: entry.name === entry.slug ? "" : entry.name,
     descriptors: (entry.capabilities?.optionDescriptors ?? []).map(descriptorToEditor),
+    ...(entry.contextWindow !== undefined ? { contextWindow: entry.contextWindow } : {}),
   };
 }
 
@@ -276,5 +279,6 @@ export function definitionFromDraft(draft: CustomModelDraft): CustomModelDefinit
     name: name || draft.slug,
     capabilities:
       descriptors.length > 0 ? createModelCapabilities({ optionDescriptors: descriptors }) : null,
+    ...(draft.contextWindow !== undefined ? { contextWindow: draft.contextWindow } : {}),
   };
 }
