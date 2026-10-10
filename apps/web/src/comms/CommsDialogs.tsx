@@ -30,7 +30,7 @@ import { toastManager } from "~/components/ui/toast";
 import { Toggle, ToggleGroup } from "~/components/ui/toggle-group";
 import { useThreadShells } from "~/state/entities";
 
-import { commsCall, useCommsQuery } from "./commsClient";
+import { commsCall, commsRouteGeneration, useCommsQuery } from "./commsClient";
 import { useCloseOnCommsRetarget, useCommsConfig, useCommsEnvironmentId } from "./useCommsConfig";
 import {
   HARNESS_HELP,
@@ -635,26 +635,29 @@ export function DeleteGroupDialog(props: {
 }
 
 /**
- * Deletes groups as `as`, at most DELETE_BATCH_SIZE per call. Each call is all
- * or nothing, and a delete can't be undone, so every batch is tried and the
- * caller learns exactly how many went (Cursor Agent: don't stop at the first
- * failed batch).
+ * Deletes groups as `as`, at most DELETE_BATCH_SIZE per call; each call is all
+ * or nothing. Stops at the first failed batch, and before any batch once comms
+ * has moved to another T3, so the ids are never sent to a different comms
+ * server (Codex, PR #28). The caller learns how many went.
  */
 async function deleteGroupChats(
   as: string | null,
   ids: ReadonlyArray<string>,
 ): Promise<{ readonly deleted: number; readonly error: unknown }> {
+  const generation = commsRouteGeneration();
   let deleted = 0;
-  let error: unknown = null;
   for (const conversationIds of deleteBatches(ids)) {
+    if (commsRouteGeneration() !== generation) {
+      return { deleted, error: new Error("comms moved to another T3; the rest weren't sent") };
+    }
     try {
       await commsCall("conversations:deleteConversation", { as, conversationIds });
-      deleted += conversationIds.length;
     } catch (cause) {
-      error ??= cause;
+      return { deleted, error: cause };
     }
+    deleted += conversationIds.length;
   }
-  return { deleted, error };
+  return { deleted, error: null };
 }
 
 const errorText = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
