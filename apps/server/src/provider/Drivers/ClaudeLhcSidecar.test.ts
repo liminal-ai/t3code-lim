@@ -221,6 +221,11 @@ describe("ClaudeLhcSidecar", () => {
     // "sonnet" is a catalog alias; a custom entry reusing it for another model declares its own window.
     const models = [{ slug: "sonnet", contextWindow: 128_000 }];
     expect(lhcFitContextWindow("sonnet", models)).toBe(128_000);
+    // Even a slug ending in "[1m]" fits to its declared window.
+    expect(
+      lhcFitContextWindow("proxy-model[1m]", [{ slug: "proxy-model[1m]", contextWindow: 128_000 }]),
+    ).toBe(128_000);
+    expect(lhcFitContextWindow("proxy-model[1m]", ["proxy-model[1m]"])).toBe(1_000_000);
     // A bare entry for the alias still uses the catalog.
     expect(lhcFitContextWindow("sonnet", ["sonnet"])).toBe(
       resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {

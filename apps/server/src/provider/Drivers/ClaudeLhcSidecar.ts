@@ -285,10 +285,9 @@ const declaredContextWindow = (
 /**
  * The window for the model a query opens with. A model change opens a new query (the API model id
  * is part of `compileClaudeModelSelection`'s queryIdentity), so each query sizes its own model.
- * - `[1m]`: 1M, as Claude Code does.
- * - A declared `contextWindow` on the model's own entry overrides the catalog, even for a slug the
- *   catalog knows (an alias pointed elsewhere).
- * - The catalog.
+ * - A model Claude Code sizes itself (`[1m]` suffix, or in the catalog): its own entry's declared
+ *   `contextWindow` if any, since the user knows the real window (a proxy slug ending in `[1m]`, an
+ *   alias pointed elsewhere); else 1M for `[1m]`, else the catalog window.
  * - An explicit CLAUDE_CODE_MAX_CONTEXT_TOKENS in the environment: Claude Code uses it for a model it
  *   doesn't know, so the fit must too.
  * - The model's declared `contextWindow`.
@@ -301,10 +300,10 @@ export function lhcFitContextWindow(
   env: NodeJS.ProcessEnv = {},
 ): number | undefined {
   if (model === "") return undefined;
-  if (model.endsWith("[1m]")) return 1_000_000;
   const declared = declaredContextWindow(model, customModels);
-  const catalogued = catalogContextWindow(model);
-  if (catalogued !== undefined) return declared ?? catalogued;
+  // catalogContextWindow treats a "[1m]" suffix as 1M.
+  const known = catalogContextWindow(model);
+  if (known !== undefined) return declared ?? known;
   return environmentContextWindow(env) ?? declared ?? UNCATALOGUED_CONTEXT_WINDOW;
 }
 
