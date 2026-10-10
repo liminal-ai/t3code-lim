@@ -368,10 +368,15 @@ function withLhcWindows(
     lhcLowerBound: Number(windows.lhcLowerBound),
     contextWindow,
   });
+  // The sidecar gives Claude Code the wire `env` instead of its own when one is passed
+  // (claude-lhc claudeChildEnv), so the derived window has to ride in it too.
+  const env =
+    options.env === undefined ? undefined : withContextWindowEnv(options.env, model, customModels);
   const settings =
     typeof options.settings === "object" && options.settings !== null ? options.settings : {};
   return {
     ...options,
+    ...(env !== undefined ? { env } : {}),
     settings: { ...settings, ...fitted } as NonNullable<typeof options.settings>,
   };
 }

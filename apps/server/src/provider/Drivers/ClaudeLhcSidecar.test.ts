@@ -42,7 +42,7 @@ readline.createInterface({ input: process.stdin }).on("line", (line) => {
   const frame = JSON.parse(line);
   if (frame.type === "start") {
     permissionMode = frame.options.permissionMode ?? "default";
-    write({ type: "msg", message: { type: "system", subtype: "init", session_id: frame.options.sessionId, model: frame.options.model, has_callbacks: typeof frame.options.canUseTool, env_marker: frame.options.env && frame.options.env.SIDECAR_TEST_MARKER, settings: frame.options.settings, lhc_home: process.env.T3CODE_LHC_HOME } });
+    write({ type: "msg", message: { type: "system", subtype: "init", session_id: frame.options.sessionId, model: frame.options.model, has_callbacks: typeof frame.options.canUseTool, env_marker: frame.options.env && frame.options.env.SIDECAR_TEST_MARKER, env_window: frame.options.env && frame.options.env.CLAUDE_CODE_MAX_CONTEXT_TOKENS, settings: frame.options.settings, lhc_home: process.env.T3CODE_LHC_HOME } });
   } else if (frame.type === "user") {
     const text = frame.message.message.content[0].text;
     if (permissionMode === "bypassPermissions") {
@@ -324,6 +324,37 @@ describe("ClaudeLhcSidecar", () => {
       settings: Record<string, unknown>;
     };
     expect(init.settings).toEqual({ autoCompactWindow: 400_000, lhcLowerBound: 120_000 });
+    runtime.close();
+  });
+
+  it("V2: the declared window reaches Claude Code through the query's env option", async () => {
+    // claude-lhc gives Claude Code the wire `env` instead of its own environment when one is
+    // passed, so the derived CLAUDE_CODE_MAX_CONTEXT_TOKENS has to be in it.
+    const createQuery = makeClaudeLhcCreateQuery({
+      environment: { ...process.env, CLAUDE_LHC_SIDECAR: makeFakeSidecar() },
+      baseDir: BASE_DIR,
+      pin: PIN,
+      windows: { autoCompactWindow: "700000", lhcLowerBound: "120000" },
+      customModels: [{ slug: "glm-5.3", contextWindow: 1_000_000 }],
+    });
+    const prompts = (async function* () {
+      await new Promise<void>(() => {});
+    })();
+    const runtime = createQuery({
+      prompt: prompts as never,
+      options: {
+        sessionId: "sess-glm-wire-env",
+        model: "glm-5.3",
+        env: { SIDECAR_TEST_MARKER: "kept" },
+        settings: {} as never,
+      },
+    });
+    const init = (await runtime[Symbol.asyncIterator]().next()).value as unknown as {
+      env_marker: unknown;
+      env_window: unknown;
+    };
+    expect(init.env_marker).toBe("kept");
+    expect(init.env_window).toBe("1000000");
     runtime.close();
   });
 
