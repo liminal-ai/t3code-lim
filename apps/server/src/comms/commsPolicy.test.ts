@@ -59,21 +59,17 @@ describe("testModeRefusal", () => {
     );
   });
 
-  it("archives groups only as the post-as person, naming at least one", () => {
-    for (const name of [
-      "conversations:archiveConversation",
-      "conversations:unarchiveConversation",
-    ]) {
-      const archive = { as: "lee", conversationIds: ["g1"] };
-      expect(testModeRefusal(name, archive, options)).toBeUndefined();
-      expect(testModeRefusal(name, { ...archive, as: "kit" }, options)).toMatch(/archive as @lee/);
-      expect(testModeRefusal(name, { ...archive, conversationIds: [] }, options)).toMatch(
-        /at least one/,
-      );
-      expect(testModeRefusal(name, { as: "lee", conversationId: "g1" }, options)).toMatch(
-        /at least one/,
-      );
-    }
+  it("deletes groups only as the post-as person, naming at least one", () => {
+    const name = "conversations:deleteConversation";
+    const remove = { as: "lee", conversationIds: ["g1"] };
+    expect(testModeRefusal(name, remove, options)).toBeUndefined();
+    expect(testModeRefusal(name, { ...remove, as: "kit" }, options)).toMatch(/delete as @lee/);
+    expect(testModeRefusal(name, { ...remove, conversationIds: [] }, options)).toMatch(
+      /at least one/,
+    );
+    expect(testModeRefusal(name, { as: "lee", conversationId: "g1" }, options)).toMatch(
+      /at least one/,
+    );
   });
 
   it("marks read only one conversation of the post-as person's inbox", () => {

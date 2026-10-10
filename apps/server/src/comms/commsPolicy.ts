@@ -68,10 +68,7 @@ export const CONVERSATION_SCOPED = new Set([
 ]);
 
 /** Calls whose `conversationIds` must each name a test conversation (checked by the proxy). */
-export const CONVERSATIONS_SCOPED = new Set([
-  "conversations:archiveConversation",
-  "conversations:unarchiveConversation",
-]);
+export const CONVERSATIONS_SCOPED = new Set(["conversations:deleteConversation"]);
 
 type Args = Readonly<Record<string, unknown>>;
 
@@ -134,10 +131,9 @@ export function testModeRefusal(
         ? undefined
         : "test mode: every recipient must be a test participant";
     }
-    case "conversations:archiveConversation":
-    case "conversations:unarchiveConversation": {
+    case "conversations:deleteConversation": {
       if (!options.human || str(args.as) !== options.human) {
-        return `test mode: archive as @${options.human ?? "(no post-as person)"}`;
+        return `test mode: delete as @${options.human ?? "(no post-as person)"}`;
       }
       const ids = Array.isArray(args.conversationIds) ? args.conversationIds : [];
       return ids.length > 0 && ids.every((id) => typeof id === "string")

@@ -569,9 +569,8 @@ export function ManageMembersDialog(props: {
   );
 }
 
-// Group delete (Lee, 2026-10-09; Mira #256): agent-comms archives the group.
-// It leaves everyone's list; messages, deliveries and wakes are kept, and the
-// toast's Undo unarchives it.
+// Group delete (Lee, 2026-10-09; Mira #258): permanently deletes the group and
+// all its messages for everyone. There's no undo.
 export function DeleteGroupDialog(props: {
   readonly conversationId: string;
   readonly open: boolean;
@@ -587,28 +586,18 @@ export function DeleteGroupDialog(props: {
   const submit = useSubmit();
   const as = config?.postAs ?? null;
   const title = view?.conversation.title ?? "this group";
-  const args = { as, conversationIds: [props.conversationId] };
 
   const remove = async () => {
-    if (!(await submit.run(() => commsCall("conversations:archiveConversation", args)))) return;
+    const deleted = await submit.run(() =>
+      commsCall("conversations:deleteConversation", {
+        as,
+        conversationIds: [props.conversationId],
+      }),
+    );
+    if (!deleted) return;
     props.onOpenChange(false);
     void navigate({ to: "/comms", search: { tab: "groups" } });
-    toastManager.add({
-      type: "success",
-      title: `Deleted ${title}`,
-      description: "Messages are kept.",
-      actionProps: {
-        children: "Undo",
-        onClick: () =>
-          void commsCall("conversations:unarchiveConversation", args).catch((cause: unknown) =>
-            toastManager.add({
-              type: "error",
-              title: `Couldn't restore ${title}`,
-              description: cause instanceof Error ? cause.message : String(cause),
-            }),
-          ),
-      },
-    });
+    toastManager.add({ type: "success", title: `Deleted ${title}` });
   };
 
   return (
@@ -617,8 +606,7 @@ export function DeleteGroupDialog(props: {
         <DialogHeader>
           <DialogTitle>Delete {title}?</DialogTitle>
           <DialogDescription>
-            Removes this group from everyone's list; messages are kept.
-            {view ? ` It has ${view.members.length} members.` : null}
+            This permanently deletes the group and all its messages for everyone.
           </DialogDescription>
         </DialogHeader>
         <DialogPanel>

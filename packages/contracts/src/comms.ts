@@ -28,10 +28,9 @@ export const COMMS_FUNCTIONS = {
   "conversations:addMember": "mutation",
   "conversations:removeMember": "mutation",
   "conversations:postAs": "mutation",
-  // Group delete (Lee, 2026-10-09; Mira #256): agent-comms archives the group,
-  // hiding it from every list; messages, deliveries and wakes are kept.
-  "conversations:archiveConversation": "mutation",
-  "conversations:unarchiveConversation": "mutation",
+  // Group delete (Lee, 2026-10-09; Mira #258): permanently deletes the group
+  // and all its messages for everyone.
+  "conversations:deleteConversation": "mutation",
   "inbox:markRead": "mutation",
   "reminders:create": "mutation",
   "reminders:update": "mutation",
