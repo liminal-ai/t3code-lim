@@ -50,10 +50,10 @@ window. Leave it empty for Claude Code's default.
 
 You can also send `/compact` in an existing conversation. Web and desktop offer
 **Compact context** from the context meter. When you return to a large thread
-after more than an hour, a **Compact** chip with the thread's token count shows
-next to the send button. While it is on, Enter summarizes the history first, then
-sends your message. Click the chip to switch it to **Full** and keep the full
-history for that message. See [commands and skills](./composer.md#commands-and-skills) for using
+after more than an hour, a **Full** chip with the thread's token count shows next to the
+send button. Sending never compacts on its own. Click the chip to switch it to **Compact**
+and the next message summarizes the history first; it switches back to **Full** once that
+message starts. (T3 Code Lim: compacting before send is opt-in.) See [commands and skills](./composer.md#commands-and-skills) for using
 composer commands.
 
 ## Usage limits

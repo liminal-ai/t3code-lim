@@ -51,9 +51,9 @@ interface ComposerPrimaryActionsProps {
   onPreviousPendingQuestion: () => void;
   onInterrupt: () => void;
   onImplementPlanInNewThread: () => void;
-  /** Tokens a stale session would re-read. When set, a Compact chip shows the count and Enter compacts first. */
+  /** Tokens a stale session would re-read. When set, a Compact chip shows the count; Enter compacts first only while it's armed. */
   compactBeforeSendTokens?: number | null;
-  /** The Compact chip is turned off, so the next send keeps full history. */
+  /** The Compact chip isn't armed, so the next send keeps full history (the fork's default). */
   keepFullHistory?: boolean;
   onToggleKeepFullHistory?: () => void;
 }

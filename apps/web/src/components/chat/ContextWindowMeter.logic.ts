@@ -82,6 +82,19 @@ export function shouldOfferResumeCompaction(input: {
   );
 }
 
+// Fork-only (t3code-lim; Lee, 2026-10-10 via Alder #105 and Mira #281):
+// compact-before-send is opt-in. The chip is offered on a stale thread but
+// starts off, so a plain Send or Enter never compacts first; the person arms it
+// for one message, and a send that starts its turn disarms it again. Upstream
+// (#16631, #17127) has it on by default and re-arms after each send.
+export function resolveCompactBeforeSend(input: {
+  readonly offeredTokens: number | null;
+  readonly armed: boolean;
+  readonly text: string;
+}): boolean {
+  return input.offeredTokens !== null && input.armed && input.text.toLowerCase() !== "/compact";
+}
+
 export function resolveContextWindowModelDisplayName(
   selection: ModelSelection | null | undefined,
   modelOptionsByInstance: ReadonlyMap<ProviderInstanceId, ReadonlyArray<ModelEsque>>,

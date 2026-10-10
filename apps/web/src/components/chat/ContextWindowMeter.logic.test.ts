@@ -7,6 +7,7 @@ import {
   hasDismissedResumeCompaction,
   formatContextWindowCost,
   resolveContextWindowModelDisplayName,
+  resolveCompactBeforeSend,
   shouldOfferResumeCompaction,
   shouldReserveContextWindowMeter,
 } from "./ContextWindowMeter.logic";
@@ -292,5 +293,27 @@ describe("formatContextWindowCost", () => {
   it("keeps ordinary and sub-cent ACP costs readable", () => {
     expect(formatContextWindowCost({ amount: 0.42, currency: "USD" })).toBe("USD 0.42");
     expect(formatContextWindowCost({ amount: 0.0042, currency: "USD" })).toBe("USD 0.0042");
+  });
+});
+
+// Fork-only (Lee, 2026-10-10): compact-before-send is opt-in.
+describe("resolveCompactBeforeSend", () => {
+  it("never compacts on a plain send, even when the chip is offered", () => {
+    expect(resolveCompactBeforeSend({ offeredTokens: 400_000, armed: false, text: "hi" })).toBe(
+      false,
+    );
+  });
+
+  it("compacts only when the person armed it on an offered thread", () => {
+    expect(resolveCompactBeforeSend({ offeredTokens: 400_000, armed: true, text: "hi" })).toBe(
+      true,
+    );
+    expect(resolveCompactBeforeSend({ offeredTokens: null, armed: true, text: "hi" })).toBe(false);
+  });
+
+  it("doesn't compact twice when the message is /compact", () => {
+    expect(
+      resolveCompactBeforeSend({ offeredTokens: 400_000, armed: true, text: "/COMPACT" }),
+    ).toBe(false);
   });
 });
