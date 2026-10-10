@@ -257,3 +257,28 @@ describe("customModelEditor.logic", () => {
     expect(validateDraft(draft({ descriptors: [select("effort", [{ id: "a" }])] }))).toBeNull();
   });
 });
+
+describe("contextWindow (fork)", () => {
+  it("survives opening and saving a custom model in the editor", () => {
+    const authored = {
+      slug: "glm-5.3",
+      name: "GLM 5.3",
+      capabilities: null,
+      contextWindow: 1_000_000,
+    };
+    const reopened = draftFromDefinition(authored);
+    expect(definitionFromDraft({ ...reopened, name: "GLM 5.3 (renamed)" })).toEqual({
+      slug: "glm-5.3",
+      name: "GLM 5.3 (renamed)",
+      capabilities: null,
+      contextWindow: 1_000_000,
+    });
+    expect(
+      definitionFromDraft(draftFromDefinition({ slug: "x", name: "x", capabilities: null })),
+    ).toEqual({
+      slug: "x",
+      name: "x",
+      capabilities: null,
+    });
+  });
+});
