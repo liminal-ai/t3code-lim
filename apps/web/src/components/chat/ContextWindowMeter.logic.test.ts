@@ -7,7 +7,9 @@ import {
   hasDismissedResumeCompaction,
   formatContextWindowCost,
   resolveContextWindowModelDisplayName,
+  keepsFullHistory,
   resolveCompactBeforeSend,
+  setCompactArmed,
   shouldOfferResumeCompaction,
   shouldReserveContextWindowMeter,
 } from "./ContextWindowMeter.logic";
@@ -315,5 +317,21 @@ describe("resolveCompactBeforeSend", () => {
     expect(
       resolveCompactBeforeSend({ offeredTokens: 400_000, armed: true, text: "/COMPACT" }),
     ).toBe(false);
+  });
+});
+
+// Fork-only (Lee, 2026-10-10): ChatView's arming state, as it's wired there.
+describe("compact arming state", () => {
+  it("starts unarmed: a new thread's next send keeps full history", () => {
+    expect(keepsFullHistory(new Set(), "env:t1")).toBe(true);
+  });
+
+  it("arms one thread for one message, and the send that starts disarms it", () => {
+    const armed = setCompactArmed(new Set(), "env:t1", true);
+    expect(keepsFullHistory(armed, "env:t1")).toBe(false);
+    expect(keepsFullHistory(armed, "env:t2")).toBe(true);
+    const afterSend = setCompactArmed(armed, "env:t1", false);
+    expect(keepsFullHistory(afterSend, "env:t1")).toBe(true);
+    expect(setCompactArmed(afterSend, "env:t1", false)).toBe(afterSend);
   });
 });

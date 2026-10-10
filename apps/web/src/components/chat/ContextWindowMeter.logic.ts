@@ -95,6 +95,24 @@ export function resolveCompactBeforeSend(input: {
   return input.offeredTokens !== null && input.armed && input.text.toLowerCase() !== "/compact";
 }
 
+/** Whether a thread's next send keeps full history: true unless the person armed the chip. */
+export function keepsFullHistory(armedThreadKeys: ReadonlySet<string>, threadKey: string): boolean {
+  return !armedThreadKeys.has(threadKey);
+}
+
+/** The armed set after a choice for one thread; returns the same set when nothing changes. */
+export function setCompactArmed(
+  armedThreadKeys: ReadonlySet<string>,
+  threadKey: string,
+  armed: boolean,
+): ReadonlySet<string> {
+  if (armedThreadKeys.has(threadKey) === armed) return armedThreadKeys;
+  const next = new Set(armedThreadKeys);
+  if (armed) next.add(threadKey);
+  else next.delete(threadKey);
+  return next;
+}
+
 export function resolveContextWindowModelDisplayName(
   selection: ModelSelection | null | undefined,
   modelOptionsByInstance: ReadonlyMap<ProviderInstanceId, ReadonlyArray<ModelEsque>>,

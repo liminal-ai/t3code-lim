@@ -493,7 +493,9 @@ import { resolveThreadSyncPhase } from "../threadSync";
 import {
   hasAvailableCompactionProvider,
   hasDismissedResumeCompaction,
+  keepsFullHistory,
   resolveCompactBeforeSend,
+  setCompactArmed,
   shouldOfferResumeCompaction,
 } from "./chat/ContextWindowMeter.logic";
 import { deriveLatestContextWindowSnapshot } from "../lib/contextWindow";
@@ -7701,15 +7703,9 @@ export default function ChatView(props: ChatViewProps) {
   const [compactArmedThreadKeys, setCompactArmedThreadKeys] = useState<ReadonlySet<string>>(
     () => new Set(),
   );
-  const keepFullHistory = !compactArmedThreadKeys.has(routeThreadKey);
+  const keepFullHistory = keepsFullHistory(compactArmedThreadKeys, routeThreadKey);
   const setKeepFullHistory = useCallback((threadKey: string, keep: boolean) => {
-    setCompactArmedThreadKeys((current) => {
-      if (current.has(threadKey) === !keep) return current;
-      const next = new Set(current);
-      if (keep) next.delete(threadKey);
-      else next.add(threadKey);
-      return next;
-    });
+    setCompactArmedThreadKeys((current) => setCompactArmed(current, threadKey, !keep));
   }, []);
   const toggleKeepFullHistory = useCallback(
     () => setKeepFullHistory(routeThreadKey, !keepFullHistory),

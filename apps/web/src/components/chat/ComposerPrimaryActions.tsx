@@ -110,7 +110,8 @@ export const ComposerPrimaryActions = memo(function ComposerPrimaryActions({
   onInterrupt,
   onImplementPlanInNewThread,
   compactBeforeSendTokens = null,
-  keepFullHistory = false,
+  // Fork-only (Lee, 2026-10-10): unarmed unless told otherwise.
+  keepFullHistory = true,
   onToggleKeepFullHistory,
 }: ComposerPrimaryActionsProps) {
   const pointerFocusProps = preserveComposerFocusOnPointerDown
