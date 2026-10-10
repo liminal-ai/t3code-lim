@@ -8,7 +8,7 @@ import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
 import { SidebarInset } from "~/components/ui/sidebar";
 import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
-import { ManageMembersDialog } from "~/comms/CommsDialogs";
+import { DeleteGroupDialog, ManageMembersDialog } from "~/comms/CommsDialogs";
 import { commsCall, useCommsQuery } from "~/comms/commsClient";
 import { useCommsConfig, useCommsRouteKey } from "~/comms/useCommsConfig";
 import type { ConversationView } from "~/comms/commsTypes";
@@ -19,6 +19,7 @@ import {
 } from "~/comms/GroupChatView";
 import {
   chatTitle,
+  isUnknownConversationError,
   memberActivity,
   parseRecipients,
   recipientsStorageKey,
@@ -57,6 +58,7 @@ function GroupChatPage(props: { readonly conversationId: string }) {
   const { conversationId } = props;
   const config = useCommsConfig();
   const [managing, setManaging] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const self = config?.postAs ?? null;
   const { data: view, error } = useCommsQuery<ConversationView>("conversations:view", {
     conversationId,
@@ -157,9 +159,25 @@ function GroupChatPage(props: { readonly conversationId: string }) {
           <Button size="compact" variant="ghost" onClick={() => setManaging(true)}>
             Members
           </Button>
+          <Button
+            size="compact"
+            variant="ghost"
+            data-testid="comms-delete-group"
+            onClick={() => setDeleting(true)}
+          >
+            Delete group…
+          </Button>
         </WorkspacePageHeader>
         {managing ? (
           <ManageMembersDialog conversationId={conversationId} open onOpenChange={setManaging} />
+        ) : null}
+        {deleting ? (
+          <DeleteGroupDialog
+            conversationId={conversationId}
+            title={title}
+            open
+            onOpenChange={setDeleting}
+          />
         ) : null}
         <div
           ref={scrollRef}
@@ -172,7 +190,9 @@ function GroupChatPage(props: { readonly conversationId: string }) {
           }}
         >
           {error && !view ? (
-            <div className="px-6 py-12 text-center text-sm text-destructive">{error.message}</div>
+            <div className="px-6 py-12 text-center text-sm text-destructive">
+              {isUnknownConversationError(error) ? "This group chat was deleted." : error.message}
+            </div>
           ) : !view ? (
             <div className="flex items-center justify-center py-16">
               <Spinner />

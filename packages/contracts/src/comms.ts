@@ -28,6 +28,9 @@ export const COMMS_FUNCTIONS = {
   "conversations:addMember": "mutation",
   "conversations:removeMember": "mutation",
   "conversations:postAs": "mutation",
+  // Group delete (Lee, 2026-10-09; Mira #258): permanently deletes the group
+  // and all its messages for everyone.
+  "conversations:deleteConversation": "mutation",
   "inbox:markRead": "mutation",
   "reminders:create": "mutation",
   "reminders:update": "mutation",

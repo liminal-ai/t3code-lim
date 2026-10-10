@@ -67,6 +67,9 @@ export const CONVERSATION_SCOPED = new Set([
   "inbox:markRead",
 ]);
 
+/** Calls whose `conversationIds` must each name a test conversation (checked by the proxy). */
+export const CONVERSATIONS_SCOPED = new Set(["conversations:deleteConversation"]);
+
 type Args = Readonly<Record<string, unknown>>;
 
 const str = (value: unknown): string => (typeof value === "string" ? value : "");
@@ -127,6 +130,15 @@ export function testModeRefusal(
       return to.every((recipient) => isTestParticipant(str(recipient), options))
         ? undefined
         : "test mode: every recipient must be a test participant";
+    }
+    case "conversations:deleteConversation": {
+      if (!options.human || str(args.as) !== options.human) {
+        return `test mode: delete as @${options.human ?? "(no post-as person)"}`;
+      }
+      const ids = Array.isArray(args.conversationIds) ? args.conversationIds : [];
+      return ids.length > 0 && ids.every((id) => typeof id === "string")
+        ? undefined
+        : "test mode: conversationIds must list at least one conversation";
     }
     case "inbox:markRead":
       // Opening a test chat clears the person's inbox items for it; nothing wider.

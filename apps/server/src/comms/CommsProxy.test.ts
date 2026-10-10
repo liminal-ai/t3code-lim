@@ -338,6 +338,28 @@ describe("comms proxy", () => {
     ]);
   });
 
+  it("test mode: deletes a group only when every named conversation is a test group", async () => {
+    const realGroup = { id: "g2", kind: "group", title: "team", members: [{ name: "lee" }] };
+    const { call, calls } = fixture({
+      query: (name, args) =>
+        name === "registry:list"
+          ? ownRegistry
+          : {
+              conversation: args.conversationId === "g2" ? realGroup : testGroup,
+              members: [],
+              messages: [],
+            },
+    });
+    const remove = (conversationIds: string[]) =>
+      call("conversations:deleteConversation", { as: "lee", conversationIds });
+    expect((await remove(["g1", "g2"])).status).toBe(403);
+    expect((await remove(["g2"])).status).toBe(403);
+    expect((await remove(["g1"])).status).toBe(200);
+    expect(calls.filter((c) => c.kind === "mutation").map((c) => c.name)).toEqual([
+      "conversations:deleteConversation",
+    ]);
+  });
+
   it("refuses a watch that names the same query id twice", async () => {
     const { handler, calls } = fixture();
     const response = await handler(

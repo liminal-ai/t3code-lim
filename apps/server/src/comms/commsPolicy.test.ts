@@ -59,6 +59,19 @@ describe("testModeRefusal", () => {
     );
   });
 
+  it("deletes groups only as the post-as person, naming at least one", () => {
+    const name = "conversations:deleteConversation";
+    const remove = { as: "lee", conversationIds: ["g1"] };
+    expect(testModeRefusal(name, remove, options)).toBeUndefined();
+    expect(testModeRefusal(name, { ...remove, as: "kit" }, options)).toMatch(/delete as @lee/);
+    expect(testModeRefusal(name, { ...remove, conversationIds: [] }, options)).toMatch(
+      /at least one/,
+    );
+    expect(testModeRefusal(name, { as: "lee", conversationId: "g1" }, options)).toMatch(
+      /at least one/,
+    );
+  });
+
   it("marks read only one conversation of the post-as person's inbox", () => {
     expect(
       testModeRefusal("inbox:markRead", { human: "lee", conversationId: "c" }, options),

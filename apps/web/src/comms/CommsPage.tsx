@@ -3,11 +3,12 @@
 // Group Chats (every group: members, activity, create, membership). Activity
 // waits for the comms server's activity:recent query.
 import { useNavigate } from "@tanstack/react-router";
-import { MessagesSquareIcon, PlusIcon } from "lucide-react";
+import { MessagesSquareIcon, PlusIcon, Trash2Icon } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
 import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
 import { Button } from "~/components/ui/button";
+import { Checkbox } from "~/components/ui/checkbox";
 import { Input } from "~/components/ui/input";
 import { ScrollArea } from "~/components/ui/scroll-area";
 import { SidebarInset } from "~/components/ui/sidebar";
@@ -30,12 +31,13 @@ import {
 } from "./commsAdmin.logic";
 import {
   CreateGroupDialog,
+  DeleteGroupsDialog,
   EditProfileDialog,
   ManageMembersDialog,
   RegisterAgentDialog,
 } from "./CommsDialogs";
 import type { ConversationSummary, DirectoryList, RegistryEntry } from "./commsTypes";
-import { chatTitle } from "./groupChat.logic";
+import { chatTitle, filterGroupChats } from "./groupChat.logic";
 
 export type CommsTab = "agents" | "groups";
 
@@ -254,11 +256,62 @@ function GroupsTab() {
     () => (data?.conversations ?? []).filter((c) => c.kind === "group"),
     [data],
   );
+  // Bulk select and delete (Lee, 2026-10-09; Mira #262), ported from Tess's
+  // tess/archive-group-chats. Only rows on screen count: the filter never acts
+  // on hidden ones.
+  const [query, setQuery] = useState("");
+  const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set());
+  const [deleting, setDeleting] = useState(false);
+  const canDelete = Boolean(config?.postAs);
+  const shown = useMemo(() => filterGroupChats(groups, query), [groups, query]);
+  const picked = shown.filter((group) => selected.has(group.id));
+  const setPicked = (ids: ReadonlyArray<string>, value: boolean) =>
+    setSelected((previous) => {
+      const next = new Set(previous);
+      for (const id of ids) {
+        if (value) next.add(id);
+        else next.delete(id);
+      }
+      return next;
+    });
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center gap-3 border-b border-border px-4 py-2">
-        <span className="text-xs text-muted-foreground">{groups.length} group chats</span>
+        {canDelete ? (
+          <Checkbox
+            aria-label="Select every group chat shown"
+            checked={shown.length > 0 && picked.length === shown.length}
+            indeterminate={picked.length > 0 && picked.length < shown.length}
+            disabled={shown.length === 0}
+            onCheckedChange={(value) =>
+              setPicked(
+                shown.map((group) => group.id),
+                value === true,
+              )
+            }
+          />
+        ) : null}
+        <div className="w-full sm:w-64">
+          <Input
+            type="search"
+            aria-label="Filter group chats"
+            placeholder="Filter by title or member"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </div>
+        <span className="text-xs text-muted-foreground">{shown.length} group chats</span>
         <div className="flex-1" />
+        {canDelete && picked.length ? (
+          <Button
+            size="compact"
+            variant="destructive-outline"
+            data-testid="comms-groups-delete"
+            onClick={() => setDeleting(true)}
+          >
+            <Trash2Icon /> Delete {picked.length}…
+          </Button>
+        ) : null}
         <Button size="compact" onClick={() => setCreating(true)}>
           <PlusIcon /> New group chat
         </Button>
@@ -272,14 +325,23 @@ function GroupsTab() {
           </div>
         ) : groups.length === 0 ? (
           <p className="p-6 text-sm text-muted-foreground">No group chats yet.</p>
+        ) : shown.length === 0 ? (
+          <p className="p-6 text-sm text-muted-foreground">No group chats match.</p>
         ) : (
           <ul>
-            {groups.map((group) => (
+            {shown.map((group) => (
               <li
                 key={group.id}
                 className="flex items-center gap-4 border-b border-border px-4 py-2.5 text-sm"
                 data-testid={`comms-group-${group.id}`}
               >
+                {canDelete ? (
+                  <Checkbox
+                    aria-label={`Select ${chatTitle(group)}`}
+                    checked={selected.has(group.id)}
+                    onCheckedChange={(value) => setPicked([group.id], value === true)}
+                  />
+                ) : null}
                 <MessagesSquareIcon className="size-4 shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
                   <div className="truncate font-medium">{chatTitle(group)}</div>
@@ -309,6 +371,19 @@ function GroupsTab() {
         )}
       </ScrollArea>
       {creating && config ? <CreateGroupDialog open onOpenChange={setCreating} /> : null}
+      {deleting ? (
+        <DeleteGroupsDialog
+          groups={picked}
+          open
+          onOpenChange={setDeleting}
+          onDeleted={() =>
+            setPicked(
+              picked.map((group) => group.id),
+              false,
+            )
+          }
+        />
+      ) : null}
       {managing ? (
         <ManageMembersDialog
           conversationId={managing}

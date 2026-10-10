@@ -46,6 +46,7 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { authenticateHttpRequestScope } from "./commsAuth.ts";
 import {
   CONVERSATION_SCOPED,
+  CONVERSATIONS_SCOPED,
   describeCommsError,
   isTestConversation,
   namedTestAgents,
@@ -247,9 +248,14 @@ const checkCall = (session: Session, name: string, args: Args) =>
     if (!session.settings.testMode) return;
     const refusal = testModeRefusal(name, args, testOptions(session.settings));
     if (refusal) return yield* callError(403, refusal);
-    const members = CONVERSATION_SCOPED.has(name)
-      ? yield* requireTestConversation(session, args.conversationId)
+    const members: string[] = CONVERSATION_SCOPED.has(name)
+      ? [...(yield* requireTestConversation(session, args.conversationId))]
       : [];
+    if (CONVERSATIONS_SCOPED.has(name)) {
+      for (const conversationId of args.conversationIds as ReadonlyArray<string>) {
+        members.push(...(yield* requireTestConversation(session, conversationId)));
+      }
+    }
     yield* requireOwnTestAgents(session, [
       ...new Set([...namedTestAgents(name, args), ...members]),
     ]);

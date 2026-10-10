@@ -162,6 +162,11 @@ class CommsClient {
     return body.value.value;
   }
 
+  /** Bumps on every retarget; a sequence of calls checks it hasn't moved between them. */
+  get routeGeneration(): number {
+    return this.generation;
+  }
+
   /** A query's current state, read by key (see useCommsQuery). */
   snapshot(key: string): EntryState | undefined {
     return this.entries.get(key)?.state;
@@ -281,6 +286,9 @@ const client = new CommsClient();
 
 export const commsCall = (name: CommsMutationName, args?: CommsArgs) =>
   client.call("mutation", name, args);
+
+/** Changes whenever comms moves to another T3 (see CommsClient.retarget). */
+export const commsRouteGeneration = (): number => client.routeGeneration;
 
 /** A live comms query. `undefined` while loading; `skip` watches nothing. */
 export function useCommsQuery<T>(
