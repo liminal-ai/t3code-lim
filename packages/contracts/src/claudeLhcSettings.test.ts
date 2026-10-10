@@ -10,7 +10,7 @@ const ok = (config: Record<string, unknown>) => decode(config)._tag === "Success
 describe("ClaudeLhcSettings (fix pass 1, 3.12)", () => {
   it("defaults both windows when absent", () => {
     const result = Schema.decodeUnknownSync(ClaudeLhcSettings)({});
-    expect(result).toMatchObject({ autoCompactWindow: "380000", lhcLowerBound: "150000" });
+    expect(result).toMatchObject({ autoCompactWindow: "380000", lhcLowerBound: "120000" });
   });
 
   it("allows the documented ~80k rebuilt view", () => {
