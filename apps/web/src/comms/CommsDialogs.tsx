@@ -579,19 +579,17 @@ export function ManageMembersDialog(props: {
 // all its messages for everyone. There's no undo.
 export function DeleteGroupDialog(props: {
   readonly conversationId: string;
+  /** The open chat's title, so the dialog never waits on its own lookup. */
+  readonly title: string;
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }) {
   useCloseOnCommsRetarget(props.open, props.onOpenChange);
   const config = useCommsConfig();
   const navigate = useNavigate();
-  const { data: view } = useCommsQuery<ConversationView>(
-    "conversations:view",
-    props.open ? { conversationId: props.conversationId, limit: 1 } : "skip",
-  );
   const submit = useSubmit();
   const as = config?.postAs ?? null;
-  const title = view?.conversation.title ?? "this group";
+  const title = props.title;
 
   const remove = async () => {
     const deleted = await submit.run(() => deleteGroupChats(as, [props.conversationId]));

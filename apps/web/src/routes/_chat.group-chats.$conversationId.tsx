@@ -172,7 +172,12 @@ function GroupChatPage(props: { readonly conversationId: string }) {
           <ManageMembersDialog conversationId={conversationId} open onOpenChange={setManaging} />
         ) : null}
         {deleting ? (
-          <DeleteGroupDialog conversationId={conversationId} open onOpenChange={setDeleting} />
+          <DeleteGroupDialog
+            conversationId={conversationId}
+            title={title}
+            open
+            onOpenChange={setDeleting}
+          />
         ) : null}
         <div
           ref={scrollRef}
