@@ -258,9 +258,22 @@ const catalogContextWindow = (model: string): number | undefined =>
         model,
       });
 
+const customModelSlug = (entry: CustomModelSetting): string =>
+  typeof entry === "string" ? entry : entry.slug;
+
+/** An entry that declares its own window overrides the catalog, even for a slug the catalog knows. */
+const declaresContextWindow = (entry: CustomModelSetting | undefined): boolean =>
+  entry !== undefined && typeof entry !== "string" && entry.contextWindow !== undefined;
+
+/** A positive CLAUDE_CODE_MAX_CONTEXT_TOKENS: what Claude Code then assumes for an unknown model. */
+const environmentContextWindow = (env: NodeJS.ProcessEnv): number | undefined => {
+  const value = Number(env.CLAUDE_CODE_MAX_CONTEXT_TOKENS);
+  return Number.isInteger(value) && value > 0 ? value : undefined;
+};
+
 /**
- * One window for every model on the instance that the catalog doesn't know: the smallest of their
- * `contextWindow`s, a bare entry counting as {@link UNCATALOGUED_CONTEXT_WINDOW}. One value, because
+ * One window for every model on the instance that the catalog doesn't know, or that declares its
+ * own: the smallest of their `contextWindow`s, a bare entry counting as {@link UNCATALOGUED_CONTEXT_WINDOW}. One value, because
  * a model switch reaches the running Claude Code through `setModel` without a respawn, so the
  * spawn-time window has to hold for every model the thread can switch to (Mira #308).
  * `undefined` when the instance has no such model; `explicit` when any entry sets a window.
@@ -271,8 +284,8 @@ export function uncataloguedContextWindow(
   let window: number | undefined;
   let explicit = false;
   for (const entry of customModels ?? []) {
-    const slug = typeof entry === "string" ? entry : entry.slug;
-    if (catalogContextWindow(slug) !== undefined) continue;
+    if (!declaresContextWindow(entry) && catalogContextWindow(customModelSlug(entry)) !== undefined)
+      continue;
     const declared = typeof entry === "string" ? undefined : entry.contextWindow;
     if (declared !== undefined) explicit = true;
     window = Math.min(window ?? Infinity, declared ?? UNCATALOGUED_CONTEXT_WINDOW);
@@ -281,16 +294,23 @@ export function uncataloguedContextWindow(
 }
 
 /**
- * The model's window for fitting: `[1m]` or the catalog, else the instance's uncatalogued window,
- * else {@link UNCATALOGUED_CONTEXT_WINDOW}. An empty model (Claude Code's own default) stays unfitted.
+ * The model's window for fitting: `[1m]`; else the catalog, unless the model's own custom entry
+ * declares a window; else an explicit CLAUDE_CODE_MAX_CONTEXT_TOKENS in the environment (Claude Code
+ * uses it, so the fit must too); else the instance's uncatalogued window; else
+ * {@link UNCATALOGUED_CONTEXT_WINDOW}. An empty model (Claude Code's own default) stays unfitted.
  */
 export function lhcFitContextWindow(
   model: string,
   customModels: ReadonlyArray<CustomModelSetting> | undefined,
+  env: NodeJS.ProcessEnv = {},
 ): number | undefined {
   if (model === "") return undefined;
+  if (model.endsWith("[1m]")) return 1_000_000;
+  const ownEntry = customModels?.find((entry) => customModelSlug(entry) === model);
+  const catalogued = declaresContextWindow(ownEntry) ? undefined : catalogContextWindow(model);
   return (
-    catalogContextWindow(model) ??
+    catalogued ??
+    environmentContextWindow(env) ??
     uncataloguedContextWindow(customModels)?.window ??
     UNCATALOGUED_CONTEXT_WINDOW
   );
@@ -307,7 +327,7 @@ export function withContextWindowEnv(
 ): NodeJS.ProcessEnv {
   const uncatalogued = uncataloguedContextWindow(customModels);
   if (uncatalogued === undefined || !uncatalogued.explicit) return env;
-  if (env.CLAUDE_CODE_MAX_CONTEXT_TOKENS !== undefined) return env;
+  if (environmentContextWindow(env) !== undefined) return env;
   return { ...env, CLAUDE_CODE_MAX_CONTEXT_TOKENS: String(uncatalogued.window) };
 }
 
@@ -335,13 +355,16 @@ export function fitLhcCompactionToContextWindow(input: {
 /** The query's settings with the instance's two windows, fitted to the query's model. */
 function withLhcWindows(
   options: Parameters<CreateQuery>[0]["options"],
-  windows: ClaudeLhcSidecarOptions["windows"],
-  customModels: ClaudeLhcSidecarOptions["customModels"],
+  sidecar: ClaudeLhcSidecarOptions,
 ): Parameters<CreateQuery>[0]["options"] {
+  const { windows, customModels } = sidecar;
   if (windows === undefined) return options;
   // The API model id carries a "[1m]" suffix when the 1M window is selected.
   const model = typeof options.model === "string" ? options.model : "";
-  const contextWindow = lhcFitContextWindow(model, customModels);
+  const contextWindow = lhcFitContextWindow(model, customModels, {
+    ...sidecar.environment,
+    ...options.env,
+  });
   const fitted = fitLhcCompactionToContextWindow({
     autoCompactWindow: Number(windows.autoCompactWindow),
     lhcLowerBound: Number(windows.lhcLowerBound),
@@ -536,7 +559,7 @@ function startSidecarQuery(
 
   send({
     type: "start",
-    options: toWireOptions(withLhcWindows(input.options, sidecar.windows, sidecar.customModels)),
+    options: toWireOptions(withLhcWindows(input.options, sidecar)),
   });
 
   void (async () => {

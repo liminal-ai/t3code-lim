@@ -217,6 +217,43 @@ describe("ClaudeLhcSidecar", () => {
     );
   });
 
+  it("a custom entry that declares a window overrides the catalog, even for a catalog alias", () => {
+    // "sonnet" is a catalog alias; a custom entry reusing it for another model declares its own window.
+    const models = [{ slug: "sonnet", contextWindow: 128_000 }];
+    expect(lhcFitContextWindow("sonnet", models)).toBe(128_000);
+    expect(uncataloguedContextWindow(models)).toEqual({ window: 128_000, explicit: true });
+    // A bare entry for the alias still uses the catalog.
+    expect(lhcFitContextWindow("sonnet", ["sonnet"])).toBe(
+      resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {
+        instanceId: ProviderInstanceId.make("claude-lhc"),
+        model: "sonnet",
+      }),
+    );
+  });
+
+  it("an explicit CLAUDE_CODE_MAX_CONTEXT_TOKENS sizes uncatalogued models, as Claude Code does", () => {
+    const models = [{ slug: "glm-5.3", contextWindow: 1_000_000 }];
+    expect(
+      lhcFitContextWindow("glm-5.3", models, { CLAUDE_CODE_MAX_CONTEXT_TOKENS: "200000" }),
+    ).toBe(200_000);
+    expect(
+      lhcFitContextWindow("glm-5.3", undefined, { CLAUDE_CODE_MAX_CONTEXT_TOKENS: "300000" }),
+    ).toBe(300_000);
+    // Not a positive integer: ignored.
+    expect(lhcFitContextWindow("glm-5.3", models, { CLAUDE_CODE_MAX_CONTEXT_TOKENS: "0" })).toBe(
+      1_000_000,
+    );
+    // Catalogued models keep the catalog window.
+    expect(
+      lhcFitContextWindow("claude-opus-5-5", models, { CLAUDE_CODE_MAX_CONTEXT_TOKENS: "200000" }),
+    ).toBe(
+      resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {
+        instanceId: ProviderInstanceId.make("claude-lhc"),
+        model: "claude-opus-5-5",
+      }),
+    );
+  });
+
   it("passes the uncatalogued window to Claude Code as CLAUDE_CODE_MAX_CONTEXT_TOKENS", () => {
     const models = [{ slug: "glm-5.3", contextWindow: 1_000_000 }, "glm-5.3-flash-local"];
     expect(withContextWindowEnv({ A: "1" }, models)).toEqual({
@@ -235,6 +272,32 @@ describe("ClaudeLhcSidecar", () => {
         { slug: "glm-5.3", contextWindow: 1_000_000 },
       ]).CLAUDE_CODE_MAX_CONTEXT_TOKENS,
     ).toBe("300000");
+  });
+
+  it("V2: an explicit CLAUDE_CODE_MAX_CONTEXT_TOKENS in the environment drives the fit", async () => {
+    const createQuery = makeClaudeLhcCreateQuery({
+      environment: {
+        ...process.env,
+        CLAUDE_LHC_SIDECAR: makeFakeSidecar(),
+        CLAUDE_CODE_MAX_CONTEXT_TOKENS: "200000",
+      },
+      baseDir: BASE_DIR,
+      pin: PIN,
+      windows: { autoCompactWindow: "700000", lhcLowerBound: "120000" },
+      customModels: [{ slug: "glm-5.3", contextWindow: 1_000_000 }],
+    });
+    const prompts = (async function* () {
+      await new Promise<void>(() => {});
+    })();
+    const runtime = createQuery({
+      prompt: prompts as never,
+      options: { sessionId: "sess-glm-env", model: "glm-5.3", settings: {} as never },
+    });
+    const init = (await runtime[Symbol.asyncIterator]().next()).value as unknown as {
+      settings: Record<string, unknown>;
+    };
+    expect(init.settings).toEqual({ autoCompactWindow: 160_000, lhcLowerBound: 80_000 });
+    runtime.close();
   });
 
   it("V2: an uncatalogued custom model's query settings are fitted to its contextWindow", async () => {
