@@ -730,13 +730,15 @@ export const ClaudeLhcSettings = makeProviderSettingsSchema(
         },
       }),
     ),
-    lhcLowerBound: claudeLhcWindowSetting(CLAUDE_LHC_VIEW_PATTERN, "150000").pipe(
+    // Fork default 120000 (Lee, 2026-10-10 via Mira #294): the standard on every
+    // Claude-LHC instance; lim-builder prod already runs 120000.
+    lhcLowerBound: claudeLhcWindowSetting(CLAUDE_LHC_VIEW_PATTERN, "120000").pipe(
       Schema.annotateKey({
         title: "Rebuilt view size",
         description:
-          "Size the rebuilt context is built to after a compact, in provider-billed tokens: 10,000 or more, and below the trigger. ~80k for focused coding, 150-180k for ordinary work.",
+          "Size the rebuilt context is built to after a compact, in provider-billed tokens: 10,000 or more, and below the trigger. ~80k for focused coding, 120k (default) for ordinary work.",
         providerSettingsForm: {
-          placeholder: "e.g. 150000",
+          placeholder: "e.g. 120000",
           clearWhenEmpty: "omit",
         },
       }),

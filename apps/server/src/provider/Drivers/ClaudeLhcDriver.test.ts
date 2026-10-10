@@ -33,7 +33,7 @@ describe("ClaudeLhcDriver", () => {
   it("defaults both token windows", () => {
     expect(ClaudeLhcDriver.defaultConfig()).toMatchObject({
       autoCompactWindow: "380000",
-      lhcLowerBound: "150000",
+      lhcLowerBound: "120000",
     });
     expect(ClaudeDriver.defaultConfig().autoCompactWindow).toBe("");
     expect("lhcLowerBound" in ClaudeDriver.defaultConfig()).toBe(false);
