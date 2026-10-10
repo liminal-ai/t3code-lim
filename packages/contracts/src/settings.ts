@@ -719,13 +719,15 @@ const claudeLhcWindowSetting = (pattern: RegExp, defaultValue: string) =>
 export const ClaudeLhcSettings = makeProviderSettingsSchema(
   {
     ...ClaudeSettings.fields,
-    autoCompactWindow: claudeLhcWindowSetting(CLAUDE_LHC_TRIGGER_PATTERN, "380000").pipe(
+    // Fork default 700000 (Mira #303, 2026-10-10): the trigger lim-builder prod
+    // runs on every Claude-LHC instance, set by the standard desktop profile too.
+    autoCompactWindow: claudeLhcWindowSetting(CLAUDE_LHC_TRIGGER_PATTERN, "700000").pipe(
       Schema.annotateKey({
         title: "Compact trigger",
         description:
-          "Provider-billed context at which LHC rebuilds the view. Narrow, precise coding: ~240k with a ~80k target. Ordinary intricate work: 350-380k (default). Broad long-horizon work: up to ~450k. Big-picture planning: 500-600k, accepting duller detail. Clarity rolls off from ~350-400k. Lowered automatically to fit a smaller model window.",
+          "Provider-billed context at which LHC rebuilds the view. Narrow, precise coding: ~240k with a ~80k target. Ordinary intricate work: 350-380k. Broad long-horizon work: up to ~450k. Big-picture planning: 500-600k, accepting duller detail. Clarity rolls off from ~350-400k. Lowered automatically to fit a smaller model window. Default 700k (lim standard).",
         providerSettingsForm: {
-          placeholder: "e.g. 380000",
+          placeholder: "e.g. 700000",
           clearWhenEmpty: "omit",
         },
       }),

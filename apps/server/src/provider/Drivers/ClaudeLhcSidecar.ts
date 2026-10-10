@@ -244,7 +244,7 @@ export interface ClaudeLhcSidecarOptions {
 /**
  * The claude-lhc sidecar turns off Claude Code's own auto-compact and compacts only when context
  * reaches its trigger, so a trigger at or above the model's window lets the context overflow
- * first (the 380k default on a 200k model). Such a trigger drops to 80% of the window, leaving
+ * first (the 700k default on a 200k model). Such a trigger drops to 80% of the window, leaving
  * room for one more tool result, and the rebuilt view to at most half of that.
  */
 export function fitLhcCompactionToContextWindow(input: {
@@ -316,7 +316,7 @@ function startSidecarQuery(
   // is always the one derived from this server's T3 home.
   const childEnv: NodeJS.ProcessEnv = {
     ...sidecar.environment,
-    ...(input.options.env ?? {}),
+    ...input.options.env,
     T3CODE_LHC_HOME: claudeLhcHomeDir(sidecar.baseDir),
   };
   let child: NodeChildProcess.ChildProcess;
@@ -329,6 +329,7 @@ function startSidecarQuery(
   } catch (cause) {
     throw new Error(
       `Failed to spawn claude-lhc sidecar at ${sidecarPath}: ${cause instanceof Error ? cause.message : String(cause)}`,
+      { cause: cause },
     );
   }
   const log = (line: string): void => {
