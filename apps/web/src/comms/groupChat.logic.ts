@@ -219,6 +219,42 @@ export function filterGroupChats(
   );
 }
 
+/**
+ * Deletes ids in batches of at most DELETE_BATCH_SIZE; each server call is all
+ * or nothing. Stops at the first failed batch, and before any batch once comms
+ * has moved to another T3 (`routeGeneration` changed), so ids are never sent to
+ * a different comms server (Codex, PR #28). Reports how many were deleted.
+ */
+export async function deleteInBatches(input: {
+  readonly ids: Iterable<string>;
+  readonly deleteBatch: (conversationIds: ReadonlyArray<string>) => Promise<unknown>;
+  readonly routeGeneration: () => number;
+}): Promise<{ readonly deleted: number; readonly error: unknown }> {
+  const generation = input.routeGeneration();
+  let deleted = 0;
+  for (const batch of deleteBatches(input.ids)) {
+    if (input.routeGeneration() !== generation) {
+      return { deleted, error: new Error("comms moved to another T3; the rest weren't sent") };
+    }
+    try {
+      await input.deleteBatch(batch);
+    } catch (cause) {
+      return { deleted, error: cause };
+    }
+    deleted += batch.length;
+  }
+  return { deleted, error: null };
+}
+
+/** The bulk dialog's error after a stopped delete; null when everything went. */
+export function bulkDeleteProblem(deleted: number, count: number, error: unknown): string | null {
+  if (error === null) return null;
+  const reason = error instanceof Error ? error.message : String(error);
+  return deleted === 0
+    ? reason
+    : `Deleted ${deleted} of ${count}; the rest weren't deleted: ${reason}`;
+}
+
 /** The comms server's answer for a conversation that doesn't exist (or was deleted). */
 export function isUnknownConversationError(error: unknown): boolean {
   const code = (error as { data?: { code?: unknown } } | null)?.data?.code;

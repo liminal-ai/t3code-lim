@@ -4,7 +4,9 @@ import { CommsError } from "./commsClient";
 import type { ConversationMessage, ConversationSummary, ParticipantRef } from "./commsTypes";
 import {
   applyMention,
+  bulkDeleteProblem,
   deleteBatches,
+  deleteInBatches,
   draftRecipients,
   filterGroupChats,
   isUnknownConversationError,
@@ -138,5 +140,58 @@ describe("group delete helpers", () => {
     expect(isUnknownConversationError(new Error("unknown_conversation: g1"))).toBe(true);
     expect(isUnknownConversationError(new CommsError("forbidden", 403))).toBe(false);
     expect(isUnknownConversationError(undefined)).toBe(false);
+  });
+});
+
+// Mira #266: the two stop paths of a bulk delete, with the comms call mocked.
+describe("deleteInBatches", () => {
+  const ids = Array.from({ length: 250 }, (_, index) => `g${index}`);
+
+  it("stops at a failed batch and says how many were deleted", async () => {
+    const sent: number[] = [];
+    const result = await deleteInBatches({
+      ids,
+      deleteBatch: async (batch) => {
+        sent.push(batch.length);
+        if (sent.length === 2) throw new Error("unknown_conversation");
+      },
+      routeGeneration: () => 0,
+    });
+
+    expect(sent).toEqual([100, 100]);
+    expect(result.deleted).toBe(100);
+    expect(bulkDeleteProblem(result.deleted, ids.length, result.error)).toBe(
+      "Deleted 100 of 250; the rest weren't deleted: unknown_conversation",
+    );
+  });
+
+  it("sends no further batch once comms moves to another T3", async () => {
+    let generation = 0;
+    const sent: number[] = [];
+    const result = await deleteInBatches({
+      ids,
+      deleteBatch: async (batch) => {
+        sent.push(batch.length);
+        generation += 1;
+      },
+      routeGeneration: () => generation,
+    });
+
+    expect(sent).toEqual([100]);
+    expect(result.deleted).toBe(100);
+    expect(bulkDeleteProblem(result.deleted, ids.length, result.error)).toBe(
+      "Deleted 100 of 250; the rest weren't deleted: comms moved to another T3; the rest weren't sent",
+    );
+  });
+
+  it("reports nothing when every batch goes, and the bare reason when none did", async () => {
+    const all = await deleteInBatches({
+      ids,
+      deleteBatch: async () => {},
+      routeGeneration: () => 0,
+    });
+    expect(all).toEqual({ deleted: 250, error: null });
+    expect(bulkDeleteProblem(all.deleted, ids.length, all.error)).toBeNull();
+    expect(bulkDeleteProblem(0, 250, new Error("bad_request"))).toBe("bad_request");
   });
 });

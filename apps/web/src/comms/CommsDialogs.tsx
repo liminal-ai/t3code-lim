@@ -48,7 +48,7 @@ import type {
   DirectoryList,
   RegistryEntry,
 } from "./commsTypes";
-import { chatTitle, deleteBatches } from "./groupChat.logic";
+import { bulkDeleteProblem, chatTitle, deleteInBatches } from "./groupChat.logic";
 
 const TEST_AGENT_PREFIX = "ta-";
 const TEST_GROUP_PREFIX = "tg-";
@@ -634,33 +634,14 @@ export function DeleteGroupDialog(props: {
   );
 }
 
-/**
- * Deletes groups as `as`, at most DELETE_BATCH_SIZE per call; each call is all
- * or nothing. Stops at the first failed batch, and before any batch once comms
- * has moved to another T3, so the ids are never sent to a different comms
- * server (Codex, PR #28). The caller learns how many went.
- */
-async function deleteGroupChats(
-  as: string | null,
-  ids: ReadonlyArray<string>,
-): Promise<{ readonly deleted: number; readonly error: unknown }> {
-  const generation = commsRouteGeneration();
-  let deleted = 0;
-  for (const conversationIds of deleteBatches(ids)) {
-    if (commsRouteGeneration() !== generation) {
-      return { deleted, error: new Error("comms moved to another T3; the rest weren't sent") };
-    }
-    try {
-      await commsCall("conversations:deleteConversation", { as, conversationIds });
-    } catch (cause) {
-      return { deleted, error: cause };
-    }
-    deleted += conversationIds.length;
-  }
-  return { deleted, error: null };
-}
-
-const errorText = (cause: unknown) => (cause instanceof Error ? cause.message : String(cause));
+/** Deletes groups as `as`; see deleteInBatches. */
+const deleteGroupChats = (as: string | null, ids: ReadonlyArray<string>) =>
+  deleteInBatches({
+    ids,
+    deleteBatch: (conversationIds) =>
+      commsCall("conversations:deleteConversation", { as, conversationIds }),
+    routeGeneration: commsRouteGeneration,
+  });
 
 /** Bulk delete from Comms > Groups (Lee clears test chats in bulk; Mira #262). */
 export function DeleteGroupsDialog(props: {
@@ -683,11 +664,8 @@ export function DeleteGroupsDialog(props: {
     await submit
       .run(async () => {
         const { deleted, error } = await deleteGroupChats(as, ids);
-        if (error === null) return;
-        if (deleted === 0) throw error;
-        throw new Error(
-          `Deleted ${deleted} of ${count}; the rest weren't deleted: ${errorText(error)}`,
-        );
+        const problem = bulkDeleteProblem(deleted, count, error);
+        if (problem !== null) throw new Error(problem);
       })
       .then((ok) => {
         if (!ok) return;
