@@ -358,6 +358,7 @@ export interface CustomModelDefinition {
   readonly slug: string;
   readonly name: string;
   readonly capabilities: ModelCapabilities | null;
+  readonly contextWindow: number | null;
 }
 
 const decodeCustomModelCapabilities = Schema.decodeUnknownOption(ModelCapabilities);
@@ -378,7 +379,12 @@ export function readCustomModelEntries(value: unknown): CustomModelDefinition[] 
       typeof raw === "string"
         ? { slug: raw }
         : raw !== null && typeof raw === "object"
-          ? (raw as { slug?: unknown; name?: unknown; capabilities?: unknown })
+          ? (raw as {
+              slug?: unknown;
+              name?: unknown;
+              capabilities?: unknown;
+              contextWindow?: unknown;
+            })
           : null;
     if (!record) continue;
     const slug = normalizeCustomModelSlug(typeof record.slug === "string" ? record.slug : null);
@@ -390,12 +396,18 @@ export function readCustomModelEntries(value: unknown): CustomModelDefinition[] 
       record.capabilities === undefined || record.capabilities === null
         ? null
         : Option.getOrNull(decodeCustomModelCapabilities(record.capabilities));
+    const rawWindow = record.contextWindow;
+    const contextWindow =
+      typeof rawWindow === "number" && Number.isFinite(rawWindow) && rawWindow > 0
+        ? Math.floor(rawWindow)
+        : null;
     entries.push({
       slug,
       name,
       capabilities: capabilities
         ? createModelCapabilities({ optionDescriptors: capabilities.optionDescriptors ?? [] })
         : null,
+      contextWindow,
     });
   }
   return entries;
@@ -408,13 +420,18 @@ export function readCustomModelEntries(value: unknown): CustomModelDefinition[] 
 export function toCustomModelSetting(entry: CustomModelDefinition): CustomModelSetting {
   const descriptors = entry.capabilities?.optionDescriptors ?? [];
   const name = entry.name !== entry.slug ? entry.name : undefined;
-  if (!name && descriptors.length === 0) return entry.slug;
+  const contextWindow =
+    typeof entry.contextWindow === "number" && Number.isFinite(entry.contextWindow) && entry.contextWindow > 0
+      ? Math.floor(entry.contextWindow)
+      : null;
+  if (!name && descriptors.length === 0 && contextWindow === null) return entry.slug;
   return {
     slug: entry.slug,
     ...(name ? { name } : {}),
     ...(descriptors.length > 0
       ? { capabilities: createModelCapabilities({ optionDescriptors: descriptors }) }
       : {}),
+    ...(contextWindow !== null ? { contextWindow } : {}),
   };
 }
 

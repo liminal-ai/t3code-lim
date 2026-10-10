@@ -276,5 +276,7 @@ export function definitionFromDraft(draft: CustomModelDraft): CustomModelDefinit
     name: name || draft.slug,
     capabilities:
       descriptors.length > 0 ? createModelCapabilities({ optionDescriptors: descriptors }) : null,
+    // The editor does not currently surface contextWindow; preserve/null-fill at the call site.
+    contextWindow: null,
   };
 }

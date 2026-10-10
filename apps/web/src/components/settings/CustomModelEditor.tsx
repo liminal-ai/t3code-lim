@@ -141,7 +141,8 @@ export function CustomModelEditor({
       setError(problem);
       return;
     }
-    onSave(definitionFromDraft(draft));
+    const def = definitionFromDraft(draft);
+    onSave({ ...def, contextWindow: entry.contextWindow });
   };
 
   const idSelectValue = (descriptor: EditorDescriptor) =>
