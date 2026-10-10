@@ -287,7 +287,8 @@ const declaredContextWindow = (
  * is part of `compileClaudeModelSelection`'s queryIdentity), so each query sizes its own model.
  * - A model Claude Code sizes itself (`[1m]` suffix, or in the catalog): its own entry's declared
  *   `contextWindow` if any, since the user knows the real window (a proxy slug ending in `[1m]`, an
- *   alias pointed elsewhere); else 1M for `[1m]`, else the catalog window.
+ *   alias pointed elsewhere), capped by an explicit CLAUDE_CODE_MAX_CONTEXT_TOKENS; else 1M for
+ *   `[1m]`, else the catalog window.
  * - An explicit CLAUDE_CODE_MAX_CONTEXT_TOKENS in the environment: Claude Code uses it for a model it
  *   doesn't know, so the fit must too.
  * - The model's declared `contextWindow`.
@@ -303,7 +304,12 @@ export function lhcFitContextWindow(
   const declared = declaredContextWindow(model, customModels);
   // catalogContextWindow treats a "[1m]" suffix as 1M.
   const known = catalogContextWindow(model);
-  if (known !== undefined) return declared ?? known;
+  if (known !== undefined) {
+    if (declared === undefined) return known;
+    // A custom entry shadowing a known slug: when an explicit env value also applies, fit to the
+    // smaller of the two, so LHC compacts in time whichever one Claude Code goes by.
+    return Math.min(declared, environmentContextWindow(env) ?? declared);
+  }
   return environmentContextWindow(env) ?? declared ?? UNCATALOGUED_CONTEXT_WINDOW;
 }
 
