@@ -189,6 +189,45 @@ export function groupChats(
   );
 }
 
+/** The most ids one conversations:deleteConversation call takes (the comms server's limit). */
+export const DELETE_BATCH_SIZE = 100;
+
+/** Ids split into batches of at most `size`, duplicates dropped. (Tess, tess/archive-group-chats) */
+export function deleteBatches(
+  ids: Iterable<string>,
+  size = DELETE_BATCH_SIZE,
+): ReadonlyArray<ReadonlyArray<string>> {
+  const unique = [...new Set(ids)];
+  const batches: string[][] = [];
+  for (let start = 0; start < unique.length; start += size) {
+    batches.push(unique.slice(start, start + size));
+  }
+  return batches;
+}
+
+/** Group chats whose title or member names contain the query (case-insensitive). (Tess) */
+export function filterGroupChats(
+  chats: ReadonlyArray<ConversationSummary>,
+  query: string,
+): ReadonlyArray<ConversationSummary> {
+  const q = query.trim().toLowerCase();
+  if (!q) return chats;
+  return chats.filter(
+    (chat) =>
+      (chat.title ?? "").toLowerCase().includes(q) ||
+      chat.members.some((member) => member.name.toLowerCase().includes(q)),
+  );
+}
+
+/** The comms server's answer for a conversation that doesn't exist (or was deleted). */
+export function isUnknownConversationError(error: unknown): boolean {
+  const code = (error as { data?: { code?: unknown } } | null)?.data?.code;
+  return (
+    code === "unknown_conversation" ||
+    (error instanceof Error && error.message.includes("unknown_conversation"))
+  );
+}
+
 /** localStorage key for the highest seq a person has seen in a chat on this device. */
 export function seenStorageKey(conversationId: string): string {
   return `t3code:comms:group:${conversationId}:seenSeq`;

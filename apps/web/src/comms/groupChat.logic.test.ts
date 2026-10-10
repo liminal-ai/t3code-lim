@@ -1,9 +1,13 @@
 import { describe, expect, it } from "vite-plus/test";
 
-import type { ConversationMessage, ParticipantRef } from "./commsTypes";
+import { CommsError } from "./commsClient";
+import type { ConversationMessage, ConversationSummary, ParticipantRef } from "./commsTypes";
 import {
   applyMention,
+  deleteBatches,
   draftRecipients,
+  filterGroupChats,
+  isUnknownConversationError,
   memberActivity,
   mentionQueryAt,
   parseRecipients,
@@ -99,5 +103,40 @@ describe("memberActivity", () => {
         message({ "ta-ash": "replied" }),
       ]).get("ta-ash"),
     ).toBe("idle");
+  });
+});
+
+// Group delete (Lee, 2026-10-09; Mira #258/#262).
+describe("group delete helpers", () => {
+  it("splits ids into calls of at most 100, dropping duplicates", () => {
+    const ids = Array.from({ length: 250 }, (_, index) => `g${index}`);
+    const batches = deleteBatches([...ids, "g0", "g1"]);
+    expect(batches.map((batch) => batch.length)).toEqual([100, 100, 50]);
+    expect(batches.flat()).toEqual(ids);
+    expect(deleteBatches([])).toEqual([]);
+  });
+
+  it("filters chats by title or member, case-insensitively", () => {
+    const chat = (id: string, title: string, members: string[]): ConversationSummary => ({
+      id,
+      kind: "group",
+      title,
+      members: members.map((name) => ({ id: name, name, kind: "agent" }) as ParticipantRef),
+      lastSeq: 0,
+      readSeq: 0,
+      unread: 0,
+    });
+    const chats = [chat("a", "tg-smoke", ["ta-ash"]), chat("b", "Release", ["kit"])];
+    expect(filterGroupChats(chats, "  TG-").map((c) => c.id)).toEqual(["a"]);
+    expect(filterGroupChats(chats, "kit").map((c) => c.id)).toEqual(["b"]);
+    expect(filterGroupChats(chats, "").map((c) => c.id)).toEqual(["a", "b"]);
+  });
+
+  it("recognizes a deleted conversation by its code", () => {
+    const gone = new CommsError("no such conversation", 400, { code: "unknown_conversation" });
+    expect(isUnknownConversationError(gone)).toBe(true);
+    expect(isUnknownConversationError(new Error("unknown_conversation: g1"))).toBe(true);
+    expect(isUnknownConversationError(new CommsError("forbidden", 403))).toBe(false);
+    expect(isUnknownConversationError(undefined)).toBe(false);
   });
 });

@@ -19,6 +19,7 @@ import {
 } from "~/comms/GroupChatView";
 import {
   chatTitle,
+  isUnknownConversationError,
   memberActivity,
   parseRecipients,
   recipientsStorageKey,
@@ -184,7 +185,9 @@ function GroupChatPage(props: { readonly conversationId: string }) {
           }}
         >
           {error && !view ? (
-            <div className="px-6 py-12 text-center text-sm text-destructive">{error.message}</div>
+            <div className="px-6 py-12 text-center text-sm text-destructive">
+              {isUnknownConversationError(error) ? "This group chat was deleted." : error.message}
+            </div>
           ) : !view ? (
             <div className="flex items-center justify-center py-16">
               <Spinner />

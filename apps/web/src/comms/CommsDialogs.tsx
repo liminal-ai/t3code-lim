@@ -42,7 +42,13 @@ import {
   parseDuties,
   pickedCandidate,
 } from "./commsAdmin.logic";
-import type { ConversationView, DirectoryList, RegistryEntry } from "./commsTypes";
+import type {
+  ConversationSummary,
+  ConversationView,
+  DirectoryList,
+  RegistryEntry,
+} from "./commsTypes";
+import { chatTitle, deleteBatches } from "./groupChat.logic";
 
 const TEST_AGENT_PREFIX = "ta-";
 const TEST_GROUP_PREFIX = "tg-";
@@ -588,12 +594,7 @@ export function DeleteGroupDialog(props: {
   const title = view?.conversation.title ?? "this group";
 
   const remove = async () => {
-    const deleted = await submit.run(() =>
-      commsCall("conversations:deleteConversation", {
-        as,
-        conversationIds: [props.conversationId],
-      }),
-    );
+    const deleted = await submit.run(() => deleteGroupChats(as, [props.conversationId]));
     if (!deleted) return;
     props.onOpenChange(false);
     void navigate({ to: "/comms", search: { tab: "groups" } });
@@ -625,6 +626,77 @@ export function DeleteGroupDialog(props: {
             onClick={() => void remove()}
           >
             Delete
+          </Button>
+        </DialogFooter>
+      </DialogPopup>
+    </Dialog>
+  );
+}
+
+/** Deletes groups as `as`, at most DELETE_BATCH_SIZE per call; each call is all or nothing. */
+async function deleteGroupChats(as: string | null, ids: ReadonlyArray<string>): Promise<void> {
+  for (const conversationIds of deleteBatches(ids)) {
+    await commsCall("conversations:deleteConversation", { as, conversationIds });
+  }
+}
+
+/** Bulk delete from Comms > Groups (Lee clears test chats in bulk; Mira #262). */
+export function DeleteGroupsDialog(props: {
+  readonly groups: ReadonlyArray<ConversationSummary>;
+  readonly open: boolean;
+  readonly onOpenChange: (open: boolean) => void;
+  readonly onDeleted: () => void;
+}) {
+  useCloseOnCommsRetarget(props.open, props.onOpenChange);
+  const config = useCommsConfig();
+  const submit = useSubmit();
+  const as = config?.postAs ?? null;
+  const count = props.groups.length;
+  const noun = count === 1 ? "group chat" : "group chats";
+
+  const remove = async () => {
+    const ids = props.groups.map((group) => group.id);
+    if (!(await submit.run(() => deleteGroupChats(as, ids)))) return;
+    props.onOpenChange(false);
+    props.onDeleted();
+    toastManager.add({ type: "success", title: `Deleted ${count} ${noun}` });
+  };
+
+  return (
+    <Dialog open={props.open} onOpenChange={props.onOpenChange}>
+      <DialogPopup className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>
+            Delete {count} {noun}?
+          </DialogTitle>
+          <DialogDescription>
+            This permanently deletes {count === 1 ? "the group" : "these groups"} and all{" "}
+            {count === 1 ? "its" : "their"} messages for everyone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogPanel>
+          <ul className="max-h-48 overflow-y-auto text-sm">
+            {props.groups.map((group) => (
+              <li key={group.id} className="truncate">
+                {chatTitle(group)}
+              </li>
+            ))}
+          </ul>
+          <FormError
+            error={as === null ? "No post-as person is configured for comms." : submit.error}
+          />
+        </DialogPanel>
+        <DialogFooter>
+          <Button variant="ghost" autoFocus onClick={() => props.onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            variant="destructive"
+            data-testid="comms-delete-groups-confirm"
+            disabled={as === null || submit.busy || count === 0}
+            onClick={() => void remove()}
+          >
+            Delete {count}
           </Button>
         </DialogFooter>
       </DialogPopup>
