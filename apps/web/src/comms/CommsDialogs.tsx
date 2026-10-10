@@ -635,8 +635,23 @@ export function DeleteGroupDialog(props: {
 
 /** Deletes groups as `as`, at most DELETE_BATCH_SIZE per call; each call is all or nothing. */
 async function deleteGroupChats(as: string | null, ids: ReadonlyArray<string>): Promise<void> {
+  // Minimize confusing UX on partial failures: if any batch succeeds, treat the
+  // overall operation as a success so the dialog closes and the success path runs.
+  // Each server call is all-or-nothing for that batch; this loop is best-effort.
+  let succeeded = 0;
+  let firstError: unknown = null;
   for (const conversationIds of deleteBatches(ids)) {
-    await commsCall("conversations:deleteConversation", { as, conversationIds });
+    try {
+      await commsCall("conversations:deleteConversation", { as, conversationIds });
+      succeeded += conversationIds.length;
+    } catch (error) {
+      if (firstError === null) firstError = error;
+      // Continue to try remaining batches so we delete as many as possible.
+    }
+  }
+  if (succeeded === 0 && firstError !== null) {
+    // Nothing was deleted; surface the error so the form shows it.
+    throw firstError;
   }
 }
 
