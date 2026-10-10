@@ -314,7 +314,7 @@ export function withContextWindowEnv(
 /**
  * The claude-lhc sidecar turns off Claude Code's own auto-compact and compacts only when context
  * reaches its trigger, so a trigger at or above the model's window lets the context overflow
- * first (the 380k default on a 200k model). Such a trigger drops to 80% of the window, leaving
+ * first (the 700k default on a 200k model). Such a trigger drops to 80% of the window, leaving
  * room for one more tool result, and the rebuilt view to at most half of that.
  */
 export function fitLhcCompactionToContextWindow(input: {
