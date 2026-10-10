@@ -13,6 +13,7 @@ This repository preserves upstream T3 Code history and the deployed Claude-LHC p
 - Compact-before-send is opt-in (2026-10-10). **Diverges from upstream.** Upstream's Compact chip on a stale Claude thread starts armed and re-arms after each send; here it starts at "Full", the person arms it for one message, and the send disarms it, so a plain Send or Enter never compacts first. Rule and tests: `resolveCompactBeforeSend` in `ContextWindowMeter.logic.ts`. (Source: Lee via Alder #105 and Mira #281; upstream #17467.)
 - Group-chat delete (#28). "Delete group…" in the chat header and bulk delete on Comms > Groups, through `conversations:deleteConversation` (agent-comms #30). (Source: Lee via Mira #254/#258/#262.)
 - Sidebar Agents block (#27). Pinned threads are a collapsible "Agents" section of compact one-line rows sorted by activity. (Source: Lee, 2026-10-08/09.) Note under [lim-builder installations](#lim-builder-installations).
+- Persistent artifacts, PR 1: store and list API. Files kept across threads in a git-versioned store at `<baseDir>/artifacts`, with list item ops, thread links and a change stream at `/api/artifacts/*`. No UI or agent tools yet. Fork-only: `apps/server/src/artifacts/`, `packages/contracts/src/limArtifacts.ts`; seams marked `// Fork seam (artifacts)` in `server.ts` and contracts `index.ts`. No statev2 change. (Source: Lee, 2026-10-10; spec r4 approved by Mira.) See [Artifacts](#artifacts).
 
 The LHC provider has the same existing limitations documented in LHC-PATCH.md. Model context choice remains configuration. LHC changes should stay at the provider boundary; do not rewrite orchestration to accommodate the LHC patch. Fork UI features such as views, settings and sidebar sections are in scope (source: Lee, 2026-10-07). Where practical, keep them in their own files so upstream merges stay cheap.
 
@@ -27,6 +28,17 @@ Chat and admin UI for the agent comms server (source: Lee, 2026-10-07: chat and 
 - **Sidebar**: a Group Chats shelf above Settled (`GroupChatsShelf.tsx`), mounted at three `// Fork seam (agent comms)` sites in upstream `Sidebar.tsx`; with no threads (the empty state replaces the list) it shows at the bottom on its own. After an upstream sync touching `Sidebar.tsx`, grep for that marker and smoke-check that the shelf still renders above Settled and on an empty sidebar (the marker alone does not prove placement).
 - **Comms page** (`/comms`, the Comms button in the sidebar's bottom row; `CommsPage.tsx`, `CommsDialogs.tsx`): Agents (live roster with presence, homes and owners; register an agent from one of this server's T3 threads ("This T3") or on any machine registered with comms ("Another machine": machine picked from the comms machine list, harness from the known list plus any in use, with per-harness locator help); pause, resume, retire; edit profile; open an agent's thread when it's homed on `COMMS_HOME_MACHINE`) and Group Chats (list, create, manage members). Mounted at `// Fork seam (agent comms)` sites in `SidebarChrome.tsx` and `mainAppLocation.ts`.
 - **Chat page**: transcript with per-recipient delivery state, a working row per agent still on a delivery, and failure reasons on hover, answers linked to the request they answer, a Members button, and a composer with one checkbox per member (who to wake, remembered per chat), @mention autocomplete and a wake preview. The comms server wakes only the recipients a post names.
+
+## Artifacts
+
+Files Lee and agents keep across threads (spec: `~/lim/agents/artifacts/PROPOSAL.md`, r4). PR 1 is the store and its HTTP API; agent tools and the `/artifacts` page come in later PRs.
+
+- **Store** (`apps/server/src/artifacts/`): `<baseDir>/artifacts`, next to `userdata/` (a dev server uses `<baseDir>/dev/artifacts`; `T3_ARTIFACTS_DIR` overrides both, for tests and QA only). Plain markdown files with YAML front matter (`id`, `title`, `tags`), a git repository with one commit per change (author: Lee or the agent; trailers record each event), and an index at `.t3/index.sqlite` (its own `node:sqlite` file, git-ignored, never statev2). `.t3-meta/links.json` holds thread links and is written in the same commit as every attach and detach.
+- **Rebuildable index**: delete `.t3/index.sqlite` and restart, and the store rebuilds artifacts and tags from the files, links from `.t3-meta/links.json`, and events from the commit log. A schema change rebuilds instead of migrating.
+- **No watcher**: a startup scan plus a size/mtime check on every read and write. Edits made outside T3 are committed as "External edit" before anything is served or applied; new markdown files are adopted (given an id); moves and removals are followed.
+- **Lists**: each top-level `- [ ]`/`- [x]` line is an item with a trailing `^id`. Ops (`add`, `edit`, `check`, `uncheck`, `move`, `remove`) apply to the current file, all or none, one writer at a time; an op on a missing item fails with `item_not_found` and the current revision.
+- **API** (`ArtifactHttp.ts`): `GET/POST /api/artifacts`, `GET /api/artifacts/:id`, `POST …/:id/ops`, `POST …/:id/links`, `DELETE …/:id/links/:threadId`, `POST /api/artifacts/watch` (NDJSON). Session auth as on the comms routes: `orchestration:read` for reads, `orchestration:operate` for writes (not `filesystem:read`, so every paired device works). Responses name the environment and store path. Paths are confined to the store. If the store can't open (for example no `git`), the routes answer 503 and the rest of T3 is unaffected.
+- **Backup**: the store is inside `data/`, so the prod deploy's cold backup and `restore_backup` include it.
 
 ## Upstream updates
 
@@ -75,6 +87,7 @@ Initial desktop builds are unsigned (no signing credentials supplied). Windows d
 - Production: `~/lim/service/t3code/prod`, port 13977, existing tailnet URL on 8460.
 - Staging: `~/lim/service/t3code/staging`, port 13976, independent data and configuration.
 - Each environment has `releases/<version>`, `current`, `config`, `data`, and `data-lhc` (the sidecar derives this sibling from the T3 home).
+- The artifact store is `data/artifacts`; the deploy backup and restore include it. See [Artifacts](#artifacts).
 
 Service processes run extracted release artifacts, never the source checkout. Environment configuration records the provider executable PATH. Credentials are not stored in this repo. Production retains pairing, settings and threads. Staging starts with its own data; never copy live auth into it.
 

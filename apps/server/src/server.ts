@@ -63,6 +63,8 @@ import * as DeviceService from "./device/DeviceService.ts";
 import * as DeviceHubProxy from "./device/DeviceHubProxy.ts";
 // Fork-only (agent comms): /api/comms/* for the comms UI.
 import * as CommsProxy from "./comms/CommsProxy.ts";
+// Fork seam (artifacts)
+import * as ArtifactHttp from "./artifacts/ArtifactHttp.ts";
 import * as PreviewManager from "./preview/Manager.ts";
 import * as PortScanner from "./preview/PortScanner.ts";
 import * as ServerBrowser from "./preview/ServerBrowser.ts";
@@ -676,6 +678,8 @@ const layerMakeRoutes = Layer.mergeAll(
     ServerHttp.layerAttachmentUploadRoute,
     DeviceHubProxy.layer,
     CommsProxy.layer,
+    // Fork seam (artifacts): the /api/artifacts routes.
+    ArtifactHttp.layer,
     ServerBrowserStream.routeLayer,
     ServerHttp.layerStaticAndDevRoute,
     Ws.layer,
