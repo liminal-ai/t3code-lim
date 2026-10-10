@@ -74,12 +74,12 @@ it. Settings can only set the new-thread default (`defaultModelSelection`, one i
 or per project); threads created over the API (onboarding and test scripts, wherever agent threads are created) must pass the option themselves; the comms adapter only dispatches into existing threads, so it needs nothing. Defaults remain installation-specific configuration.
 
 Models the catalog doesn't know (custom models such as GLM through cliproxy) take their window from
-the custom model entry's optional `contextWindow`. An instance uses one window for all of them: the
-smallest declared, with a bare entry counting as 200k, and 200k when none is declared. A model switch
-reaches the running Claude Code through `setModel` without a respawn, so the window has to hold for
-every model the thread can switch to. When an entry declares a window, the sidecar also passes it
-to Claude Code as `CLAUDE_CODE_MAX_CONTEXT_TOKENS`, since Claude Code otherwise assumes 200k for a
-non-Claude model name. Without `[1m]` it can't otherwise learn a larger window. (Mira #305, #308;
+the custom model entry's optional `contextWindow`, and a bare entry fits as 200k, so an unknown model
+is never uncapped. A declared window also overrides the catalog for that slug. Each query sizes its
+own model, because a model change opens a new Claude Code process (the API model id is part of the
+query's identity). When the opened model declares a window, the sidecar passes it to Claude Code as
+`CLAUDE_CODE_MAX_CONTEXT_TOKENS`, since Claude Code otherwise assumes 200k for a non-Claude model
+name. An explicit value in the environment wins for both. (Mira #305, #308; Codex review on #32;
 2026-10-10)
 
 ## Known limits

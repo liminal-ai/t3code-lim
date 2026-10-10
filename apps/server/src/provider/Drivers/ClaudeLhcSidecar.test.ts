@@ -22,7 +22,6 @@ import {
   resolveClaudeLhcSidecarPath,
   type SidecarPin,
   UNCATALOGUED_CONTEXT_WINDOW,
-  uncataloguedContextWindow,
   withContextWindowEnv,
 } from "./ClaudeLhcSidecar.ts";
 
@@ -191,24 +190,25 @@ describe("ClaudeLhcSidecar", () => {
     expect(lhcFitContextWindow("", undefined)).toBeUndefined();
   });
 
-  it("an uncatalogued model fits to the instance's smallest declared contextWindow", () => {
+  it("each model fits to its own declared contextWindow", () => {
     const models = [
       { slug: "glm-5.3", contextWindow: 1_000_000 },
-      { slug: "glm-5.3-flash-local", contextWindow: 500_000 },
+      { slug: "glm-5.3-flash-local", contextWindow: 128_000 },
+      "other-model",
       "claude-opus-5-5",
     ];
-    expect(uncataloguedContextWindow(models)).toEqual({ window: 500_000, explicit: true });
-    expect(lhcFitContextWindow("glm-5.3", models)).toBe(500_000);
+    expect(lhcFitContextWindow("glm-5.3", models)).toBe(1_000_000);
+    expect(lhcFitContextWindow("glm-5.3-flash-local", models)).toBe(128_000);
     expect(
       fitLhcCompactionToContextWindow({
         autoCompactWindow: 700_000,
         lhcLowerBound: 120_000,
-        contextWindow: lhcFitContextWindow("glm-5.3", models),
+        contextWindow: lhcFitContextWindow("glm-5.3-flash-local", models),
       }),
-    ).toEqual({ autoCompactWindow: 400_000, lhcLowerBound: 120_000 });
-    // A bare uncatalogued entry counts as 200k, so it caps the instance too.
-    expect(lhcFitContextWindow("glm-5.3", [...models, "other-model"])).toBe(200_000);
-    // Catalogued models keep their catalog window; the custom windows don't touch them.
+    ).toEqual({ autoCompactWindow: 102_400, lhcLowerBound: 51_200 });
+    // A bare uncatalogued entry fits as 200k; its neighbours' windows don't touch it.
+    expect(lhcFitContextWindow("other-model", models)).toBe(UNCATALOGUED_CONTEXT_WINDOW);
+    // Catalogued models keep their catalog window.
     expect(lhcFitContextWindow("claude-opus-5-5", models)).toBe(
       resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {
         instanceId: ProviderInstanceId.make("claude-lhc"),
@@ -221,7 +221,6 @@ describe("ClaudeLhcSidecar", () => {
     // "sonnet" is a catalog alias; a custom entry reusing it for another model declares its own window.
     const models = [{ slug: "sonnet", contextWindow: 128_000 }];
     expect(lhcFitContextWindow("sonnet", models)).toBe(128_000);
-    expect(uncataloguedContextWindow(models)).toEqual({ window: 128_000, explicit: true });
     // A bare entry for the alias still uses the catalog.
     expect(lhcFitContextWindow("sonnet", ["sonnet"])).toBe(
       resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {
@@ -254,23 +253,18 @@ describe("ClaudeLhcSidecar", () => {
     );
   });
 
-  it("passes the uncatalogued window to Claude Code as CLAUDE_CODE_MAX_CONTEXT_TOKENS", () => {
+  it("passes the opened model's declared window to Claude Code as CLAUDE_CODE_MAX_CONTEXT_TOKENS", () => {
     const models = [{ slug: "glm-5.3", contextWindow: 1_000_000 }, "glm-5.3-flash-local"];
-    expect(withContextWindowEnv({ A: "1" }, models)).toEqual({
+    expect(withContextWindowEnv({ A: "1" }, "glm-5.3", models)).toEqual({
       A: "1",
-      CLAUDE_CODE_MAX_CONTEXT_TOKENS: "200000",
+      CLAUDE_CODE_MAX_CONTEXT_TOKENS: "1000000",
     });
-    expect(
-      withContextWindowEnv({}, [{ slug: "glm-5.3", contextWindow: 1_000_000 }])
-        .CLAUDE_CODE_MAX_CONTEXT_TOKENS,
-    ).toBe("1000000");
-    // No declared window: Claude Code already assumes 200k, so leave the env alone.
-    expect(withContextWindowEnv({ A: "1" }, ["glm-5.3"])).toEqual({ A: "1" });
+    // No declared window for this model: Claude Code already assumes 200k, so leave the env alone.
+    expect(withContextWindowEnv({ A: "1" }, "glm-5.3-flash-local", models)).toEqual({ A: "1" });
     // An explicit setting in the environment wins.
     expect(
-      withContextWindowEnv({ CLAUDE_CODE_MAX_CONTEXT_TOKENS: "300000" }, [
-        { slug: "glm-5.3", contextWindow: 1_000_000 },
-      ]).CLAUDE_CODE_MAX_CONTEXT_TOKENS,
+      withContextWindowEnv({ CLAUDE_CODE_MAX_CONTEXT_TOKENS: "300000" }, "glm-5.3", models)
+        .CLAUDE_CODE_MAX_CONTEXT_TOKENS,
     ).toBe("300000");
   });
 
