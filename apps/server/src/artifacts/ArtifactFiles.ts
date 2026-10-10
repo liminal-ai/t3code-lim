@@ -1,6 +1,6 @@
 // Fork-only (artifacts): files in the store. Paths are confined to the store
-// (no `..`, no absolute paths, no symlinks that leave it, nothing under the
-// store's own `.git`, `.t3` or `.t3-meta`), writes are atomic, and markdown
+// (no `..`, no absolute paths, no symlinks, nothing under the store's own
+// `.git`, `.t3` or `.t3-meta` or any other dot entry), writes are atomic, and markdown
 // carries its metadata in YAML front matter (`id`, `title`, `tags`).
 import * as NodeCrypto from "node:crypto";
 import * as NodeFSP from "node:fs/promises";
@@ -30,6 +30,11 @@ export const normalizeRelativePath = (input: string): string => {
   }
   if (segments.length > 0 && RESERVED_TOP.has(segments[0]!)) {
     throw new ArtifactPathError(`${segments[0]} is reserved for the store`);
+  }
+  // The scan skips dot entries, so an artifact there would look removed.
+  const hidden = segments.find((segment) => segment.startsWith("."));
+  if (hidden !== undefined) {
+    throw new ArtifactPathError(`names can't start with ".": ${hidden}`);
   }
   return segments.join("/");
 };

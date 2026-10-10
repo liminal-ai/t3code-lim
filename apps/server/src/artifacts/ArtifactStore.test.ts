@@ -344,17 +344,34 @@ describe("ArtifactStore", () => {
     expect(git(dir, "log", "-1", "--format=%an").trim()).toBe("External edit");
   });
 
-  it("gives a copied file its own id", async () => {
-    const dir = tempStoreDir();
-    const first = await ArtifactStore.open(dir);
-    const { artifact } = await first.create({ title: "Original" }, LEE);
-    first.close();
-    NodeFS.copyFileSync(NodePath.join(dir, artifact.path), NodePath.join(dir, "zz-copy.md"));
-    const second = await openStore(dir);
-    const listed = await second.list();
-    expect(listed).toHaveLength(2);
-    expect(new Set(listed.map((entry) => entry.id)).size).toBe(2);
-    expect(listed.find((entry) => entry.path === artifact.path)?.id).toBe(artifact.id);
+  it.each(["aa-copy.md", "zz-copy.md"])(
+    "gives a copied file (%s) its own id, and the original keeps its id and links",
+    async (copyName) => {
+      const dir = tempStoreDir();
+      const first = await ArtifactStore.open(dir);
+      const { artifact } = await first.create({ title: "Original" }, LEE);
+      await first.attach(artifact.id, "thread-1", "write", LEE);
+      first.close();
+      NodeFS.copyFileSync(NodePath.join(dir, artifact.path), NodePath.join(dir, copyName));
+      const second = await openStore(dir);
+      const listed = await second.list();
+      expect(listed).toHaveLength(2);
+      expect(new Set(listed.map((entry) => entry.id)).size).toBe(2);
+      const original = listed.find((entry) => entry.path === artifact.path)!;
+      expect(original.id).toBe(artifact.id);
+      expect(original.links.map((link) => link.threadId)).toEqual(["thread-1"]);
+      expect(file(second, copyName)).not.toContain(artifact.id);
+    },
+  );
+
+  it("stops serving a file grown past 10 MB outside T3 without committing a removal", async () => {
+    const store = await openStore(tempStoreDir());
+    const { artifact } = await store.create({ title: "Grows" }, LEE);
+    const commits = commitCount(store.root);
+    NodeFS.appendFileSync(NodePath.join(store.root, artifact.path), "x".repeat(10 * 1024 * 1024));
+    await expectStoreError(store.read(artifact.id), "not_found");
+    expect(commitCount(store.root)).toBe(commits);
+    expect(NodeFS.existsSync(NodePath.join(store.root, artifact.path))).toBe(true);
   });
 
   it("refuses markdown over 10 MB", async () => {

@@ -42,6 +42,7 @@ describe("path confinement", () => {
     [".git/config"],
     [".t3/index.sqlite"],
     [".t3-meta/links.json"],
+    ["notes/.hidden.md"],
     ["a\0b.md"],
   ])("refuses %j", (input) => {
     expect(() => normalizeRelativePath(input)).toThrow(ArtifactPathError);

@@ -117,10 +117,10 @@ interface FileState {
   readonly mtime: number;
 }
 
-const readFileState = async (absolute: string): Promise<FileState | null> => {
+const readFileState = async (absolute: string): Promise<FileState | "too_large" | null> => {
   const stat = await NodeFSP.lstat(absolute).catch(() => null);
   if (!stat || !stat.isFile()) return null;
-  if (stat.size > MAX_TEXT_ARTIFACT_BYTES) return null;
+  if (stat.size > MAX_TEXT_ARTIFACT_BYTES) return "too_large";
   const text = await NodeFSP.readFile(absolute, "utf8");
   const after = await NodeFSP.stat(absolute);
   return { text, size: after.size, mtime: after.mtimeMs };
@@ -157,7 +157,8 @@ const indexMarkdown = async (
         body: parsed.body,
       }),
     );
-    current = (await readFileState(absolute)) ?? state;
+    const after = await readFileState(absolute);
+    if (after !== null && after !== "too_large") current = after;
     rewritten = true;
   }
   const at = ctx.now().toISOString();
@@ -243,22 +244,35 @@ const restoreEvents = async (ctx: ReconcileContext) => {
 export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boolean }) => {
   const paths = await walkMarkdown(ctx.root);
   const linksFile = options.rebuild ? await readLinksFile(ctx.root) : null;
-  const idByLinkedPath = new Map(
-    Object.entries(linksFile?.artifacts ?? {}).map(([id, entry]) => [entry.path, id]),
-  );
+  const linkedEntries = Object.entries(linksFile?.artifacts ?? {});
+  const idByLinkedPath = new Map(linkedEntries.map(([id, entry]) => [entry.path, id]));
+  const idPathFromLinks = new Map(linkedEntries.map(([id, entry]) => [id, entry.path]));
   const dirty = new Set(await ctx.git.changedPaths());
   const seen = new Set<string>();
+  const tooLarge = new Set<string>();
   const commitPaths = new Set<string>();
   const events: Array<ArtifactCommitEvent & { revision: string | null }> = [];
 
+  const files: Array<{ path: string; state: FileState; fileId: string | null }> = [];
   for (const path of paths) {
-    const absolute = NodePath.join(ctx.root, ...path.split("/"));
-    const state = await readFileState(absolute);
-    if (!state) continue;
-    const parsed = parseMarkdownFile(state.text);
+    const state = await readFileState(NodePath.join(ctx.root, ...path.split("/")));
+    if (state === "too_large") tooLarge.add(path);
+    if (state === null || state === "too_large") continue;
+    files.push({ path, state, fileId: parseMarkdownFile(state.text).frontMatter?.id ?? null });
+  }
+  // When two files carry one id (a copy), the file the index or links.json
+  // already knows at that path keeps it, then committed files, then new ones.
+  const claim = (file: (typeof files)[number]) => {
+    if (file.fileId === null) return 1;
+    const known = ctx.index.get(file.fileId)?.path ?? idPathFromLinks.get(file.fileId);
+    if (known === file.path) return 0;
+    return dirty.has(file.path) ? 2 : 1;
+  };
+  files.sort((a, b) => claim(a) - claim(b));
+
+  for (const { path, state, fileId } of files) {
     const byPath = ctx.index.getByPath(path);
-    // The file's own id wins; a copy of another file's id gets a new one.
-    let id = parsed.frontMatter?.id ?? byPath?.id ?? idByLinkedPath.get(path) ?? null;
+    let id = fileId ?? byPath?.id ?? idByLinkedPath.get(path) ?? null;
     if (id !== null && seen.has(id)) id = null;
     const adopted = id === null;
     id ??= newUlid(ctx.now().getTime());
@@ -286,6 +300,8 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
   for (const row of ctx.index.all()) {
     if (seen.has(row.id)) continue;
     ctx.index.remove(row.id);
+    // Grown past the size limit outside T3: no longer served, but not removed.
+    if (tooLarge.has(row.path)) continue;
     commitPaths.add(row.path);
     events.push({
       artifactId: row.id,
@@ -328,7 +344,7 @@ export const checkArtifact = async (
   }
   if (stat.size === row.size && stat.mtimeMs === row.mtime) return "unchanged";
   const state = await readFileState(absolute);
-  if (!state) {
+  if (state === null || state === "too_large") {
     await scanStore(ctx, { rebuild: false });
     return "rescanned";
   }
