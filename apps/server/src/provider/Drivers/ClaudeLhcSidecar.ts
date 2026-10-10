@@ -41,7 +41,7 @@ import * as NodePath from "node:path";
 import * as NodeReadline from "node:readline";
 
 import sidecarPin from "../../../../../lhc/sidecar.json" with { type: "json" };
-import { ProviderInstanceId } from "@t3tools/contracts";
+import { type CustomModelSetting, ProviderInstanceId } from "@t3tools/contracts";
 
 import {
   BUNDLED_CLAUDE_MODEL_CATALOG,
@@ -239,6 +239,76 @@ export interface ClaudeLhcSidecarOptions {
   readonly pin?: SidecarPin;
   /** The instance's compaction windows (ClaudeLhcSettings); the sidecar requires both. */
   readonly windows?: { readonly autoCompactWindow: string; readonly lhcLowerBound: string };
+  /** The instance's custom models; their `contextWindow`s size models the catalog doesn't know. */
+  readonly customModels?: ReadonlyArray<CustomModelSetting>;
+}
+
+/**
+ * The window Claude Code assumes for a model it doesn't know (no `[1m]` suffix, no catalog entry,
+ * no CLAUDE_CODE_MAX_CONTEXT_TOKENS), and so the window LHC fits such a model to unless its custom
+ * model entry says otherwise. An unknown model is never left uncapped (Mira #305).
+ */
+export const UNCATALOGUED_CONTEXT_WINDOW = 200_000;
+
+const catalogContextWindow = (model: string): number | undefined =>
+  model.endsWith("[1m]")
+    ? 1_000_000
+    : resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {
+        instanceId: ProviderInstanceId.make("claude-lhc"),
+        model,
+      });
+
+/**
+ * One window for every model on the instance that the catalog doesn't know: the smallest of their
+ * `contextWindow`s, a bare entry counting as {@link UNCATALOGUED_CONTEXT_WINDOW}. One value, because
+ * a model switch reaches the running Claude Code through `setModel` without a respawn, so the
+ * spawn-time window has to hold for every model the thread can switch to (Mira #308).
+ * `undefined` when the instance has no such model; `explicit` when any entry sets a window.
+ */
+export function uncataloguedContextWindow(
+  customModels: ReadonlyArray<CustomModelSetting> | undefined,
+): { readonly window: number; readonly explicit: boolean } | undefined {
+  let window: number | undefined;
+  let explicit = false;
+  for (const entry of customModels ?? []) {
+    const slug = typeof entry === "string" ? entry : entry.slug;
+    if (catalogContextWindow(slug) !== undefined) continue;
+    const declared = typeof entry === "string" ? undefined : entry.contextWindow;
+    if (declared !== undefined) explicit = true;
+    window = Math.min(window ?? Infinity, declared ?? UNCATALOGUED_CONTEXT_WINDOW);
+  }
+  return window === undefined ? undefined : { window, explicit };
+}
+
+/**
+ * The model's window for fitting: `[1m]` or the catalog, else the instance's uncatalogued window,
+ * else {@link UNCATALOGUED_CONTEXT_WINDOW}. An empty model (Claude Code's own default) stays unfitted.
+ */
+export function lhcFitContextWindow(
+  model: string,
+  customModels: ReadonlyArray<CustomModelSetting> | undefined,
+): number | undefined {
+  if (model === "") return undefined;
+  return (
+    catalogContextWindow(model) ??
+    uncataloguedContextWindow(customModels)?.window ??
+    UNCATALOGUED_CONTEXT_WINDOW
+  );
+}
+
+/**
+ * Claude Code sizes a non-Claude model it doesn't know from CLAUDE_CODE_MAX_CONTEXT_TOKENS, else
+ * assumes 200k. Pass the instance's uncatalogued window when a custom model declares one, unless
+ * the environment already sets the variable.
+ */
+export function withContextWindowEnv(
+  env: NodeJS.ProcessEnv,
+  customModels: ReadonlyArray<CustomModelSetting> | undefined,
+): NodeJS.ProcessEnv {
+  const uncatalogued = uncataloguedContextWindow(customModels);
+  if (uncatalogued === undefined || !uncatalogued.explicit) return env;
+  if (env.CLAUDE_CODE_MAX_CONTEXT_TOKENS !== undefined) return env;
+  return { ...env, CLAUDE_CODE_MAX_CONTEXT_TOKENS: String(uncatalogued.window) };
 }
 
 /**
@@ -266,16 +336,12 @@ export function fitLhcCompactionToContextWindow(input: {
 function withLhcWindows(
   options: Parameters<CreateQuery>[0]["options"],
   windows: ClaudeLhcSidecarOptions["windows"],
+  customModels: ClaudeLhcSidecarOptions["customModels"],
 ): Parameters<CreateQuery>[0]["options"] {
   if (windows === undefined) return options;
   // The API model id carries a "[1m]" suffix when the 1M window is selected.
   const model = typeof options.model === "string" ? options.model : "";
-  const contextWindow = model.endsWith("[1m]")
-    ? 1_000_000
-    : resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {
-        instanceId: ProviderInstanceId.make("claude-lhc"),
-        model,
-      });
+  const contextWindow = lhcFitContextWindow(model, customModels);
   const fitted = fitLhcCompactionToContextWindow({
     autoCompactWindow: Number(windows.autoCompactWindow),
     lhcLowerBound: Number(windows.lhcLowerBound),
@@ -315,8 +381,7 @@ function startSidecarQuery(
   // The sidecar spreads env into the Claude Code child verbatim. The LHC store
   // is always the one derived from this server's T3 home.
   const childEnv: NodeJS.ProcessEnv = {
-    ...sidecar.environment,
-    ...(input.options.env ?? {}),
+    ...withContextWindowEnv({ ...sidecar.environment, ...input.options.env }, sidecar.customModels),
     T3CODE_LHC_HOME: claudeLhcHomeDir(sidecar.baseDir),
   };
   let child: NodeChildProcess.ChildProcess;
@@ -329,6 +394,7 @@ function startSidecarQuery(
   } catch (cause) {
     throw new Error(
       `Failed to spawn claude-lhc sidecar at ${sidecarPath}: ${cause instanceof Error ? cause.message : String(cause)}`,
+      { cause: cause },
     );
   }
   const log = (line: string): void => {
@@ -468,7 +534,10 @@ function startSidecarQuery(
       send({ type: "req", id, method, params });
     });
 
-  send({ type: "start", options: toWireOptions(withLhcWindows(input.options, sidecar.windows)) });
+  send({
+    type: "start",
+    options: toWireOptions(withLhcWindows(input.options, sidecar.windows, sidecar.customModels)),
+  });
 
   void (async () => {
     try {

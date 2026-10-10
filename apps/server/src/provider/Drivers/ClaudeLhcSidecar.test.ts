@@ -16,10 +16,14 @@ import {
   claudeLhcSidecarUnavailableReason,
   FORK_LHC_HOME,
   fitLhcCompactionToContextWindow,
+  lhcFitContextWindow,
   REFUSED_LHC_HOMES,
   makeClaudeLhcCreateQuery,
   resolveClaudeLhcSidecarPath,
   type SidecarPin,
+  UNCATALOGUED_CONTEXT_WINDOW,
+  uncataloguedContextWindow,
+  withContextWindowEnv,
 } from "./ClaudeLhcSidecar.ts";
 
 const PIN: SidecarPin = { package: "claude-lhc", version: "9.9.9", integrity: "sha512-test" };
@@ -171,6 +175,88 @@ describe("ClaudeLhcSidecar", () => {
         contextWindow: undefined,
       }),
     ).toEqual({ autoCompactWindow: 380_000, lhcLowerBound: 150_000 });
+  });
+
+  it("an uncatalogued model without a contextWindow fits as 200k, never uncapped", () => {
+    expect(lhcFitContextWindow("glm-5.3", undefined)).toBe(UNCATALOGUED_CONTEXT_WINDOW);
+    expect(lhcFitContextWindow("glm-5.3", ["glm-5.3"])).toBe(UNCATALOGUED_CONTEXT_WINDOW);
+    expect(
+      fitLhcCompactionToContextWindow({
+        autoCompactWindow: 700_000,
+        lhcLowerBound: 120_000,
+        contextWindow: lhcFitContextWindow("glm-5.3", [{ slug: "glm-5.3" }]),
+      }),
+    ).toEqual({ autoCompactWindow: 160_000, lhcLowerBound: 80_000 });
+    // Claude Code's own default model stays unfitted, as before.
+    expect(lhcFitContextWindow("", undefined)).toBeUndefined();
+  });
+
+  it("an uncatalogued model fits to the instance's smallest declared contextWindow", () => {
+    const models = [
+      { slug: "glm-5.3", contextWindow: 1_000_000 },
+      { slug: "glm-5.3-flash-local", contextWindow: 500_000 },
+      "claude-opus-5-5",
+    ];
+    expect(uncataloguedContextWindow(models)).toEqual({ window: 500_000, explicit: true });
+    expect(lhcFitContextWindow("glm-5.3", models)).toBe(500_000);
+    expect(
+      fitLhcCompactionToContextWindow({
+        autoCompactWindow: 700_000,
+        lhcLowerBound: 120_000,
+        contextWindow: lhcFitContextWindow("glm-5.3", models),
+      }),
+    ).toEqual({ autoCompactWindow: 400_000, lhcLowerBound: 120_000 });
+    // A bare uncatalogued entry counts as 200k, so it caps the instance too.
+    expect(lhcFitContextWindow("glm-5.3", [...models, "other-model"])).toBe(200_000);
+    // Catalogued models keep their catalog window; the custom windows don't touch them.
+    expect(lhcFitContextWindow("claude-opus-5-5", models)).toBe(
+      resolveClaudeCatalogContextWindowTokens(BUNDLED_CLAUDE_MODEL_CATALOG, {
+        instanceId: ProviderInstanceId.make("claude-lhc"),
+        model: "claude-opus-5-5",
+      }),
+    );
+  });
+
+  it("passes the uncatalogued window to Claude Code as CLAUDE_CODE_MAX_CONTEXT_TOKENS", () => {
+    const models = [{ slug: "glm-5.3", contextWindow: 1_000_000 }, "glm-5.3-flash-local"];
+    expect(withContextWindowEnv({ A: "1" }, models)).toEqual({
+      A: "1",
+      CLAUDE_CODE_MAX_CONTEXT_TOKENS: "200000",
+    });
+    expect(
+      withContextWindowEnv({}, [{ slug: "glm-5.3", contextWindow: 1_000_000 }])
+        .CLAUDE_CODE_MAX_CONTEXT_TOKENS,
+    ).toBe("1000000");
+    // No declared window: Claude Code already assumes 200k, so leave the env alone.
+    expect(withContextWindowEnv({ A: "1" }, ["glm-5.3"])).toEqual({ A: "1" });
+    // An explicit setting in the environment wins.
+    expect(
+      withContextWindowEnv({ CLAUDE_CODE_MAX_CONTEXT_TOKENS: "300000" }, [
+        { slug: "glm-5.3", contextWindow: 1_000_000 },
+      ]).CLAUDE_CODE_MAX_CONTEXT_TOKENS,
+    ).toBe("300000");
+  });
+
+  it("V2: an uncatalogued custom model's query settings are fitted to its contextWindow", async () => {
+    const createQuery = makeClaudeLhcCreateQuery({
+      environment: { ...process.env, CLAUDE_LHC_SIDECAR: makeFakeSidecar() },
+      baseDir: BASE_DIR,
+      pin: PIN,
+      windows: { autoCompactWindow: "700000", lhcLowerBound: "120000" },
+      customModels: [{ slug: "glm-5.3", contextWindow: 500_000 }],
+    });
+    const prompts = (async function* () {
+      await new Promise<void>(() => {});
+    })();
+    const runtime = createQuery({
+      prompt: prompts as never,
+      options: { sessionId: "sess-glm", model: "glm-5.3", settings: {} as never },
+    });
+    const init = (await runtime[Symbol.asyncIterator]().next()).value as unknown as {
+      settings: Record<string, unknown>;
+    };
+    expect(init.settings).toEqual({ autoCompactWindow: 400_000, lhcLowerBound: 120_000 });
+    runtime.close();
   });
 
   it.each(["claude-sonnet-4-6", "claude-haiku-4-5", "claude-opus-5-5"])(
