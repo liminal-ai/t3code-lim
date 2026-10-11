@@ -180,7 +180,16 @@ const readFileState = async (absolute: string): Promise<FileState | "too_large" 
     for (let attempt = 1; ; attempt++) {
       const opened = await handle.stat();
       if (opened.size > MAX_TEXT_ARTIFACT_BYTES) return "too_large";
-      const text = await handle.readFile("utf8");
+      // Positional reads from offset 0, so a retry rereads the whole file
+      // (readFile would continue from where the last read stopped).
+      const buffer = Buffer.alloc(opened.size);
+      let length = 0;
+      while (length < buffer.length) {
+        const { bytesRead } = await handle.read(buffer, length, buffer.length - length, length);
+        if (bytesRead === 0) break;
+        length += bytesRead;
+      }
+      const text = buffer.subarray(0, length).toString("utf8");
       const after = await handle.stat();
       if ((after.size === opened.size && after.mtimeMs === opened.mtimeMs) || attempt >= 3) {
         return { text, size: after.size, mtime: after.mtimeMs };
