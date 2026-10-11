@@ -9,6 +9,7 @@ import {
   LimArtifactListResponse,
   LimArtifactOpsResponse,
   LimArtifactReadResponse,
+  LimArtifactViewUrlResponse,
   LimArtifactWireError,
 } from "@t3tools/contracts";
 import * as Option from "effect/Option";
@@ -35,16 +36,27 @@ export class ArtifactsError extends Error {
   }
 }
 
+/** An absolute URL on the environment's server, for a path such as a view link's `/a/<token>`. */
+export function artifactsServerUrl(route: ArtifactsRoute, path: string): string {
+  return route.kind === "environment"
+    ? new URL(path, route.baseUrl).toString()
+    : resolvePrimaryEnvironmentHttpUrl(path);
+}
+
 export async function artifactsFetch(
   route: ArtifactsRoute,
   path: string,
   init: RequestInit = {},
 ): Promise<Response> {
   const headers = new Headers(init.headers);
+  const [pathname = "", query] = path.split("?", 2);
   const target =
     route.kind === "environment"
       ? new URL(`${LIM_ARTIFACTS_ROUTE_PREFIX}${path}`, route.baseUrl).toString()
-      : resolvePrimaryEnvironmentHttpUrl(`${LIM_ARTIFACTS_ROUTE_PREFIX}${path}`);
+      : resolvePrimaryEnvironmentHttpUrl(
+          `${LIM_ARTIFACTS_ROUTE_PREFIX}${pathname}`,
+          query === undefined ? undefined : Object.fromEntries(new URLSearchParams(query)),
+        );
   const bearer =
     route.kind === "environment"
       ? route.bearer
@@ -98,6 +110,7 @@ async function request<A>(
 const decodeList = Schema.decodeUnknownOption(LimArtifactListResponse);
 const decodeRead = Schema.decodeUnknownOption(LimArtifactReadResponse);
 const decodeOps = Schema.decodeUnknownOption(LimArtifactOpsResponse);
+const decodeViewUrl = Schema.decodeUnknownOption(LimArtifactViewUrlResponse);
 
 const postJson = (body: unknown, signal?: AbortSignal): RequestInit => ({
   method: "POST",
@@ -121,6 +134,39 @@ export const applyArtifactOps = (
   id: string,
   ops: ReadonlyArray<LimArtifactListOp>,
 ) => request(route, `/${encodeURIComponent(id)}/ops`, decodeOps, postJson({ ops }));
+
+/**
+ * Uploads a file as a new artifact in `folder` (the store's top when omitted).
+ * Its name's extension picks the kind; the response has the read response's shape.
+ */
+export const uploadArtifact = (
+  route: ArtifactsRoute,
+  file: File,
+  options: { readonly folder?: string } = {},
+) => {
+  const params = new URLSearchParams({ name: file.name });
+  if (options.folder) params.set("folder", options.folder);
+  return request(route, `?${params.toString()}`, decodeRead, {
+    method: "POST",
+    headers: { "content-type": file.type || "application/octet-stream" },
+    body: file,
+  });
+};
+
+/** A signed link that opens the artifact without a session for `expiresInSeconds`. */
+export const createArtifactViewUrl = async (
+  route: ArtifactsRoute,
+  id: string,
+  expiresInSeconds: number,
+) => {
+  const minted = await request(
+    route,
+    `/${encodeURIComponent(id)}/view-url`,
+    decodeViewUrl,
+    postJson({ expiresInSeconds }),
+  );
+  return { url: artifactsServerUrl(route, minted.url), expiresAt: minted.expiresAt };
+};
 
 /** Opens the change stream for every artifact (ids omitted). */
 export const openArtifactsWatch = (route: ArtifactsRoute, signal: AbortSignal) =>
