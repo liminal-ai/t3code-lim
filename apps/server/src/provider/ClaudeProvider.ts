@@ -43,7 +43,11 @@ import {
 } from "./Drivers/ClaudeHome.ts";
 // Fork seam (lim): stored-login check
 import { readClaudeStoredLogin, usesStoredSubscriptionLogin } from "./Drivers/ClaudeStoredLogin.ts";
-import { discoverClaudeSkills, skillOverrideSettingsPaths } from "./Drivers/ClaudeSkills.ts";
+import {
+  discoverClaudeSkills,
+  findRepositoryRoot,
+  skillOverrideSettingsPaths,
+} from "./Drivers/ClaudeSkills.ts";
 import type { ProviderWorkspaceSnapshot } from "./ProviderDriver.ts";
 import { makeUnavailableUsageLimits } from "./providerUsageLimits.ts";
 import {
@@ -612,7 +616,14 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
     const configDir = yield* resolveClaudeHomePath(claudeSettings, resolvedEnvironment);
     const login = yield* readClaudeStoredLogin(
       configDir,
-      skillOverrideSettingsPaths(yield* Path.Path, configDir, cwd, platform, resolvedEnvironment),
+      skillOverrideSettingsPaths(
+        yield* Path.Path,
+        configDir,
+        cwd,
+        platform,
+        resolvedEnvironment,
+        cwd === undefined ? undefined : yield* findRepositoryRoot(cwd),
+      ),
       resolvedEnvironment,
       DateTime.toEpochMillis(yield* DateTime.now),
     );

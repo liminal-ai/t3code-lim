@@ -3245,6 +3245,24 @@ it.layer(
             workspace,
           );
           assert.strictEqual(project.auth.status, "authenticated");
+
+          // ...and one in the git root's settings.local.json, from a nested cwd.
+          const repo = path.join(dir, "repo");
+          const nested = path.join(repo, "packages", "app");
+          yield* fileSystem.makeDirectory(path.join(repo, ".git"), { recursive: true });
+          yield* fileSystem.makeDirectory(path.join(repo, ".claude"), { recursive: true });
+          yield* fileSystem.makeDirectory(nested, { recursive: true });
+          yield* fileSystem.writeFileString(
+            path.join(repo, ".claude", "settings.local.json"),
+            JSON.stringify({ env: { ANTHROPIC_BASE_URL: "http://127.0.0.1:8317" } }),
+          );
+          const rootLocal = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({}),
+            { CLAUDE_CONFIG_DIR: path.join(dir, "no-login-here") },
+            nested,
+          );
+          assert.strictEqual(rootLocal.auth.status, "authenticated");
         }).pipe(
           Effect.provideService(HostProcessPlatform, "linux"),
           Effect.scoped,
