@@ -313,7 +313,12 @@ export class ArtifactStore {
     if (!ULID_PATTERN.test(id)) throw new ArtifactStoreError("not_found", `no artifact ${id}`);
     const row = this.index.get(id);
     if (!row) throw new ArtifactStoreError("not_found", `no artifact ${id}`);
-    await checkArtifact(this.ctx, row);
+    if ((await checkArtifact(this.ctx, row)) === "too_large") {
+      throw new ArtifactStoreError(
+        "too_large",
+        `${row.path} grew past 10 MB outside T3; it's kept, with its links, but not served until it shrinks`,
+      );
+    }
     const fresh = this.index.get(id);
     if (!fresh) throw new ArtifactStoreError("not_found", `artifact ${id} was removed outside T3`);
     return fresh;
@@ -336,12 +341,16 @@ export class ArtifactStore {
 
   list(filter: ListFilter = {}): Promise<LimArtifactSummary[]> {
     return this.serializer.run(async () => {
+      const oversized = new Set<string>();
       for (const { id } of this.index.all()) {
         // An earlier check may have rescanned (a move or removal): use the row as it is now.
         const row = this.index.get(id);
-        if (row) await checkArtifact(this.ctx, row);
+        if (row && (await checkArtifact(this.ctx, row)) === "too_large") oversized.add(id);
       }
-      return this.index.list(filter).map((row) => this.summary(row));
+      return this.index
+        .list(filter)
+        .filter((row) => !oversized.has(row.id))
+        .map((row) => this.summary(row));
     });
   }
 

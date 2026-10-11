@@ -343,10 +343,16 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
 
   for (const row of ctx.index.all()) {
     if (seen.has(row.id)) continue;
+    const original = before.get(row.id) ?? row;
+    const path = original.path;
+    // Grown past the size limit outside T3: not served, but the row and its
+    // links stay (back at its own path if it was parked), so it returns whole
+    // once the file shrinks.
+    if (tooLarge.has(path)) {
+      ctx.index.upsert(original);
+      continue;
+    }
     ctx.index.remove(row.id);
-    const path = before.get(row.id)?.path ?? row.path;
-    // Grown past the size limit outside T3: no longer served, but not removed.
-    if (tooLarge.has(path)) continue;
     commitPaths.add(path);
     events.push({
       artifactId: row.id,
@@ -370,7 +376,7 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
   await commitExternal(ctx, [...commitPaths], events);
 };
 
-export type CheckResult = "unchanged" | "reindexed" | "rescanned";
+export type CheckResult = "unchanged" | "reindexed" | "rescanned" | "too_large";
 
 /**
  * The per-access check: when the file's size or mtime differs from the index,
@@ -389,7 +395,9 @@ export const checkArtifact = async (
   }
   if (stat.size === row.size && stat.mtimeMs === row.mtime) return "unchanged";
   const state = await readFileState(absolute);
-  if (state === null || state === "too_large") {
+  // Over the size limit: kept, with its links, but not served.
+  if (state === "too_large") return "too_large";
+  if (state === null) {
     await scanStore(ctx, { rebuild: false });
     return "rescanned";
   }

@@ -381,14 +381,27 @@ describe("ArtifactStore", () => {
     },
   );
 
-  it("stops serving a file grown past 10 MB outside T3 without committing a removal", async () => {
-    const store = await openStore(tempStoreDir());
-    const { artifact } = await store.create({ title: "Grows" }, LEE);
-    const commits = commitCount(store.root);
-    NodeFS.appendFileSync(NodePath.join(store.root, artifact.path), "x".repeat(10 * 1024 * 1024));
-    await expectStoreError(store.read(artifact.id), "not_found");
-    expect(commitCount(store.root)).toBe(commits);
-    expect(NodeFS.existsSync(NodePath.join(store.root, artifact.path))).toBe(true);
+  it("stops serving a file grown past 10 MB outside T3, keeping its links until it shrinks", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const { artifact } = await first.create({ title: "Grows", content: "- [ ] a\n" }, LEE);
+    await first.attach(artifact.id, "thread-a", "write", LEE);
+    const absolute = NodePath.join(first.root, artifact.path);
+    const original = NodeFS.readFileSync(absolute, "utf8");
+    const commits = commitCount(first.root);
+    NodeFS.appendFileSync(absolute, "x".repeat(10 * 1024 * 1024));
+    await expectStoreError(first.read(artifact.id), "too_large");
+    expect(await first.list()).toEqual([]);
+    expect(commitCount(first.root)).toBe(commits);
+    expect(NodeFS.existsSync(absolute)).toBe(true);
+    // A restart while it's oversized keeps it too.
+    first.close();
+    const store = await openStore(dir);
+    expect(file(store, ".t3-meta/links.json")).toContain("thread-a");
+    NodeFS.writeFileSync(absolute, `${original}- [ ] b\n`);
+    const back = await store.read(artifact.id);
+    expect(back.artifact.links.map((link) => link.threadId)).toEqual(["thread-a"]);
+    expect(back.items.map((item) => item.text)).toEqual(["a", "b"]);
   });
 
   it("refuses markdown over 10 MB", async () => {
