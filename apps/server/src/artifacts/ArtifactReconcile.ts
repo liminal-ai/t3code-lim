@@ -145,6 +145,19 @@ const walkMarkdown = async (root: string): Promise<string[]> => {
   return found.sort();
 };
 
+/** The id in a file's front matter, reading only its head (for files too large to read whole). */
+const frontMatterId = async (absolute: string): Promise<string | null> => {
+  const handle = await NodeFSP.open(absolute, "r").catch(() => null);
+  if (!handle) return null;
+  try {
+    const head = Buffer.alloc(64 * 1024);
+    const { bytesRead } = await handle.read(head, 0, head.length, 0);
+    return parseMarkdownFile(head.subarray(0, bytesRead).toString("utf8")).frontMatter?.id ?? null;
+  } finally {
+    await handle.close();
+  }
+};
+
 interface FileState {
   readonly text: string;
   readonly size: number;
@@ -287,13 +300,19 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
   const before = new Map(ctx.index.all().map((row) => [row.id, row]));
   const seen = new Set<string>();
   const tooLarge = new Set<string>();
+  // Ids in oversized files' front matter: such an artifact may also have moved.
+  const tooLargeIds = new Set<string>();
   const commitPaths = new Set<string>();
   const events: Array<ArtifactCommitEvent & { revision: string | null }> = [];
 
   const files: Array<{ path: string; state: FileState; fileId: string | null }> = [];
   for (const path of paths) {
     const state = await readFileState(NodePath.join(ctx.root, ...path.split("/")));
-    if (state === "too_large") tooLarge.add(path);
+    if (state === "too_large") {
+      tooLarge.add(path);
+      const id = await frontMatterId(NodePath.join(ctx.root, ...path.split("/")));
+      if (id !== null) tooLargeIds.add(id);
+    }
     if (state === null || state === "too_large") continue;
     files.push({ path, state, fileId: parseMarkdownFile(state.text).frontMatter?.id ?? null });
   }
@@ -348,7 +367,7 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     // Grown past the size limit outside T3: not served, but the row and its
     // links stay (back at its own path if it was parked), so it returns whole
     // once the file shrinks.
-    if (tooLarge.has(path)) {
+    if (tooLarge.has(path) || tooLargeIds.has(row.id)) {
       ctx.index.upsert(original);
       continue;
     }

@@ -555,7 +555,12 @@ export class ArtifactStore {
       }
       const body = renderList(result.doc);
       if (body === file.body) {
-        return { artifact: this.summary(row), items: this.items(row.id, body), itemIds: [] };
+        // Nothing to write or commit, but every op still names the item it touched.
+        return {
+          artifact: this.summary(row),
+          items: this.items(row.id, body),
+          itemIds: result.applied.map((applied) => applied.itemId),
+        };
       }
       const undo = new Undo(this.root, this.index);
       undo.file(row.path);

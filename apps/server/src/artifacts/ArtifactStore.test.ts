@@ -404,6 +404,43 @@ describe("ArtifactStore", () => {
     expect(back.items.map((item) => item.text)).toEqual(["a", "b"]);
   });
 
+  it("keeps an oversized artifact's links when it also moved outside T3", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const { artifact } = await first.create({ title: "Grows" }, LEE);
+    await first.attach(artifact.id, "thread-a", "write", LEE);
+    const root = first.root;
+    first.close();
+    const moved = NodePath.join(root, "moved.md");
+    NodeFS.renameSync(NodePath.join(root, artifact.path), moved);
+    const original = NodeFS.readFileSync(moved, "utf8");
+    NodeFS.appendFileSync(moved, "x".repeat(10 * 1024 * 1024));
+    const store = await openStore(dir);
+    expect(file(store, ".t3-meta/links.json")).toContain("thread-a");
+    NodeFS.writeFileSync(moved, original);
+    const back = await store.read(artifact.id);
+    expect(back.artifact.path).toBe("moved.md");
+    expect(back.artifact.links.map((link) => link.threadId)).toEqual(["thread-a"]);
+  });
+
+  it("names every op's item even when the ops leave the file unchanged", async () => {
+    const store = await openStore(tempStoreDir());
+    const { artifact, items } = await store.create({ title: "Noop", content: "- [x] a\n" }, LEE);
+    const id = items[0]!.id!;
+    const commits = commitCount(store.root);
+    const result = await store.applyOps(
+      artifact.id,
+      [
+        { op: "check", id },
+        { op: "uncheck", id },
+        { op: "check", id },
+      ],
+      LEE,
+    );
+    expect(result.itemIds).toEqual([id, id, id]);
+    expect(commitCount(store.root)).toBe(commits);
+  });
+
   it("refuses markdown over 10 MB", async () => {
     const store = await openStore(tempStoreDir());
     await expectStoreError(
