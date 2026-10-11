@@ -466,6 +466,43 @@ describe("ArtifactStore", () => {
     expect(back.artifact.createdBy?.name).toBe("Lee");
   });
 
+  it("retries a moved or removed file's commit on the next access after the scan's commit fails", async () => {
+    const store = await openStore(tempStoreDir());
+    const moved = (await store.create({ title: "Mover" }, LEE)).artifact;
+    const gone = (await store.create({ title: "Gone" }, LEE)).artifact;
+    await store.attach(gone.id, "thread-a", "write", LEE);
+    NodeFS.renameSync(NodePath.join(store.root, moved.path), NodePath.join(store.root, "moved.md"));
+    NodeFS.rmSync(NodePath.join(store.root, gone.path));
+    const fixGit = breakGit(store.root);
+    await rejects(store.read(moved.id));
+    fixGit();
+    expect((await store.read(moved.id)).artifact.path).toBe("moved.md");
+    const log = git(store.root, "log", "-1", "--format=%B");
+    expect(log).toContain("T3-Action: moved");
+    expect(log).toContain("T3-Action: removed");
+    expect(file(store, ".t3-meta/links.json")).not.toContain(gone.id);
+    expect(git(store.root, "status", "--porcelain").trim()).toBe("");
+  });
+
+  it("rebuilds again on the next open when a rebuild's commit fails", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const { artifact } = await first.create({ title: "Linked" }, LEE);
+    await first.attach(artifact.id, "thread-a", "write", LEE);
+    const root = first.root;
+    first.close();
+    NodeFS.rmSync(NodePath.join(root, ".t3", "index.sqlite"));
+    // An edit made while down makes the rebuild commit.
+    NodeFS.appendFileSync(NodePath.join(root, artifact.path), "- [ ] while down\n");
+    const fixGit = breakGit(root);
+    await rejects(ArtifactStore.open(dir));
+    fixGit();
+    const store = await openStore(dir);
+    expect((await store.read(artifact.id)).artifact.links.map((link) => link.threadId)).toEqual([
+      "thread-a",
+    ]);
+  });
+
   it("names every op's item even when the ops leave the file unchanged", async () => {
     const store = await openStore(tempStoreDir());
     const { artifact, items } = await store.create({ title: "Noop", content: "- [x] a\n" }, LEE);

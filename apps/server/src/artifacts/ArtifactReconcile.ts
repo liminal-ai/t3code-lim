@@ -164,13 +164,31 @@ interface FileState {
   readonly mtime: number;
 }
 
+/**
+ * The file's bytes with the size and mtime of those same bytes: read through
+ * one handle, so an editor replacing the file meanwhile can't pair old text
+ * with the new file's metadata (the next check then sees the new file). An
+ * in-place write during the read is retried.
+ */
 const readFileState = async (absolute: string): Promise<FileState | "too_large" | null> => {
   const stat = await NodeFSP.lstat(absolute).catch(() => null);
   if (!stat || !stat.isFile()) return null;
   if (stat.size > MAX_TEXT_ARTIFACT_BYTES) return "too_large";
-  const text = await NodeFSP.readFile(absolute, "utf8");
-  const after = await NodeFSP.stat(absolute);
-  return { text, size: after.size, mtime: after.mtimeMs };
+  const handle = await NodeFSP.open(absolute, "r").catch(() => null);
+  if (!handle) return null;
+  try {
+    for (let attempt = 1; ; attempt++) {
+      const opened = await handle.stat();
+      if (opened.size > MAX_TEXT_ARTIFACT_BYTES) return "too_large";
+      const text = await handle.readFile("utf8");
+      const after = await handle.stat();
+      if ((after.size === opened.size && after.mtimeMs === opened.mtimeMs) || attempt >= 3) {
+        return { text, size: after.size, mtime: after.mtimeMs };
+      }
+    }
+  } finally {
+    await handle.close();
+  }
 };
 
 /**
@@ -298,6 +316,7 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
   // The index as it was: moves and swaps are judged against it, and an artifact
   // is removed only when no file carries it after the whole scan.
   const before = new Map(ctx.index.all().map((row) => [row.id, row]));
+  const linksByIdBefore = ctx.index.allLinks();
   const seen = new Set<string>();
   const tooLarge = new Set<string>();
   // Ids in oversized files' front matter, and where those files are now: such
@@ -426,9 +445,33 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     await restoreEvents(ctx);
   }
 
+  const linksBefore = await NodeFSP.readFile(
+    NodePath.join(ctx.root, ...LINKS_FILE.split("/")),
+    "utf8",
+  ).catch(() => null);
   const links = await writeLinksFile(ctx);
   if (links) commitPaths.add(links);
-  await commitExternal(ctx, [...commitPaths], events);
+  try {
+    await commitExternal(ctx, [...commitPaths], events);
+  } catch (error) {
+    // Put the index and links.json back as they were, so the next access
+    // rescans and retries the commit with its events (a removed row or a
+    // moved one already at its destination would otherwise never retry).
+    ctx.index.transaction(() => {
+      for (const row of ctx.index.all()) if (!before.has(row.id)) ctx.index.remove(row.id);
+      for (const [id, row] of before) {
+        ctx.index.upsert(row);
+        ctx.index.replaceLinks(id, linksByIdBefore.get(id) ?? []);
+      }
+    });
+    if (links) {
+      const absolute = NodePath.join(ctx.root, ...LINKS_FILE.split("/"));
+      if (linksBefore === null) await NodeFSP.rm(absolute, { force: true });
+      else await writeFileAtomically(absolute, linksBefore);
+    }
+    await ctx.git.unstage([...commitPaths]).catch(() => undefined);
+    throw error;
+  }
 };
 
 export type CheckResult = "unchanged" | "reindexed" | "rescanned" | "too_large";

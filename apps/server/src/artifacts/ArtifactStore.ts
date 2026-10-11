@@ -244,6 +244,13 @@ export class ArtifactStore {
       await store.serializer.run(() => scanStore(store.ctx, { rebuild: index.created }));
     } catch (error) {
       index.close();
+      // A rebuild that didn't finish leaves its index behind, so the next open
+      // rebuilds again (otherwise links.json would be rewritten from it, empty).
+      if (index.created) {
+        for (const suffix of ["", "-wal", "-shm"]) {
+          NodeFS.rmSync(NodePath.join(root, ".t3", `index.sqlite${suffix}`), { force: true });
+        }
+      }
       throw error;
     }
     return store;
