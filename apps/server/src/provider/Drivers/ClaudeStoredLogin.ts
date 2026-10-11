@@ -100,8 +100,8 @@ export function classifyClaudeCredentials(text: string, nowMs: number): ClaudeSt
 }
 
 /**
- * `settingsPaths`: every settings file the CLI loads (user, project, local,
- * managed); Claude applies each one's `env` block, so a proxy or token set in
+ * `settingsPaths`: every settings file the CLI loads, lowest precedence first
+ * (user, project, local, managed); Claude applies each one's `env` block, so a proxy or token set in
  * any of them counts (prod's claude-glm-lhc sets its proxy in its home's).
  */
 export const readClaudeStoredLogin = Effect.fn("readClaudeStoredLogin")(function* (
@@ -113,12 +113,16 @@ export const readClaudeStoredLogin = Effect.fn("readClaudeStoredLogin")(function
   if (claudeEnvAuth(environment)) return "env";
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
+  // Merged in the CLI's precedence order, so a later file can clear a value
+  // (e.g. ANTHROPIC_BASE_URL: "") an earlier one set.
+  const merged: Record<string, string> = {};
   for (const settingsPath of settingsPaths) {
     const settings = yield* fileSystem
       .readFileString(settingsPath)
       .pipe(Effect.orElseSucceed(() => null));
-    if (settings !== null && claudeEnvAuth(settingsEnv(settings))) return "env";
+    if (settings !== null) Object.assign(merged, settingsEnv(settings));
   }
+  if (claudeEnvAuth(merged)) return "env";
   const file = path.join(configDir, ".credentials.json");
   if (!(yield* fileSystem.exists(file).pipe(Effect.orElseSucceed(() => true)))) return "missing";
   const text = yield* fileSystem.readFileString(file).pipe(Effect.orElseSucceed(() => null));

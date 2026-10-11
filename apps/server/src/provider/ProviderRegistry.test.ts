@@ -3263,6 +3263,19 @@ it.layer(
             nested,
           );
           assert.strictEqual(rootLocal.auth.status, "authenticated");
+
+          // A later file clearing it wins: the workspace's local settings unset the project's token.
+          yield* fileSystem.writeFileString(
+            path.join(workspace, ".claude", "settings.local.json"),
+            JSON.stringify({ env: { ANTHROPIC_AUTH_TOKEN: "" } }),
+          );
+          const cleared = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({}),
+            { CLAUDE_CONFIG_DIR: path.join(dir, "no-login-here") },
+            workspace,
+          );
+          assert.strictEqual(cleared.auth.status, "unauthenticated");
         }).pipe(
           Effect.provideService(HostProcessPlatform, "linux"),
           Effect.scoped,
