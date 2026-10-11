@@ -300,8 +300,9 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
   const before = new Map(ctx.index.all().map((row) => [row.id, row]));
   const seen = new Set<string>();
   const tooLarge = new Set<string>();
-  // Ids in oversized files' front matter: such an artifact may also have moved.
-  const tooLargeIds = new Set<string>();
+  // Ids in oversized files' front matter, and where those files are now: such
+  // an artifact may also have moved, and its id is reserved for it.
+  const tooLargeIds = new Map<string, string>();
   const commitPaths = new Set<string>();
   const events: Array<ArtifactCommitEvent & { revision: string | null }> = [];
 
@@ -311,7 +312,7 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     if (state === "too_large") {
       tooLarge.add(path);
       const id = await frontMatterId(NodePath.join(ctx.root, ...path.split("/")));
-      if (id !== null) tooLargeIds.add(id);
+      if (id !== null && !tooLargeIds.has(id)) tooLargeIds.set(id, path);
     }
     if (state === null || state === "too_large") continue;
     files.push({ path, state, fileId: parseMarkdownFile(state.text).frontMatter?.id ?? null });
@@ -335,6 +336,9 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     const byPath = ctx.index.getByPath(path);
     let id = fileId ?? byPath?.id ?? idByLinkedPath.get(path) ?? null;
     if (id !== null && seen.has(id)) id = null;
+    // An id only reaches this file by its path (it carries none): never take
+    // one an oversized file still carries elsewhere.
+    if (id !== null && fileId === null && tooLargeIds.has(id)) id = null;
     const adopted = id === null;
     id ??= newUlid(ctx.now().getTime());
     seen.add(id);
@@ -365,10 +369,11 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     const original = before.get(row.id) ?? row;
     const path = original.path;
     // Grown past the size limit outside T3: not served, but the row and its
-    // links stay (back at its own path if it was parked), so it returns whole
-    // once the file shrinks.
-    if (tooLarge.has(path) || tooLargeIds.has(row.id)) {
-      ctx.index.upsert(original);
+    // links stay, at the oversized file's path (it may have moved), so it
+    // returns whole once the file shrinks.
+    const oversizedAt = tooLargeIds.get(row.id) ?? (tooLarge.has(path) ? path : undefined);
+    if (oversizedAt !== undefined) {
+      ctx.index.upsert({ ...original, path: oversizedAt });
       continue;
     }
     ctx.index.remove(row.id);

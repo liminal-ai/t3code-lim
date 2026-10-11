@@ -423,6 +423,29 @@ describe("ArtifactStore", () => {
     expect(back.artifact.links.map((link) => link.threadId)).toEqual(["thread-a"]);
   });
 
+  it("keeps a moved oversized artifact's id when a new file takes its old path", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const { artifact } = await first.create({ title: "Grows" }, LEE);
+    await first.attach(artifact.id, "thread-a", "write", LEE);
+    const root = first.root;
+    first.close();
+    const moved = NodePath.join(root, "moved.md");
+    NodeFS.renameSync(NodePath.join(root, artifact.path), moved);
+    const original = NodeFS.readFileSync(moved, "utf8");
+    NodeFS.appendFileSync(moved, "x".repeat(10 * 1024 * 1024));
+    NodeFS.writeFileSync(NodePath.join(root, artifact.path), "# Newcomer\n");
+    const store = await openStore(dir);
+    const newcomer = (await store.list()).find((row) => row.path === artifact.path);
+    expect(newcomer?.id).not.toBe(artifact.id);
+    expect(newcomer?.links).toEqual([]);
+    await expectStoreError(store.read(artifact.id), "too_large");
+    NodeFS.writeFileSync(moved, original);
+    const back = await store.read(artifact.id);
+    expect(back.artifact.path).toBe("moved.md");
+    expect(back.artifact.links.map((link) => link.threadId)).toEqual(["thread-a"]);
+  });
+
   it("names every op's item even when the ops leave the file unchanged", async () => {
     const store = await openStore(tempStoreDir());
     const { artifact, items } = await store.create({ title: "Noop", content: "- [x] a\n" }, LEE);
