@@ -8,7 +8,15 @@
  * prefix only Vite knows gets answered with index.html; a prefix only the
  * server knows redirect-loops through the proxy.
  */
-export const DEV_PROXIED_PATH_PREFIXES = ["/api", "/oauth", "/.well-known", "/ws", "/mcp"] as const;
+export const DEV_PROXIED_PATH_PREFIXES = [
+  "/api",
+  "/oauth",
+  "/.well-known",
+  "/ws",
+  "/mcp",
+  // Fork seam (artifacts): signed view links, `/a/<token>`.
+  "/a",
+] as const;
 
 /**
  * Prefixes the proxy must forward with the browser's own Host. MCP OAuth
@@ -20,6 +28,15 @@ export const DEV_PROXIED_ORIGIN_PRESERVING_PREFIXES: ReadonlySet<string> = new S
   "/.well-known",
   "/mcp",
 ]);
+
+/**
+ * The Vite proxy key for a prefix. Vite matches a plain key as a bare string
+ * prefix, so `/a` would also catch `/artifacts` and `/assets`; it gets a
+ * RegExp key (a leading `^`) that needs the slash. (Fork seam (artifacts).)
+ */
+export function devProxyKey(prefix: string): string {
+  return prefix === "/a" ? "^/a/" : prefix;
+}
 
 export function isDevProxiedPath(pathname: string): boolean {
   return DEV_PROXIED_PATH_PREFIXES.some(
