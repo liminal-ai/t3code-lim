@@ -542,6 +542,7 @@ export class ArtifactStore {
           subject: `Create ${title}`,
           events,
           author: actor,
+          at,
         });
         this.record(events, row.revision);
         return { artifact: this.summary(row), content: body, items: this.items(id, body) };

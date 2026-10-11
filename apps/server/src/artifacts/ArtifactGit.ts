@@ -191,10 +191,16 @@ export class ArtifactGit {
     readonly events: ReadonlyArray<ArtifactCommitEvent>;
     readonly author: LimArtifactActor;
     readonly keepEvents?: boolean;
+    /**
+     * When the change happened (ISO), as the author date: a rebuilt index reads
+     * event times from it, so it must match what was recorded, not when git ran.
+     */
+    readonly at?: string;
   }): Promise<string | null> {
     const authorEnv = {
       GIT_AUTHOR_NAME: oneLine(input.author.name) || "T3 Code",
       GIT_AUTHOR_EMAIL: emailFor(input.author),
+      ...(input.at ? { GIT_AUTHOR_DATE: input.at } : {}),
       GIT_COMMITTER_NAME: COMMITTER.name,
       GIT_COMMITTER_EMAIL: COMMITTER.email,
     };

@@ -342,6 +342,20 @@ describe("ArtifactStore", () => {
     expect(commitCount(dir)).toBe(commits);
   });
 
+  it("rebuilds createdAt from the time the artifact was created, not when git ran", async () => {
+    const dir = tempStoreDir();
+    // A clock far from the wall clock: the commit's author date must come from it.
+    const first = await ArtifactStore.open(dir, {
+      now: () => new Date("2020-01-02T03:04:05.999Z"),
+    });
+    const { artifact } = await first.create({ title: "Dated" }, LEE);
+    const root = first.root;
+    first.close();
+    NodeFS.rmSync(NodePath.join(root, ".t3", "index.sqlite"));
+    const store = await openStore(dir);
+    expect((await store.read(artifact.id)).artifact.createdAt).toBe("2020-01-02T03:04:05.000Z");
+  });
+
   it("adopts new files and commits edits made while the server was down", async () => {
     const dir = tempStoreDir();
     const first = await ArtifactStore.open(dir);
