@@ -17,7 +17,7 @@ import type {
   LimArtifactListOp,
   LimArtifactSummary,
 } from "@t3tools/contracts";
-import { filePreviewKind } from "@t3tools/shared/filePreview";
+import { FILE_TEXT_PREVIEW_MAX_BYTES, filePreviewKind } from "@t3tools/shared/filePreview";
 
 import { describeLimit, maxArtifactBytes } from "./artifactConfig.ts";
 import {
@@ -451,7 +451,11 @@ export class ArtifactStore {
 
   /** The read response's content: the body of markdown and HTML, the text of a text file. */
   private contentOf(row: ArtifactRow, bytes: Buffer) {
-    if (row.kind === "other") return decodeText(bytes) ?? "";
+    // A text file over the preview bound (1 MB) isn't sent inline; the page
+    // opens it through a view link, as it does a non-UTF-8 file.
+    if (row.kind === "other") {
+      return bytes.length > FILE_TEXT_PREVIEW_MAX_BYTES ? "" : (decodeText(bytes) ?? "");
+    }
     return parseTextArtifact(row.kind, bytes.toString("utf8")).body;
   }
 

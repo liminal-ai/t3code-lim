@@ -229,19 +229,24 @@ export const parseHtmlFile = (text: string): MarkdownFile => {
   for (const attribute of match[1]!.matchAll(HTML_ATTRIBUTE)) {
     const name = attribute[1]!.toLowerCase();
     if (!attributes.has(name)) {
-      attributes.set(name, decodeEntities(attribute[2] ?? attribute[3] ?? attribute[4] ?? ""));
+      attributes.set(name, attribute[2] ?? attribute[3] ?? attribute[4] ?? "");
     }
   }
-  const id = attributes.get("id") ?? null;
+  const value = (name: string) => {
+    const raw = attributes.get(name);
+    return raw === undefined ? undefined : decodeEntities(raw);
+  };
+  const id = value("id") ?? null;
+  // Split before decoding, so an encoded comma (&#44;) stays inside its tag.
   const tags = attributes.get("tags") ?? "";
   return {
     frontMatter: {
       id: id !== null && ULID_PATTERN.test(id) ? id : null,
-      title: attributes.get("title")?.trim() || null,
+      title: value("title")?.trim() || null,
       tags: [
         ...new Set(
           (tags.includes(",") ? tags.split(",") : tags.split(/\s+/))
-            .map((tag) => tag.trim())
+            .map((tag) => decodeEntities(tag).trim())
             .filter(Boolean),
         ),
       ],
@@ -259,9 +264,10 @@ export const renderHtmlFile = (input: {
 }) => {
   // Tags are comma-separated (a hand-written line may use spaces); a lone tag
   // with a space keeps a trailing comma so it reads back whole.
-  const joined = input.tags.join(", ");
+  // A comma inside a tag is written as &#44;, so it reads back as one tag.
+  const joined = input.tags.map((tag) => encodeAttribute(tag).replace(/,/g, "&#44;")).join(", ");
   const listed = input.tags.length === 1 && /\s/.test(joined) ? `${joined},` : joined;
-  const tags = input.tags.length > 0 ? ` tags="${encodeAttribute(listed)}"` : "";
+  const tags = input.tags.length > 0 ? ` tags="${listed}"` : "";
   return `<!-- t3-artifact id=${input.id} title="${encodeAttribute(input.title)}"${tags} -->\n${input.body}`;
 };
 

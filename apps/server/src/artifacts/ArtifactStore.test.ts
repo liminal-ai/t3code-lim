@@ -878,6 +878,41 @@ describe("ArtifactStore content types", () => {
     );
   });
 
+  it("keeps an oversized other file's id, title, tags and links through an index rebuild", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const { artifact } = await first.create(
+      { title: "Scan", name: "scan.bin", tags: ["receipts"], bytes: Uint8Array.from([1, 2, 3]) },
+      LEE,
+    );
+    await first.attach(artifact.id, "thread-a", "write", LEE);
+    const root = first.root;
+    first.close();
+    const absolute = NodePath.join(root, artifact.path);
+    const original = NodeFS.readFileSync(absolute);
+    NodeFS.truncateSync(absolute, 50 * 1024 * 1024 + 1);
+    NodeFS.rmSync(NodePath.join(root, ".t3", "index.sqlite"));
+    const store = await openStore(dir);
+    await expectStoreError(store.read(artifact.id), "too_large");
+    expect(file(store, ".t3-meta/links.json")).toContain("thread-a");
+    NodeFS.writeFileSync(absolute, original);
+    const back = (await store.list()).find((entry) => entry.path === artifact.path);
+    expect(back).toMatchObject({ id: artifact.id, title: "Scan", tags: ["receipts"] });
+    expect(back?.links.map((link) => link.threadId)).toEqual(["thread-a"]);
+  });
+
+  it("sends a text file over 1 MB through a view link, not inline", async () => {
+    const store = await openStore(tempStoreDir());
+    const small = await store.create({ title: "Small", name: "small.csv", content: "a,b\n" }, LEE);
+    expect((await store.read(small.artifact.id)).content).toBe("a,b\n");
+    const big = await store.create(
+      { title: "Big", name: "big.csv", content: `${"a,b\n".repeat(300 * 1024)}` },
+      LEE,
+    );
+    expect(big.artifact.size).toBeGreaterThan(1024 * 1024);
+    expect((await store.read(big.artifact.id)).content).toBe("");
+  });
+
   it("follows an other file moved outside T3 by its content", async () => {
     const dir = tempStoreDir();
     const first = await ArtifactStore.open(dir);

@@ -431,6 +431,7 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
   // an artifact may also have moved, and its id is reserved for it.
   const tooLargeIds = new Map<string, string>();
   const tooLargeTitles = new Map<string, string>();
+  const tooLargeTags = new Map<string, ReadonlyArray<string>>();
   const commitPaths = new Set<string>();
   const events: Array<ArtifactCommitEvent & { revision: string | null }> = [];
 
@@ -440,13 +441,19 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     if (state === "too_large") {
       tooLarge.add(path);
       const front = await headMetadata(NodePath.join(ctx.root, ...path.split("/")));
-      const id = front?.id ?? null;
+      // An other file carries no id: in a rebuild, links.json names it by path.
+      const linkedId = kindOfPath(path) === "other" ? (idByLinkedPath.get(path) ?? null) : null;
+      const id = front?.id ?? linkedId;
       if (id !== null && !tooLargeIds.has(id)) {
+        const linked = linkedId === null ? undefined : linksFile?.artifacts[linkedId];
         tooLargeIds.set(id, path);
         tooLargeTitles.set(
           id,
-          front?.title?.trim() || NodePath.basename(path, NodePath.extname(path)),
+          front?.title?.trim() ||
+            linked?.title?.trim() ||
+            NodePath.basename(path, NodePath.extname(path)),
         );
+        if (linked?.tags) tooLargeTags.set(id, linked.tags);
       }
     }
     if (state === null || state === "too_large") continue;
@@ -557,7 +564,7 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
       size: -1,
       mtime: -1,
       bodyText: "",
-      tags: [],
+      tags: [...(tooLargeTags.get(id) ?? [])],
     });
   }
 

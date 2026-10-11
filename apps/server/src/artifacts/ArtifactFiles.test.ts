@@ -190,6 +190,15 @@ describe("HTML metadata", () => {
     });
     expect(htmlTitle("<head><title> A &amp; B </title></head>")).toBe("A & B");
     expect(htmlTitle("<p>no title</p>")).toBeNull();
+    // A tag containing a comma reads back as one tag.
+    const tags = ["a, b", "c", 'q"&'];
+    const html = renderHtmlFile({
+      id: "01J0000000000000000000000A",
+      title: "T",
+      tags,
+      body: "<p/>",
+    });
+    expect(parseHtmlFile(html).frontMatter?.tags).toEqual(tags);
     // Out of Unicode, and a surrogate: U+FFFD as in a browser, not a RangeError.
     expect(htmlTitle("<title>a &#999999999; b &#xD800;</title>")).toBe("a \uFFFD b \uFFFD");
   });
