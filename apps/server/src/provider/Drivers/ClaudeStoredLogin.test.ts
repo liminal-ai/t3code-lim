@@ -80,6 +80,12 @@ describe("claudeEnvAuth", () => {
     expect(claudeEnvAuth({ ANTHROPIC_BASE_URL: "http://127.0.0.1:8317" })).toBe(true);
     expect(claudeEnvAuth({ ANTHROPIC_AUTH_TOKEN: "t" })).toBe(true);
     expect(claudeEnvAuth({ CLAUDE_CODE_USE_BEDROCK: "1" })).toBe(true);
+    expect(claudeEnvAuth({ CLAUDE_CODE_USE_VERTEX: "true" })).toBe(true);
+  });
+
+  it("leaves a cloud backend that's switched off to the stored login", () => {
+    expect(claudeEnvAuth({ CLAUDE_CODE_USE_BEDROCK: "0" })).toBe(false);
+    expect(claudeEnvAuth({ CLAUDE_CODE_USE_VERTEX: "false" })).toBe(false);
   });
 });
 

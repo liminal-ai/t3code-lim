@@ -22,9 +22,11 @@ const ENV_AUTH_KEYS = [
   "ANTHROPIC_AUTH_TOKEN",
   "CLAUDE_CODE_OAUTH_TOKEN",
   "ANTHROPIC_BASE_URL",
-  "CLAUDE_CODE_USE_BEDROCK",
-  "CLAUDE_CODE_USE_VERTEX",
 ] as const;
+/** Flags: only a true value turns a cloud backend on (`=0` or `=false` leaves it off). */
+const ENV_AUTH_FLAGS = ["CLAUDE_CODE_USE_BEDROCK", "CLAUDE_CODE_USE_VERTEX"] as const;
+const flagOn = (value: string | undefined): boolean =>
+  ["1", "true", "yes", "on"].includes(value?.trim().toLowerCase() ?? "");
 
 /**
  * Whether the active credential is the stored subscription login (`/login`),
@@ -43,7 +45,8 @@ export const usesStoredSubscriptionLogin = (input: {
   (input.apiKeySource === undefined || input.apiKeySource === "none");
 
 export const claudeEnvAuth = (environment: NodeJS.ProcessEnv): boolean =>
-  ENV_AUTH_KEYS.some((key) => (environment[key]?.trim() ?? "").length > 0);
+  ENV_AUTH_KEYS.some((key) => (environment[key]?.trim() ?? "").length > 0) ||
+  ENV_AUTH_FLAGS.some((key) => flagOn(environment[key]));
 
 const token = (value: unknown): boolean => typeof value === "string" && value.trim().length > 0;
 /**
