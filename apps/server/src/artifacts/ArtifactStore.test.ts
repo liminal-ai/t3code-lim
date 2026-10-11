@@ -384,6 +384,20 @@ describe("ArtifactStore", () => {
     expect(commitCount(store.root)).toBe(commits + 1);
   });
 
+  it("leaves a dropped-in HTML file alone when its metadata would push it over 10 MB", async () => {
+    const dir = tempStoreDir();
+    (await ArtifactStore.open(dir)).close();
+    const shell = "<html><head><title>Edge</title></head><body></body></html>";
+    const text = shell.replace("<body>", `<body>${"x".repeat(10 * 1024 * 1024 - shell.length)}`);
+    const absolute = NodePath.join(dir, "edge.html");
+    NodeFS.writeFileSync(absolute, text);
+    const store = await openStore(dir);
+    expect(NodeFS.readFileSync(absolute, "utf8")).toBe(text);
+    const edge = (await store.list()).find((entry) => entry.path === "edge.html");
+    expect(edge?.title).toBe("Edge");
+    expect((await store.read(edge!.id)).artifact.path).toBe("edge.html");
+  });
+
   it("opens with an HTML file whose title has an out-of-range numeric entity", async () => {
     const dir = tempStoreDir();
     (await ArtifactStore.open(dir)).close();

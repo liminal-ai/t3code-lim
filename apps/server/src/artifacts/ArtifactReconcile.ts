@@ -300,16 +300,22 @@ const indexFile = async (
     previous?.title ||
     (kind === "md" ? firstHeading(parsed.body) : htmlTitle(parsed.body)) ||
     stem;
-  if (parsed.frontMatter?.id !== id) {
+  const rendered =
+    parsed.frontMatter?.id === id
+      ? null
+      : renderTextArtifact(kind, {
+          id,
+          title,
+          tags: parsed.frontMatter?.tags ?? [],
+          extra: parsed.frontMatter?.extra,
+          body: parsed.body,
+        });
+  // A file within the limit whose metadata would push it over is left as it
+  // is: it stays indexed by its path, rather than being made too large to open.
+  if (rendered !== null && Buffer.byteLength(rendered) <= maxArtifactBytes(kind)) {
     await writeFileAtomically(
       absolute,
-      renderTextArtifact(kind, {
-        id,
-        title,
-        tags: parsed.frontMatter?.tags ?? [],
-        extra: parsed.frontMatter?.extra,
-        body: parsed.body,
-      }),
+      rendered,
       // Don't overwrite a save that landed since the read: refuse, and the
       // next access reconciles the newer file.
       () => {
