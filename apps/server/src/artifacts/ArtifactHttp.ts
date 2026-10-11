@@ -121,6 +121,7 @@ const STATUS: Record<ArtifactStoreError["code"], number> = {
   invalid_path: 400,
   too_large: 413,
   unavailable: 503,
+  forbidden: 403,
 };
 
 const httpError = (status: number, code: string, message: string) =>
