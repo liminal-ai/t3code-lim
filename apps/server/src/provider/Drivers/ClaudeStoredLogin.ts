@@ -5,7 +5,10 @@
 // the stored login. Env and proxy auth don't use that file.
 import * as Effect from "effect/Effect";
 import * as FileSystem from "effect/FileSystem";
+import * as Option from "effect/Option";
 import * as Path from "effect/Path";
+import * as Schema from "effect/Schema";
+import { fromLenientJson } from "@t3tools/shared/schemaJson";
 
 /**
  * - `env`: an API key, auth token, base URL (a proxy such as cliproxy) or a
@@ -49,19 +52,20 @@ export const claudeEnvAuth = (environment: NodeJS.ProcessEnv): boolean =>
   ENV_AUTH_KEYS.some((key) => (environment[key]?.trim() ?? "").length > 0) ||
   ENV_AUTH_FLAGS.some((key) => flagOn(environment[key]));
 
-/** The string values of a Claude settings.json `env` block; {} if there's none. */
+// Lenient, as upstream reads these files (ClaudeSkills.ts): the CLI accepts
+// comments and trailing commas in them.
+const decodeSettingsEnv = Schema.decodeUnknownOption(
+  fromLenientJson(
+    Schema.Struct({ env: Schema.optional(Schema.Record(Schema.String, Schema.Unknown)) }),
+  ),
+);
+
+/** The string values of a Claude settings file's `env` block; {} if there's none. */
 export function settingsEnv(text: string): NodeJS.ProcessEnv {
-  try {
-    const env = (JSON.parse(text) as { env?: unknown } | null)?.env;
-    if (env === null || typeof env !== "object") return {};
-    return Object.fromEntries(
-      Object.entries(env).filter(
-        (entry): entry is [string, string] => typeof entry[1] === "string",
-      ),
-    );
-  } catch {
-    return {};
-  }
+  const env = Option.getOrUndefined(decodeSettingsEnv(text))?.env ?? {};
+  return Object.fromEntries(
+    Object.entries(env).filter((entry): entry is [string, string] => typeof entry[1] === "string"),
+  );
 }
 
 const token = (value: unknown): boolean => typeof value === "string" && value.trim().length > 0;

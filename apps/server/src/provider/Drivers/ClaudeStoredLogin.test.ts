@@ -125,4 +125,12 @@ describe("settingsEnv", () => {
     expect(settingsEnv(JSON.stringify({ model: "x" }))).toEqual({});
     expect(settingsEnv("{not json")).toEqual({});
   });
+
+  it("accepts the comments and trailing commas the CLI accepts", () => {
+    const text = `{
+      // proxy for this home
+      "env": { "ANTHROPIC_BASE_URL": "http://127.0.0.1:8317", },
+    }`;
+    expect(claudeEnvAuth(settingsEnv(text))).toBe(true);
+  });
 });
