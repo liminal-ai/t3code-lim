@@ -46,8 +46,15 @@ export const claudeEnvAuth = (environment: NodeJS.ProcessEnv): boolean =>
   ENV_AUTH_KEYS.some((key) => (environment[key]?.trim() ?? "").length > 0);
 
 const token = (value: unknown): boolean => typeof value === "string" && value.trim().length > 0;
-/** Unset or 0 means the file gives no expiry for that token. */
-const unexpired = (expiresAt: unknown, nowMs: number): boolean =>
+/**
+ * The access token's `expiresAt`: unset means none given, but a number, 0
+ * included, is a time; Claude reads 0 as the epoch and reports "Login expired"
+ * (anthropics/claude-code#83834).
+ */
+const accessUnexpired = (expiresAt: unknown, nowMs: number): boolean =>
+  typeof expiresAt !== "number" || expiresAt > nowMs;
+/** `refreshTokenExpiresAt` unset or 0 means none given. */
+const refreshUnexpired = (expiresAt: unknown, nowMs: number): boolean =>
   typeof expiresAt !== "number" || expiresAt <= 0 || expiresAt > nowMs;
 
 export function classifyClaudeCredentials(text: string, nowMs: number): ClaudeStoredLogin {
@@ -63,8 +70,9 @@ export function classifyClaudeCredentials(text: string, nowMs: number): ClaudeSt
       : undefined;
   if (oauth === null || typeof oauth !== "object") return "unknown";
   const login = oauth as Record<string, unknown>;
-  if (token(login.accessToken) && unexpired(login.expiresAt, nowMs)) return "present";
-  if (token(login.refreshToken) && unexpired(login.refreshTokenExpiresAt, nowMs)) return "present";
+  if (token(login.accessToken) && accessUnexpired(login.expiresAt, nowMs)) return "present";
+  if (token(login.refreshToken) && refreshUnexpired(login.refreshTokenExpiresAt, nowMs))
+    return "present";
   return token(login.accessToken) || token(login.refreshToken) ? "expired" : "empty";
 }
 

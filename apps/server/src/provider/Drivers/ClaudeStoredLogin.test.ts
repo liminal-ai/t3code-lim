@@ -37,6 +37,19 @@ describe("classifyClaudeCredentials", () => {
     ).toBe("present");
   });
 
+  it("reads an access token's expiresAt of 0 as the epoch, not as no expiry", () => {
+    // anthropics/claude-code#83834: Claude reports "Login expired" for this file.
+    expect(classifyClaudeCredentials(login({ accessToken: "a", expiresAt: 0 }), NOW)).toBe(
+      "expired",
+    );
+    expect(
+      classifyClaudeCredentials(
+        login({ accessToken: "a", expiresAt: 0, refreshToken: "r", refreshTokenExpiresAt: 0 }),
+        NOW,
+      ),
+    ).toBe("present");
+  });
+
   it("calls tokens that have all run out expired", () => {
     expect(classifyClaudeCredentials(login({ accessToken: "a", expiresAt: NOW - 1 }), NOW)).toBe(
       "expired",
