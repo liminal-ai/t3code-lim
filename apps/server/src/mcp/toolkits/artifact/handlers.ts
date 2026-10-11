@@ -40,7 +40,15 @@ const storeCall = <A>(run: (store: ArtifactStore) => Promise<A>) =>
   Effect.gen(function* () {
     const handle = yield* ArtifactStoreHandle;
     const store = yield* handle.store.pipe(Effect.mapError(toFailure));
-    return yield* Effect.tryPromise({ try: () => run(store), catch: toFailure });
+    return yield* Effect.tryPromise<A, unknown>({ try: () => run(store), catch: (e) => e }).pipe(
+      Effect.catchAll((error) => {
+        const failure = toFailure(error);
+        // Log only unexpected failures that aren't already mapped store/path errors or MCP failures.
+        return error instanceof ArtifactStoreError || error instanceof ArtifactPathError || isMcpFailure(error)
+          ? Effect.fail(failure)
+          : Effect.logError("artifact store request failed", { cause: error }).pipe(Effect.fail(failure));
+      }),
+    );
   });
 
 /** The calling thread, as the actor its edits are attributed to (author: its title). */
@@ -134,33 +142,28 @@ export const handlers = {
       return yield* storeCall((store) => store.applyOps(input.id, input.ops, actor));
     }),
   ),
-  artifact_attach: McpToolAccess.writesThreads(
-    (input) => [input.threadId],
-    (input) =>
-      Effect.gen(function* () {
-        const { threadId, actor } = yield* callerActor;
-        const target = yield* targetThread(input.threadId, threadId);
-        const { artifact } = yield* readArtifact(input.id);
-        yield* requireWrite(artifact, threadId, "attach");
-        const updated = yield* storeCall((store) =>
-          store.attach(input.id, target, input.access ?? "write", actor),
-        );
-        return { artifact: updated };
-      }),
+  artifact_attach: McpToolAccess.actsAsCaller((input) =>
+    Effect.gen(function* () {
+      const { threadId, actor } = yield* callerActor;
+      const target = yield* targetThread(input.threadId, threadId);
+      const { artifact } = yield* readArtifact(input.id);
+      yield* requireWrite(artifact, threadId, "attach");
+      const updated = yield* storeCall((store) =>
+        store.attach(input.id, target, input.access ?? "write", actor),
+      );
+      return { artifact: updated };
+    }),
   ),
-  artifact_detach: McpToolAccess.writesThreads(
-    (input) => [input.threadId],
-    (input) =>
-      Effect.gen(function* () {
-        const { threadId, actor } = yield* callerActor;
-        const target = yield* targetThread(input.threadId, threadId);
-        const { artifact } = yield* readArtifact(input.id);
-        // A thread may always leave an artifact; detaching others needs write.
-        if (target !== threadId)
-          yield* requireWrite(artifact, threadId, "detach other threads from");
-        const updated = yield* storeCall((store) => store.detach(input.id, target, actor));
-        return { artifact: updated };
-      }),
+  artifact_detach: McpToolAccess.actsAsCaller((input) =>
+    Effect.gen(function* () {
+      const { threadId, actor } = yield* callerActor;
+      const target = yield* targetThread(input.threadId, threadId);
+      const { artifact } = yield* readArtifact(input.id);
+      // A thread may always leave an artifact; detaching others needs write.
+      if (target !== threadId) yield* requireWrite(artifact, threadId, "detach other threads from");
+      const updated = yield* storeCall((store) => store.detach(input.id, target, actor));
+      return { artifact: updated };
+    }),
   ),
 } satisfies McpToolAccess.Handlers<typeof ArtifactToolkit.tools>;
 
