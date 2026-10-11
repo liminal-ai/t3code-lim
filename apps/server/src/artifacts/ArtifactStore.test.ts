@@ -901,6 +901,19 @@ describe("ArtifactStore content types", () => {
     expect(back?.links.map((link) => link.threadId)).toEqual(["thread-a"]);
   });
 
+  it("reads only a requested slice of a file for a view", async () => {
+    const store = await openStore(tempStoreDir());
+    const bytes = Uint8Array.from({ length: 64 }, (_, i) => i);
+    const { artifact } = await store.create({ title: "Clip", name: "clip.mp4", bytes }, LEE);
+    const part = await store.view(artifact.id, () => ({ start: 10, end: 12 }));
+    expect(part.slice).toEqual({ start: 10, end: 12 });
+    expect([...(part.content as Uint8Array)]).toEqual([10, 11, 12]);
+    const none = await store.view(artifact.id, () => "unsatisfiable");
+    expect(none.slice).toBe("unsatisfiable");
+    expect((none.content as Uint8Array).length).toBe(0);
+    expect((await store.view(artifact.id)).content).toEqual(Buffer.from(bytes));
+  });
+
   it("sends a text file over 1 MB through a view link, not inline", async () => {
     const store = await openStore(tempStoreDir());
     const small = await store.create({ title: "Small", name: "small.csv", content: "a,b\n" }, LEE);

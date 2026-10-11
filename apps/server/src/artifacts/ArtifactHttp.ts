@@ -524,8 +524,12 @@ const viewHandler = Effect.gen(function* () {
       : viewFailure(404, "This link doesn't open anything.");
   }
   const handle = yield* ArtifactStoreHandle;
+  // Files answer byte ranges (media seeking), read from disk as a slice.
+  const rangeHeader = request.headers["range"];
   const viewed = yield* handle.store.pipe(
-    Effect.flatMap((store) => call(() => store.view(resolved.artifactId))),
+    Effect.flatMap((store) =>
+      call(() => store.view(resolved.artifactId, (size) => byteRange(rangeHeader, size))),
+    ),
     Effect.map((result) => ({ ok: true as const, result })),
     Effect.catch((error: ArtifactStoreError | ArtifactHttpError) =>
       Effect.succeed({
@@ -545,26 +549,25 @@ const viewHandler = Effect.gen(function* () {
   const { "Content-Type": contentType, ...rest } = headers;
   if (typeof body === "string")
     return HttpServerResponse.text(body, { headers: rest, contentType });
-  // Files answer byte ranges, so audio and video can seek.
-  const range = byteRange(request.headers["range"], body.length);
-  if (range === "unsatisfiable") {
+  const { slice, artifact } = viewed.result;
+  if (slice === "unsatisfiable") {
     return HttpServerResponse.empty({
       status: 416,
-      headers: { ...rest, "Accept-Ranges": "bytes", "Content-Range": `bytes */${body.length}` },
+      headers: { ...rest, "Accept-Ranges": "bytes", "Content-Range": `bytes */${artifact.size}` },
     });
   }
-  if (range === null) {
+  if (slice === undefined) {
     return HttpServerResponse.uint8Array(body, {
       headers: { ...rest, "Accept-Ranges": "bytes" },
       contentType,
     });
   }
-  return HttpServerResponse.uint8Array(body.subarray(range.start, range.end + 1), {
+  return HttpServerResponse.uint8Array(body, {
     status: 206,
     headers: {
       ...rest,
       "Accept-Ranges": "bytes",
-      "Content-Range": `bytes ${range.start}-${range.end}/${body.length}`,
+      "Content-Range": `bytes ${slice.start}-${slice.end}/${artifact.size}`,
     },
     contentType,
   });

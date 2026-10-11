@@ -119,9 +119,29 @@ export interface ReadResult {
 }
 
 /** What a view link serves: markdown or HTML without its metadata, other files' bytes. */
+/** Inclusive byte offsets into a file. */
+export interface ByteSlice {
+  readonly start: number;
+  readonly end: number;
+}
+
+/** Reads `part` of an open file, without reading the rest. */
+const readSlice = (fd: number, part: ByteSlice): Buffer => {
+  const buffer = Buffer.alloc(part.end - part.start + 1);
+  let offset = 0;
+  while (offset < buffer.length) {
+    const read = NodeFS.readSync(fd, buffer, offset, buffer.length - offset, part.start + offset);
+    if (read === 0) break;
+    offset += read;
+  }
+  return buffer.subarray(0, offset);
+};
+
 export interface ViewResult {
   readonly artifact: LimArtifactSummary;
+  /** With a slice, only those bytes; nothing when the slice is unsatisfiable. */
   readonly content: string | Uint8Array;
+  readonly slice?: ByteSlice | "unsatisfiable";
 }
 
 export interface OpsResult {
@@ -439,12 +459,27 @@ export class ArtifactStore {
   }
 
   /** What `/a/<token>` serves: markdown or HTML without its metadata, other files' bytes. */
-  view(id: string): Promise<ViewResult> {
+  /**
+   * `slice`, given the file's size, picks the bytes of an other file to read
+   * (a media seek's range), so a 50 MB file isn't read whole for each one.
+   */
+  view(
+    id: string,
+    slice?: (size: number) => ByteSlice | "unsatisfiable" | null,
+  ): Promise<ViewResult> {
     return this.serializer.run(async () => {
-      const { row, bytes } = await this.currentBytes(id, () => true);
+      const { row, bytes, part } = await this.currentBytes(
+        id,
+        () => true,
+        (row) => (row.kind === "other" && slice ? slice(row.size) : null),
+      );
+      if (part === "unsatisfiable") {
+        return { artifact: this.summary(row), content: new Uint8Array(0), slice: part };
+      }
       return {
         artifact: this.summary(row),
         content: row.kind === "other" ? bytes! : this.contentOf(row, bytes!),
+        ...(part ? { slice: part } : {}),
       };
     });
   }
@@ -467,11 +502,17 @@ export class ArtifactStore {
   private async currentBytes(
     id: string,
     wanted: (row: ArtifactRow) => boolean,
-  ): Promise<{ row: ArtifactRow; bytes: Buffer | null }> {
+    slice?: (row: ArtifactRow) => ByteSlice | "unsatisfiable" | null,
+  ): Promise<{ row: ArtifactRow; bytes: Buffer | null; part: ByteSlice | "unsatisfiable" | null }> {
     for (let attempt = 1; attempt <= 3; attempt++) {
       const row = await this.current(id);
-      const bytes = this.readIfUnchanged(row, wanted(row));
-      if (bytes !== null) return { row, bytes: bytes === "unread" ? null : bytes };
+      const part = slice?.(row) ?? null;
+      const bytes = this.readIfUnchanged(
+        row,
+        wanted(row) && part !== "unsatisfiable",
+        part === "unsatisfiable" ? null : part,
+      );
+      if (bytes !== null) return { row, bytes: bytes === "unread" ? null : bytes, part };
     }
     throw new ArtifactStoreError("unavailable", "the file keeps changing outside T3; try again");
   }
@@ -480,13 +521,17 @@ export class ArtifactStore {
    * The file's bytes, read through one handle, or null when the file no longer
    * matches the row ("unread" when it matches and its bytes weren't wanted).
    */
-  private readIfUnchanged(row: ArtifactRow, read: boolean): Buffer | "unread" | null {
+  private readIfUnchanged(
+    row: ArtifactRow,
+    read: boolean,
+    part: ByteSlice | null = null,
+  ): Buffer | "unread" | null {
     const fd = NodeFS.openSync(NodePath.join(this.root, ...row.path.split("/")), "r");
     try {
       const stat = NodeFS.fstatSync(fd);
       if (stat.size !== row.size || stat.mtimeMs !== row.mtime) return null;
       if (!read) return "unread";
-      const bytes = NodeFS.readFileSync(fd);
+      const bytes = part === null ? NodeFS.readFileSync(fd) : readSlice(fd, part);
       const after = NodeFS.fstatSync(fd);
       if (after.size !== stat.size || after.mtimeMs !== stat.mtimeMs) return null;
       return bytes;
