@@ -191,22 +191,30 @@ export type TextArtifactKind = "md" | "html";
 const HTML_META_LINE = /^\uFEFF?<!--[ \t]*t3-artifact\b([^\n]*?)-->[ \t]*(?:\r?\n|$)/;
 const HTML_ATTRIBUTE = /([a-zA-Z][a-zA-Z0-9-]*)[ \t]*=[ \t]*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g;
 
-/**
- * A numeric reference outside Unicode, or a surrogate, decodes to U+FFFD as
- * in a browser; String.fromCodePoint would throw, and a startup scan reading
- * such a title would fail to open the store.
- */
-const codePoint = (value: number) =>
-  Number.isInteger(value) && value > 0 && value <= 0x10ffff && (value < 0xd800 || value > 0xdfff)
-    ? String.fromCodePoint(value)
-    : "\uFFFD";
-
 const decodeEntities = (text: string) =>
   text.replace(
     /&(quot|apos|lt|gt|amp|#(\d+)|#x([0-9a-f]+));/gi,
     (match, name: string, dec, hex) => {
-      if (dec) return codePoint(Number(dec));
-      if (hex) return codePoint(Number.parseInt(hex, 16));
+      if (dec || hex) {
+        const value = dec ? Number(dec) : Number.parseInt(hex!, 16);
+        // Guard against invalid Unicode code points and non-finite values.
+        // HTML numeric character references outside the scalar range or in the
+        // surrogate range are replaced with U+FFFD.
+        if (
+          !Number.isFinite(value) ||
+          !Number.isInteger(value) ||
+          value < 0 ||
+          value > 0x10ffff ||
+          (value >= 0xd800 && value <= 0xdfff)
+        ) {
+          return "\uFFFD";
+        }
+        try {
+          return String.fromCodePoint(value);
+        } catch {
+          return "\uFFFD";
+        }
+      }
       const named: Record<string, string> = { quot: '"', apos: "'", lt: "<", gt: ">", amp: "&" };
       return named[name.toLowerCase()] ?? match;
     },
