@@ -16,6 +16,7 @@ import { Route as PairRouteImport } from './routes/pair'
 import { Route as ConnectAgentRouteImport } from './routes/connect-agent'
 import { Route as ConnectRouteImport } from './routes/connect'
 import { Route as CommsRouteImport } from './routes/comms'
+import { Route as ArtifactsRouteImport } from './routes/artifacts'
 import { Route as ChatRouteImport } from './routes/_chat'
 import { Route as ChatIndexRouteImport } from './routes/_chat.index'
 import { Route as SettingsStorageRouteImport } from './routes/settings.storage'
@@ -71,6 +72,11 @@ const ConnectRoute = ConnectRouteImport.update({
 const CommsRoute = CommsRouteImport.update({
   id: '/comms',
   path: '/comms',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ArtifactsRoute = ArtifactsRouteImport.update({
+  id: '/artifacts',
+  path: '/artifacts',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ChatRoute = ChatRouteImport.update({
@@ -183,6 +189,7 @@ const ChatEnvironmentIdThreadIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof ChatIndexRoute
+  '/artifacts': typeof ArtifactsRoute
   '/comms': typeof CommsRoute
   '/connect': typeof ConnectRoute
   '/connect-agent': typeof ConnectAgentRoute
@@ -211,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/group-chats/$conversationId': typeof ChatGroupChatsConversationIdRoute
 }
 export interface FileRoutesByTo {
+  '/artifacts': typeof ArtifactsRoute
   '/comms': typeof CommsRoute
   '/connect': typeof ConnectRoute
   '/connect-agent': typeof ConnectAgentRoute
@@ -242,6 +250,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_chat': typeof ChatRouteWithChildren
+  '/artifacts': typeof ArtifactsRoute
   '/comms': typeof CommsRoute
   '/connect': typeof ConnectRoute
   '/connect-agent': typeof ConnectAgentRoute
@@ -274,6 +283,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/artifacts'
     | '/comms'
     | '/connect'
     | '/connect-agent'
@@ -302,6 +312,7 @@ export interface FileRouteTypes {
     | '/group-chats/$conversationId'
   fileRoutesByTo: FileRoutesByTo
   to:
+    | '/artifacts'
     | '/comms'
     | '/connect'
     | '/connect-agent'
@@ -332,6 +343,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_chat'
+    | '/artifacts'
     | '/comms'
     | '/connect'
     | '/connect-agent'
@@ -363,6 +375,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
+  ArtifactsRoute: typeof ArtifactsRoute
   CommsRoute: typeof CommsRoute
   ConnectRoute: typeof ConnectRoute
   ConnectAgentRoute: typeof ConnectAgentRoute
@@ -422,6 +435,13 @@ declare module '@tanstack/react-router' {
       path: '/comms'
       fullPath: '/comms'
       preLoaderRoute: typeof CommsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/artifacts': {
+      id: '/artifacts'
+      path: '/artifacts'
+      fullPath: '/artifacts'
+      preLoaderRoute: typeof ArtifactsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_chat': {
@@ -632,6 +652,7 @@ const SettingsRouteWithChildren = SettingsRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
+  ArtifactsRoute: ArtifactsRoute,
   CommsRoute: CommsRoute,
   ConnectRoute: ConnectRoute,
   ConnectAgentRoute: ConnectAgentRoute,
