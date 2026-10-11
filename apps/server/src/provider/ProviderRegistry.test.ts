@@ -2,7 +2,7 @@ import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as CodexInstallation from "./CodexInstallation.ts";
 import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { describe, it, assert, expect } from "@effect/vitest";
+import { afterAll, beforeAll, describe, it, assert, expect } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
@@ -3083,6 +3083,16 @@ it.layer(
   // ── checkClaudeProviderStatus tests ──────────────────────────
 
   describe("checkClaudeProviderStatus", () => {
+    // Fork (lim): the probe reads the stored Claude login; these tests mustn't see the developer's own.
+    const inheritedClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
+    beforeAll(() => {
+      process.env.CLAUDE_CONFIG_DIR = "/nonexistent/t3-claude-status-tests";
+    });
+    afterAll(() => {
+      if (inheritedClaudeConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR;
+      else process.env.CLAUDE_CONFIG_DIR = inheritedClaudeConfigDir;
+    });
+
     it.effect("returns ready when claude is installed and authenticated", () =>
       Effect.gen(function* () {
         const status = yield* checkClaudeProviderStatus(
@@ -3160,6 +3170,7 @@ it.layer(
           assert.strictEqual(signedOut.status, "error");
           assert.strictEqual(signedOut.auth.status, "unauthenticated");
           assert.include(signedOut.message ?? "", "no tokens");
+          assert.include(signedOut.message ?? "", dir);
 
           const proxied = yield* checkClaudeProviderStatus(
             defaultClaudeSettings,

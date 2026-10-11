@@ -618,7 +618,16 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
           version: parsedVersion,
           status: "error",
           auth: { status: "unauthenticated" },
-          message: `Claude's stored login has ${login === "empty" ? "no tokens" : "only expired tokens"}. ${claudeSignedOutMessage({ configDir: resolvedEnvironment.CLAUDE_CONFIG_DIR?.trim() || undefined, cwd: cwd ?? process.cwd() })}`,
+          message: `Claude's stored login has ${login === "empty" ? "no tokens" : "only expired tokens"}. ${claudeSignedOutMessage(
+            {
+              // A custom home (settings or inherited env) must be named, or the hint logs in to the default one.
+              configDir:
+                claudeSettings.homePath.trim() || resolvedEnvironment.CLAUDE_CONFIG_DIR?.trim()
+                  ? configDir
+                  : undefined,
+              cwd: cwd ?? process.cwd(),
+            },
+          )}`,
         },
       });
     }
