@@ -61,7 +61,10 @@ export type T3McpToolSummaryAction =
   | "browser"
   | "device"
   | "html-preview"
-  | "html-render";
+  | "html-render"
+  // Fork seam (artifacts)
+  | "artifact-read"
+  | "artifact-write";
 
 export interface T3McpToolDefinition {
   readonly displayName: string;
@@ -315,6 +318,13 @@ const T3_MCP_TOOLS: Readonly<Record<string, T3McpToolDefinition>> = {
   t3_thread_send_attachments: tool(["Send", "Sending", "Sent", "attachments"], "attachment-send"),
   html_preview: tool(["Preview", "Previewing", "Previewed", "an HTML page"], "html-preview"),
   html_render: tool(["Render", "Rendering", "Rendered", "an HTML page"], "html-render"),
+  // Fork seam (artifacts): the artifact_* tools.
+  artifact_list: tool(["List", "Listing", "Listed", "artifacts"], "artifact-read"),
+  artifact_read: tool(["Read", "Reading", "Read", "an artifact"], "artifact-read"),
+  artifact_create: tool(["Create", "Creating", "Created", "an artifact"], "artifact-write"),
+  artifact_patch: tool(["Edit", "Editing", "Edited", "a list"], "artifact-write"),
+  artifact_attach: tool(["Attach", "Attaching", "Attached", "an artifact"], "artifact-write"),
+  artifact_detach: tool(["Detach", "Detaching", "Detached", "an artifact"], "artifact-write"),
 };
 
 /**

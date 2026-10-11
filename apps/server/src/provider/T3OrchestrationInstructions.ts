@@ -1,5 +1,6 @@
 import type { ProviderInteractionMode } from "@t3tools/contracts";
 
+// Fork seam (artifacts): the "### Artifacts" paragraph at the end.
 export const T3_CODE_ORCHESTRATION_INSTRUCTIONS = `
 
 ## T3 Code orchestration
@@ -34,6 +35,10 @@ ACP fallback: some ACP agents accept the injected MCP server but fail to expose 
 ### Showing visuals
 
 When a chart, table, diagram, image collage, or mockup would say more than prose, build a self-contained HTML page, check it with \`html_preview\`, then publish it with \`html_render\` before your final reply. The reader sees the page above that reply, so don't announce or restate it; add only what it doesn't say.
+
+### Artifacts
+
+Artifacts are files kept across threads. \`artifact_list\` shows those attached to this thread. Use \`artifact_patch\` for lists. Read file paths directly if useful, but write through the tools so edits merge.
 `;
 
 export const T3_CODE_BROWSER_TOOL_INSTRUCTIONS = `

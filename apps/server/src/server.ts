@@ -679,7 +679,7 @@ const layerMakeRoutes = Layer.mergeAll(
     DeviceHubProxy.layer,
     CommsProxy.layer,
     // Fork seam (artifacts): the /api/artifacts routes.
-    ArtifactHttp.layer,
+    ArtifactHttp.routeLayer,
     ServerBrowserStream.routeLayer,
     ServerHttp.layerStaticAndDevRoute,
     Ws.layer,
@@ -694,6 +694,8 @@ const layerMakeRoutes = Layer.mergeAll(
     Layer.provide(McpOAuth.layerMcpClientAuthenticator),
   ),
 ).pipe(
+  // Fork seam (artifacts): the HTTP routes and the MCP artifact tools share one open store.
+  Layer.provide(ArtifactHttp.layerStoreHandle),
   // Both transports consume the same service instance, so caches single-flight across clients
   // and mutations observed on WebSocket invalidate patches subsequently read over HTTP.
   Layer.provide(layerPullRequestService),

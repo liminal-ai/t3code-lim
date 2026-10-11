@@ -404,6 +404,13 @@ export function summarizeT3ToolCalls(
     case "html-render":
       label = phrase("Rendered", "render", quantity(selected.length, "HTML page"));
       break;
+    // Fork seam (artifacts)
+    case "artifact-read":
+      label = phrase("Read", "read", `artifacts ${times}`);
+      break;
+    case "artifact-write":
+      label = phrase("Edited", "edit", `artifacts ${times}`);
+      break;
     case "capabilities":
       label = phrase("Checked", "check", `orchestration capabilities ${times}`);
       break;
