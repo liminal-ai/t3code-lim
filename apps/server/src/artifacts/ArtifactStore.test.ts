@@ -384,6 +384,18 @@ describe("ArtifactStore", () => {
     expect(commitCount(store.root)).toBe(commits + 1);
   });
 
+  it("opens with an HTML file whose title has an out-of-range numeric entity", async () => {
+    const dir = tempStoreDir();
+    (await ArtifactStore.open(dir)).close();
+    NodeFS.writeFileSync(
+      NodePath.join(dir, "odd.html"),
+      "<html><head><title>Odd &#999999999;</title></head><body></body></html>\n",
+    );
+    const store = await openStore(dir);
+    const listed = await store.list();
+    expect(listed.find((entry) => entry.path === "odd.html")?.title).toBe("Odd \uFFFD");
+  });
+
   it("adopts new files and commits edits made while the server was down", async () => {
     const dir = tempStoreDir();
     const first = await ArtifactStore.open(dir);

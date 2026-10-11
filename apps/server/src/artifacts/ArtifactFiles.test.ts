@@ -190,6 +190,8 @@ describe("HTML metadata", () => {
     });
     expect(htmlTitle("<head><title> A &amp; B </title></head>")).toBe("A & B");
     expect(htmlTitle("<p>no title</p>")).toBeNull();
+    // Out of Unicode, and a surrogate: U+FFFD as in a browser, not a RangeError.
+    expect(htmlTitle("<title>a &#999999999; b &#xD800;</title>")).toBe("a \uFFFD b \uFFFD");
   });
 });
 
