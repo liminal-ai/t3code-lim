@@ -168,6 +168,11 @@ describe("fenced code and item details", () => {
     expect(renderList(doc)).not.toContain("example ^");
   });
 
+  it("doesn't close a fence on a line with an info string", () => {
+    const body = "```\n```not-a-close\n- [ ] still code\n```\n- [ ] real\n";
+    expect(listItems(parseList(body)).map((item) => item.text)).toEqual(["real"]);
+  });
+
   it("moves and removes an item with its blank-separated detail paragraphs", () => {
     const body = "- [ ] a ^aa\n  first\n   \n\n  second\n- [ ] b ^bb\n\ntail\n";
     const doc = parseList(body);

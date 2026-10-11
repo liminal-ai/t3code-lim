@@ -9,6 +9,8 @@ const ITEM_ID = /^(.*?)\s*\^([a-z0-9]{2,4})$/;
 const ID_TEXT = /^[a-z0-9]{2,4}$/;
 const INLINE_TAG = /(?:^|\s)#([\p{L}\p{N}_][\p{L}\p{N}_/-]*)/gu;
 const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+/** A closing fence carries no info string: only the fence characters and spaces. */
+const CLOSING_FENCE = /^ {0,3}(`{3,}|~{3,})[ \t]*$/;
 const INDENTED = /^[ \t]+\S/;
 const BLANK = /^\s*$/;
 
@@ -72,7 +74,8 @@ export const parseList = (body: string): ListDocument => {
     const line = lines[index]!;
     const fenceMatch = FENCE.exec(line);
     if (fence !== null) {
-      if (fenceMatch && fenceMatch[1]![0] === fence[0] && fenceMatch[1]!.length >= fence.length) {
+      const closing = CLOSING_FENCE.exec(line);
+      if (closing && closing[1]![0] === fence[0] && closing[1]!.length >= fence.length) {
         fence = null;
       }
       blocks.push({ kind: "text", line });
