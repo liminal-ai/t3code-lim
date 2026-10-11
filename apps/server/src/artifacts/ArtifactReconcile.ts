@@ -145,14 +145,14 @@ const walkMarkdown = async (root: string): Promise<string[]> => {
   return found.sort();
 };
 
-/** The id in a file's front matter, reading only its head (for files too large to read whole). */
-const frontMatterId = async (absolute: string): Promise<string | null> => {
+/** A file's front matter, reading only its head (for files too large to read whole). */
+const headFrontMatter = async (absolute: string) => {
   const handle = await NodeFSP.open(absolute, "r").catch(() => null);
   if (!handle) return null;
   try {
     const head = Buffer.alloc(64 * 1024);
     const { bytesRead } = await handle.read(head, 0, head.length, 0);
-    return parseMarkdownFile(head.subarray(0, bytesRead).toString("utf8")).frontMatter?.id ?? null;
+    return parseMarkdownFile(head.subarray(0, bytesRead).toString("utf8")).frontMatter ?? null;
   } finally {
     await handle.close();
   }
@@ -303,6 +303,7 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
   // Ids in oversized files' front matter, and where those files are now: such
   // an artifact may also have moved, and its id is reserved for it.
   const tooLargeIds = new Map<string, string>();
+  const tooLargeTitles = new Map<string, string>();
   const commitPaths = new Set<string>();
   const events: Array<ArtifactCommitEvent & { revision: string | null }> = [];
 
@@ -311,8 +312,15 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     const state = await readFileState(NodePath.join(ctx.root, ...path.split("/")));
     if (state === "too_large") {
       tooLarge.add(path);
-      const id = await frontMatterId(NodePath.join(ctx.root, ...path.split("/")));
-      if (id !== null && !tooLargeIds.has(id)) tooLargeIds.set(id, path);
+      const front = await headFrontMatter(NodePath.join(ctx.root, ...path.split("/")));
+      const id = front?.id ?? null;
+      if (id !== null && !tooLargeIds.has(id)) {
+        tooLargeIds.set(id, path);
+        tooLargeTitles.set(
+          id,
+          front?.title?.trim() || NodePath.basename(path, NodePath.extname(path)),
+        );
+      }
     }
     if (state === null || state === "too_large") continue;
     files.push({ path, state, fileId: parseMarkdownFile(state.text).frontMatter?.id ?? null });
@@ -362,6 +370,29 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
         revision: row.revision,
       });
     }
+  }
+
+  // An oversized artifact the index doesn't have (it was rebuilt meanwhile)
+  // gets a placeholder row, so its links are restored and kept; its size and
+  // mtime never match, so it answers too_large until the file shrinks.
+  for (const [id, path] of tooLargeIds) {
+    if (seen.has(id) || ctx.index.get(id) || ctx.index.getByPath(path)) continue;
+    const at = ctx.now().toISOString();
+    ctx.index.upsert({
+      id,
+      path,
+      title: tooLargeTitles.get(id) ?? id,
+      kind: "md",
+      state: "kept",
+      createdBy: null,
+      createdAt: at,
+      updatedAt: at,
+      revision: "",
+      size: -1,
+      mtime: -1,
+      bodyText: "",
+      tags: [],
+    });
   }
 
   for (const row of ctx.index.all()) {

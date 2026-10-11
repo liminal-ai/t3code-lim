@@ -446,6 +446,26 @@ describe("ArtifactStore", () => {
     expect(back.artifact.links.map((link) => link.threadId)).toEqual(["thread-a"]);
   });
 
+  it("keeps an oversized artifact's links through an index rebuild", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const { artifact } = await first.create({ title: "Grows" }, LEE);
+    await first.attach(artifact.id, "thread-a", "write", LEE);
+    const root = first.root;
+    first.close();
+    const absolute = NodePath.join(root, artifact.path);
+    const original = NodeFS.readFileSync(absolute, "utf8");
+    NodeFS.appendFileSync(absolute, "x".repeat(10 * 1024 * 1024));
+    NodeFS.rmSync(NodePath.join(root, ".t3", "index.sqlite"));
+    const store = await openStore(dir);
+    expect(file(store, ".t3-meta/links.json")).toContain("thread-a");
+    await expectStoreError(store.read(artifact.id), "too_large");
+    NodeFS.writeFileSync(absolute, original);
+    const back = await store.read(artifact.id);
+    expect(back.artifact.links.map((link) => link.threadId)).toEqual(["thread-a"]);
+    expect(back.artifact.createdBy?.name).toBe("Lee");
+  });
+
   it("names every op's item even when the ops leave the file unchanged", async () => {
     const store = await openStore(tempStoreDir());
     const { artifact, items } = await store.create({ title: "Noop", content: "- [x] a\n" }, LEE);
