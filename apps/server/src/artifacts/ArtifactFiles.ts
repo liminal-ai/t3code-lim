@@ -1,8 +1,10 @@
 // @effect-diagnostics nodeBuiltinImport:off globalDate:off - the artifact store is a Node filesystem and git boundary, outside the Effect runtime.
 // Fork-only (artifacts): files in the store. Paths are confined to the store
 // (no `..`, no absolute paths, no symlinks, nothing under the store's own
-// `.git`, `.t3` or `.t3-meta` or any other dot entry), writes are atomic, and markdown
-// carries its metadata in YAML front matter (`id`, `title`, `tags`).
+// `.git`, `.t3` or `.t3-meta` or any other dot entry), writes are atomic.
+// Markdown carries its metadata in YAML front matter (`id`, `title`, `tags`),
+// HTML in a first-line `<!-- t3-artifact id=… title="…" tags="…" -->` comment;
+// other files carry none (it lives in the index and `.t3-meta/links.json`).
 import * as NodeCrypto from "node:crypto";
 import * as NodeFS from "node:fs";
 import * as NodeFSP from "node:fs/promises";
@@ -183,10 +185,108 @@ export const renderMarkdownFile = (input: {
   return `---\n${stringifyYaml(data).trimEnd()}\n---\n${input.body}`;
 };
 
+/** Markdown or HTML: the file's metadata and its body. */
+export type TextArtifactKind = "md" | "html";
+
+const HTML_META_LINE = /^\uFEFF?<!--[ \t]*t3-artifact\b([^\n]*?)-->[ \t]*(?:\r?\n|$)/;
+const HTML_ATTRIBUTE = /([a-zA-Z][a-zA-Z0-9-]*)[ \t]*=[ \t]*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g;
+
+const decodeEntities = (text: string) =>
+  text.replace(
+    /&(quot|apos|lt|gt|amp|#(\d+)|#x([0-9a-f]+));/gi,
+    (match, name: string, dec, hex) => {
+      if (dec) return String.fromCodePoint(Number(dec));
+      if (hex) return String.fromCodePoint(Number.parseInt(hex, 16));
+      const named: Record<string, string> = { quot: '"', apos: "'", lt: "<", gt: ">", amp: "&" };
+      return named[name.toLowerCase()] ?? match;
+    },
+  );
+
+/** Attribute values are escaped, so a title can never close the comment. */
+const encodeAttribute = (text: string) =>
+  text
+    .replace(/[\r\n]+/g, " ")
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+/** An HTML file's first-line metadata comment, and the document after it. */
+export const parseHtmlFile = (text: string): MarkdownFile => {
+  const match = HTML_META_LINE.exec(text);
+  if (!match) return { frontMatter: null, body: text };
+  const attributes = new Map<string, string>();
+  for (const attribute of match[1]!.matchAll(HTML_ATTRIBUTE)) {
+    const name = attribute[1]!.toLowerCase();
+    if (!attributes.has(name)) {
+      attributes.set(name, decodeEntities(attribute[2] ?? attribute[3] ?? attribute[4] ?? ""));
+    }
+  }
+  const id = attributes.get("id") ?? null;
+  const tags = attributes.get("tags") ?? "";
+  return {
+    frontMatter: {
+      id: id !== null && ULID_PATTERN.test(id) ? id : null,
+      title: attributes.get("title")?.trim() || null,
+      tags: [
+        ...new Set(
+          (tags.includes(",") ? tags.split(",") : tags.split(/\s+/))
+            .map((tag) => tag.trim())
+            .filter(Boolean),
+        ),
+      ],
+      extra: {},
+    },
+    body: text.slice(match[0].length),
+  };
+};
+
+export const renderHtmlFile = (input: {
+  readonly id: string;
+  readonly title: string;
+  readonly tags: ReadonlyArray<string>;
+  readonly body: string;
+}) => {
+  // Tags are comma-separated (a hand-written line may use spaces); a lone tag
+  // with a space keeps a trailing comma so it reads back whole.
+  const joined = input.tags.join(", ");
+  const listed = input.tags.length === 1 && /\s/.test(joined) ? `${joined},` : joined;
+  const tags = input.tags.length > 0 ? ` tags="${encodeAttribute(listed)}"` : "";
+  return `<!-- t3-artifact id=${input.id} title="${encodeAttribute(input.title)}"${tags} -->\n${input.body}`;
+};
+
+/** Markdown front matter or the HTML metadata line, and the body after it. */
+export const parseTextArtifact = (kind: TextArtifactKind, text: string): MarkdownFile =>
+  kind === "md" ? parseMarkdownFile(text) : parseHtmlFile(text);
+
+export const renderTextArtifact = (
+  kind: TextArtifactKind,
+  input: {
+    readonly id: string;
+    readonly title: string;
+    readonly tags: ReadonlyArray<string>;
+    readonly extra?: Readonly<Record<string, unknown>> | undefined;
+    readonly body: string;
+  },
+) => (kind === "md" ? renderMarkdownFile(input) : renderHtmlFile(input));
+
+/** An HTML document's `<title>`, for files adopted without one in their metadata. */
+export const htmlTitle = (body: string) => {
+  const title = /<title(?:\s[^>]*)?>([^<]*)<\/title\s*>/i.exec(body)?.[1];
+  return title ? decodeEntities(title).replace(/\s+/g, " ").trim() || null : null;
+};
+
+/** Search text for an HTML document: its text without tags, scripts or styles. */
+export const htmlSearchText = (body: string) =>
+  body
+    .replace(/<(script|style)\b[\s\S]*?<\/\1\s*>/gi, " ")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 /** The first `# Heading` of a markdown body, for files adopted without a title. */
 export const firstHeading = (body: string) => /^#\s+(.+?)\s*#*\s*$/m.exec(body)?.[1] ?? null;
 
-/** Replaces a file via a temp file in the same directory and a rename. */
 /**
  * Writes through a temp file and a rename. `beforeRename` runs synchronously
  * just before the rename (no await in between), so a precondition checked
@@ -195,7 +295,7 @@ export const firstHeading = (body: string) => /^#\s+(.+?)\s*#*\s*$/m.exec(body)?
  */
 export const writeFileAtomically = async (
   absolute: string,
-  contents: string,
+  contents: string | Uint8Array,
   beforeRename?: () => void,
 ) => {
   const directory = NodePath.dirname(absolute);

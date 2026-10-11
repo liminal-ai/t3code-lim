@@ -1,7 +1,7 @@
 // @effect-diagnostics nodeBuiltinImport:off globalDate:off - the artifact store is a Node filesystem and git boundary, outside the Effect runtime.
 // Fork-only (artifacts): the store. Files plus git under one directory, a
 // rebuildable index beside them, list ops, links to threads, and a change feed
-// for watchers. Every change is one commit; `.t3-meta/links.json` is written in
+// for watchers. Artifacts are markdown, HTML or other files (PR 4). Every change is one commit; `.t3-meta/links.json` is written in
 // the same commit as every attach and detach. Changes are serialized (one
 // writer at a time across the store, so per artifact too, and git's index is
 // never shared between two commits).
@@ -17,16 +17,21 @@ import type {
   LimArtifactListOp,
   LimArtifactSummary,
 } from "@t3tools/contracts";
+import { filePreviewKind } from "@t3tools/shared/filePreview";
 
-import { MAX_TEXT_ARTIFACT_BYTES } from "./artifactConfig.ts";
+import { describeLimit, maxArtifactBytes } from "./artifactConfig.ts";
 import {
   ArtifactPathError,
   contentRevision,
+  firstHeading,
+  htmlSearchText,
+  htmlTitle,
   kindOfPath,
   newUlid,
   normalizeRelativePath,
   parseMarkdownFile,
-  renderMarkdownFile,
+  parseTextArtifact,
+  renderTextArtifact,
   resolveInStore,
   slugify,
   ULID_PATTERN,
@@ -85,8 +90,16 @@ export class ArtifactStoreError extends Error {
 }
 
 export interface CreateInput {
+  /** Required for text creates; an upload falls back to the file's own title, then its name. */
   readonly title: string;
+  /** The body: for markdown without front matter, for HTML without its metadata line. */
   readonly content?: string | undefined;
+  /**
+   * An uploaded file, whole (instead of `content`; `name` is required). An
+   * uploaded markdown or HTML file's own metadata gives its title and tags,
+   * and its id is replaced.
+   */
+  readonly bytes?: Uint8Array | undefined;
   readonly folder?: string | undefined;
   readonly name?: string | undefined;
   readonly tags?: ReadonlyArray<string> | undefined;
@@ -100,8 +113,15 @@ export interface CreateInput {
 
 export interface ReadResult {
   readonly artifact: LimArtifactSummary;
+  /** See LimArtifactReadResponse: other files give their text only when they are UTF-8 text. */
   readonly content: string;
   readonly items: ReadonlyArray<LimArtifactListItem>;
+}
+
+/** What a view link serves: markdown or HTML without its metadata, other files' bytes. */
+export interface ViewResult {
+  readonly artifact: LimArtifactSummary;
+  readonly content: string | Uint8Array;
 }
 
 export interface OpsResult {
@@ -128,6 +148,21 @@ const toChange = (event: ArtifactEventRow): LimArtifactChange => ({
 const cleanTags = (tags: ReadonlyArray<string> | undefined) => [
   ...new Set((tags ?? []).map((tag) => tag.trim().replace(/^#/, "")).filter(Boolean)),
 ];
+
+/** An other file the read response carries as text (csv, json, txt…). */
+const isTextFile = (path: string) => filePreviewKind({ name: path }) === "text";
+
+/** UTF-8 text, or null for anything binary. */
+const decodeText = (bytes: Uint8Array) => {
+  if (bytes.includes(0)) return null;
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+  } catch {
+    return null;
+  }
+};
+
+const KIND_LABEL = { md: "markdown", html: "HTML", other: "other" } as const;
 
 /**
  * What a change touched, so a failed commit can put it back: the files' bytes,
@@ -164,7 +199,7 @@ class Undo {
     for (const [path, bytes] of this.files) {
       const absolute = NodePath.join(this.root, ...path.split("/"));
       if (bytes === null) NodeFS.rmSync(absolute, { force: true });
-      else await writeFileAtomically(absolute, bytes.toString("utf8"));
+      else await writeFileAtomically(absolute, bytes);
     }
     this.index.transaction(() => {
       for (const [id, { row, links }] of this.artifacts) {
@@ -345,7 +380,7 @@ export class ArtifactStore {
     if ((await this.check(row)) === "too_large") {
       throw new ArtifactStoreError(
         "too_large",
-        `${row.path} grew past 10 MB outside T3; it's kept, with its links, but not served until it shrinks`,
+        `${row.path} grew past ${describeLimit(row.kind)} outside T3; it's kept, with its links, but not served until it shrinks`,
       );
     }
     const fresh = this.index.get(id);
@@ -385,29 +420,72 @@ export class ArtifactStore {
 
   read(id: string): Promise<ReadResult> {
     return this.serializer.run(async () => {
-      // The body served must be the file the row describes: if an editor
-      // replaced it after the check, reconcile again (a few times at most).
-      for (let attempt = 1; attempt <= 3; attempt++) {
-        const row = await this.current(id);
-        const body = this.readBodyIfUnchanged(row);
-        if (body !== null) {
-          return { artifact: this.summary(row), content: body, items: this.items(row.id, body) };
-        }
-      }
-      throw new ArtifactStoreError("unavailable", "the file keeps changing outside T3; try again");
+      const { row, bytes } = await this.currentBytes(
+        id,
+        (row) => row.kind !== "other" || isTextFile(row.path),
+      );
+      const content = bytes === null ? "" : this.contentOf(row, bytes);
+      return {
+        artifact: this.summary(row),
+        content,
+        items: row.kind === "md" ? this.items(row.id, content) : [],
+      };
     });
   }
 
-  /** The body, read through one handle, or null when the file no longer matches the row. */
-  private readBodyIfUnchanged(row: ArtifactRow): string | null {
+  /** An artifact's summary, after the per-access check. */
+  get(id: string): Promise<LimArtifactSummary> {
+    return this.serializer.run(async () => this.summary(await this.current(id)));
+  }
+
+  /** What `/a/<token>` serves: markdown or HTML without its metadata, other files' bytes. */
+  view(id: string): Promise<ViewResult> {
+    return this.serializer.run(async () => {
+      const { row, bytes } = await this.currentBytes(id, () => true);
+      return {
+        artifact: this.summary(row),
+        content: row.kind === "other" ? bytes! : this.contentOf(row, bytes!),
+      };
+    });
+  }
+
+  /** The read response's content: the body of markdown and HTML, the text of a text file. */
+  private contentOf(row: ArtifactRow, bytes: Buffer) {
+    if (row.kind === "other") return decodeText(bytes) ?? "";
+    return parseTextArtifact(row.kind, bytes.toString("utf8")).body;
+  }
+
+  /**
+   * The row after the per-access check, with the file's bytes when `wanted`.
+   * The bytes served must be the file the row describes: if an editor replaced
+   * it after the check, reconcile again (a few times at most).
+   */
+  private async currentBytes(
+    id: string,
+    wanted: (row: ArtifactRow) => boolean,
+  ): Promise<{ row: ArtifactRow; bytes: Buffer | null }> {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const row = await this.current(id);
+      const bytes = this.readIfUnchanged(row, wanted(row));
+      if (bytes !== null) return { row, bytes: bytes === "unread" ? null : bytes };
+    }
+    throw new ArtifactStoreError("unavailable", "the file keeps changing outside T3; try again");
+  }
+
+  /**
+   * The file's bytes, read through one handle, or null when the file no longer
+   * matches the row ("unread" when it matches and its bytes weren't wanted).
+   */
+  private readIfUnchanged(row: ArtifactRow, read: boolean): Buffer | "unread" | null {
     const fd = NodeFS.openSync(NodePath.join(this.root, ...row.path.split("/")), "r");
     try {
       const stat = NodeFS.fstatSync(fd);
       if (stat.size !== row.size || stat.mtimeMs !== row.mtime) return null;
-      const text = NodeFS.readFileSync(fd, "utf8");
+      if (!read) return "unread";
+      const bytes = NodeFS.readFileSync(fd);
       const after = NodeFS.fstatSync(fd);
       if (after.size !== stat.size || after.mtimeMs !== stat.mtimeMs) return null;
-      return parseMarkdownFile(text).body;
+      return bytes;
     } finally {
       NodeFS.closeSync(fd);
     }
@@ -435,26 +513,28 @@ export class ArtifactStore {
   }
 
   /**
-   * Writes a markdown artifact's file and returns its new index row. With
+   * Writes an artifact's whole file and returns its new index row. With
    * `expect` (the file as last read), throws FileChangedError instead of
    * overwriting a newer outside edit.
    */
-  private async writeMarkdown(
-    row: Omit<ArtifactRow, "revision" | "size" | "mtime" | "bodyText">,
-    body: string,
-    extra?: Readonly<Record<string, unknown>>,
+  private async writeArtifact(
+    row: Omit<ArtifactRow, "revision" | "size" | "mtime">,
+    contents: string | Uint8Array,
     expect?: { readonly size: number; readonly mtime: number },
   ): Promise<ArtifactRow> {
-    const text = renderMarkdownFile({ id: row.id, title: row.title, tags: row.tags, extra, body });
-    if (Buffer.byteLength(text) > MAX_TEXT_ARTIFACT_BYTES) {
-      throw new ArtifactStoreError("too_large", "markdown artifacts are limited to 10 MB");
+    const bytes = typeof contents === "string" ? Buffer.from(contents, "utf8") : contents;
+    if (bytes.byteLength > maxArtifactBytes(row.kind)) {
+      throw new ArtifactStoreError(
+        "too_large",
+        `${KIND_LABEL[row.kind]} artifacts are limited to ${describeLimit(row.kind)}`,
+      );
     }
     const absolute = await resolveInStore(this.root, row.path);
     // Checked right before the rename, after the temp file is written, so an
     // outside save during that write is caught too. A save landing between
     // this synchronous check and the rename itself can't be excluded without
     // a lock outside editors don't take.
-    await writeFileAtomically(absolute, text, () => {
+    await writeFileAtomically(absolute, bytes, () => {
       if (!expect) return;
       const before = NodeFS.statSync(absolute, { throwIfNoEntry: false });
       if (!before || before.size !== expect.size || before.mtimeMs !== expect.mtime) {
@@ -462,13 +542,7 @@ export class ArtifactStore {
       }
     });
     const stat = NodeFS.statSync(absolute);
-    return {
-      ...row,
-      revision: contentRevision(text),
-      size: stat.size,
-      mtime: stat.mtimeMs,
-      bodyText: body,
-    };
+    return { ...row, revision: contentRevision(bytes), size: stat.size, mtime: stat.mtimeMs };
   }
 
   private async uniquePath(folder: string, name: string) {
@@ -485,24 +559,46 @@ export class ArtifactStore {
 
   create(input: CreateInput, actor: LimArtifactActor): Promise<ReadResult> {
     return this.serializer.run(async () => {
-      const title = input.title.trim();
-      if (!title) throw new ArtifactStoreError("invalid_request", "a title is required");
+      const upload = input.bytes;
+      let title = input.title.trim();
+      if (!title && !upload) throw new ArtifactStoreError("invalid_request", "a title is required");
       const folder = normalizeRelativePath(input.folder ?? "");
-      let name = input.name?.trim() || `${slugify(title)}.md`;
+      let name = input.name?.trim() || (title ? `${slugify(title)}.md` : "");
+      if (!name) throw new ArtifactStoreError("invalid_request", "an upload needs a file name");
       if (name.includes("/") || name.includes("\\")) {
         throw new ArtifactPathError("a name can't contain a folder; use `folder`");
       }
       if (!NodePath.extname(name)) name = `${name}.md`;
-      if (kindOfPath(name) !== "md") {
-        throw new ArtifactStoreError(
-          "invalid_request",
-          "only markdown artifacts can be created yet",
-        );
-      }
+      const kind = kindOfPath(name);
+      const stem = NodePath.basename(name, NodePath.extname(name));
       const attach = input.attach ?? [];
       for (const link of attach) this.checkThreadId(link.threadId);
+      let tags = cleanTags(input.tags);
+      // Markdown and HTML: the body, and what the file to write needs besides it.
+      let text: { body: string; extra?: Readonly<Record<string, unknown>> | undefined } | null =
+        null;
+      if (kind !== "other") {
+        const source = upload ? Buffer.from(upload).toString("utf8") : (input.content ?? "");
+        // An uploaded file brings its own metadata; HTML text may carry its line too.
+        const parsed =
+          upload || kind === "html"
+            ? parseTextArtifact(kind, source)
+            : { frontMatter: null, body: source };
+        title ||=
+          parsed.frontMatter?.title?.trim() ||
+          (kind === "md" ? firstHeading(parsed.body) : htmlTitle(parsed.body)) ||
+          stem;
+        if (tags.length === 0) tags = cleanTags(parsed.frontMatter?.tags);
+        text = {
+          body:
+            kind === "md"
+              ? renderList(assignItemIds(parseList(parsed.body), this.random))
+              : parsed.body,
+          extra: parsed.frontMatter?.extra,
+        };
+      }
+      title ||= stem;
       const path = await this.uniquePath(folder, name);
-      const body = renderList(assignItemIds(parseList(input.content ?? ""), this.random));
       const at = this.now().toISOString();
       const id = newUlid(this.now().getTime());
       const undo = new Undo(this.root, this.index);
@@ -510,19 +606,25 @@ export class ArtifactStore {
       undo.file(LINKS_FILE);
       undo.artifact(id);
       return this.undoable(undo, async () => {
-        const row = await this.writeMarkdown(
+        const contents =
+          kind === "other"
+            ? (upload ?? Buffer.from(input.content ?? "", "utf8"))
+            : renderTextArtifact(kind, { id, title, tags, extra: text!.extra, body: text!.body });
+        const row = await this.writeArtifact(
           {
             id,
             path,
             title,
-            kind: "md",
+            kind,
             state: "kept",
             createdBy: actor,
             createdAt: at,
             updatedAt: at,
-            tags: cleanTags(input.tags),
+            tags,
+            bodyText:
+              kind === "md" ? text!.body : kind === "html" ? htmlSearchText(text!.body) : "",
           },
-          body,
+          contents,
         );
         const events: ArtifactCommitEvent[] = [
           { artifactId: id, action: "created", actor, summary: `created ${path}` },
@@ -553,7 +655,17 @@ export class ArtifactStore {
           at,
         });
         this.record(events, row.revision);
-        return { artifact: this.summary(row), content: body, items: this.items(id, body) };
+        const content =
+          kind === "other"
+            ? isTextFile(path)
+              ? (decodeText(contents as Uint8Array) ?? "")
+              : ""
+            : text!.body;
+        return {
+          artifact: this.summary(row),
+          content,
+          items: kind === "md" ? this.items(id, content) : [],
+        };
       });
     });
   }
@@ -624,10 +736,15 @@ export class ArtifactStore {
       const undo = new Undo(this.root, this.index);
       undo.file(row.path);
       undo.artifact(id);
-      const next = await this.writeMarkdown(
-        { ...row, updatedAt: this.now().toISOString() },
-        body,
-        file.frontMatter?.extra,
+      const next = await this.writeArtifact(
+        { ...row, updatedAt: this.now().toISOString(), bodyText: body },
+        renderTextArtifact("md", {
+          id: row.id,
+          title: row.title,
+          tags: row.tags,
+          extra: file.frontMatter?.extra,
+          body,
+        }),
         { size: row.size, mtime: row.mtime },
       );
       return this.undoable(undo, async () => {

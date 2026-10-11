@@ -6,9 +6,19 @@ import * as Schema from "effect/Schema";
 
 export const LIM_ARTIFACTS_ROUTE_PREFIX = "/api/artifacts";
 
-/** Kind comes from the file extension. PR 1 creates markdown only. */
+/**
+ * Kind comes from the file extension: `md` (`.md`, `.markdown`), `html`
+ * (`.html`, `.htm`), or `other` (pdf, csv, png…). Markdown carries its
+ * metadata in YAML front matter, HTML in a first-line `<!-- t3-artifact … -->`
+ * comment; other files only in the index and `.t3-meta/links.json`.
+ */
 export const LimArtifactKind = Schema.Literals(["md", "html", "other"]);
 export type LimArtifactKind = typeof LimArtifactKind.Type;
+
+/** Markdown and HTML artifacts are limited to this size. */
+export const LIM_ARTIFACT_MAX_TEXT_BYTES = 10 * 1024 * 1024;
+/** Other files are limited to this size. */
+export const LIM_ARTIFACT_MAX_OTHER_BYTES = 50 * 1024 * 1024;
 
 /** PR 1 keeps everything; transient and archived arrive with the lifecycle work. */
 export const LimArtifactState = Schema.Literals(["transient", "kept", "archived"]);
@@ -94,7 +104,11 @@ export type LimArtifactListResponse = typeof LimArtifactListResponse.Type;
 export const LimArtifactReadResponse = Schema.Struct({
   store: LimArtifactStoreInfo,
   artifact: LimArtifactSummary,
-  /** The file's body, without its front matter. */
+  /**
+   * Markdown: the body, without its front matter. HTML: the document, without
+   * its metadata line. Other files: the text of a UTF-8 text file (csv, json…),
+   * else empty; open those through a view URL.
+   */
   content: Schema.String,
   items: Schema.Array(LimArtifactListItem),
 });
@@ -106,13 +120,18 @@ export const LimArtifactAttachRequest = Schema.Struct({
 });
 export type LimArtifactAttachRequest = typeof LimArtifactAttachRequest.Type;
 
-/** `POST /api/artifacts`: a new markdown artifact (a list is markdown with checklist items). */
+/**
+ * `POST /api/artifacts` with a JSON body: a new artifact from text. The name's
+ * extension picks the kind (markdown when it has none; a list is markdown with
+ * checklist items). A file upload is the same route with the file as the raw
+ * body and `name`, `title`, `folder`, `tags` (comma-separated) as query parameters.
+ */
 export const LimArtifactCreateRequest = Schema.Struct({
   title: Schema.String,
   content: Schema.optionalKey(Schema.String),
   /** A folder inside the store, e.g. `t3` or `research/agents`. */
   folder: Schema.optionalKey(Schema.String),
-  /** File name inside the folder; derived from the title when omitted. */
+  /** File name inside the folder, e.g. `chart.html`; `<title slug>.md` when omitted. */
   name: Schema.optionalKey(Schema.String),
   tags: Schema.optionalKey(Schema.Array(Schema.String)),
   attach: Schema.optionalKey(Schema.Array(LimArtifactAttachRequest)),
@@ -159,6 +178,29 @@ export const LimArtifactWireError = Schema.Struct({
   currentRevision: Schema.optionalKey(Schema.String),
 });
 export type LimArtifactWireError = typeof LimArtifactWireError.Type;
+
+/** Signed view links: `GET /a/<token>` opens one artifact without a T3 session. */
+export const LIM_ARTIFACT_VIEW_ROUTE_PREFIX = "/a";
+/** The in-app viewer's links. */
+export const LIM_ARTIFACT_VIEW_VIEWER_SECONDS = 60 * 60;
+/** "Copy link". */
+export const LIM_ARTIFACT_VIEW_LINK_SECONDS = 24 * 60 * 60;
+/** "Copy 7-day link", and the longest a link may live. */
+export const LIM_ARTIFACT_VIEW_MAX_SECONDS = 7 * 24 * 60 * 60;
+
+/** `POST /api/artifacts/:id/view-url`; the server refuses more than 7 days. */
+export const LimArtifactViewUrlRequest = Schema.Struct({
+  /** Default: one hour. */
+  expiresInSeconds: Schema.optionalKey(Schema.Number),
+});
+export type LimArtifactViewUrlRequest = typeof LimArtifactViewUrlRequest.Type;
+
+export const LimArtifactViewUrlResponse = Schema.Struct({
+  /** Relative to the server: `/a/<token>`. */
+  url: Schema.String,
+  expiresAt: Schema.String,
+});
+export type LimArtifactViewUrlResponse = typeof LimArtifactViewUrlResponse.Type;
 
 export const LIM_ARTIFACT_MAX_WATCH_IDS = 256;
 
