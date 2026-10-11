@@ -63,7 +63,15 @@ export type ArtifactErrorCode =
   | "invalid_request"
   | "invalid_path"
   | "too_large"
-  | "unavailable";
+  | "unavailable"
+  | "forbidden";
+
+/**
+ * Checked inside the change's turn, after the per-access check: a caller's
+ * permission (e.g. a thread's write link) can't change between check and write.
+ * Throws to refuse.
+ */
+export type ArtifactGuard = (artifact: LimArtifactSummary) => void;
 
 export class ArtifactStoreError extends Error {
   readonly code: ArtifactErrorCode;
@@ -554,13 +562,14 @@ export class ArtifactStore {
     id: string,
     ops: ReadonlyArray<LimArtifactListOp>,
     actor: LimArtifactActor,
+    guard?: ArtifactGuard,
   ): Promise<OpsResult> {
     return this.serializer.run(async () => {
       // An outside edit landing between the read and the write is reconciled
       // and the ops applied again on top of it, a few times at most.
       for (let attempt = 1; ; attempt++) {
         try {
-          return await this.applyOpsOnce(id, ops, actor);
+          return await this.applyOpsOnce(id, ops, actor, guard);
         } catch (error) {
           if (!(error instanceof FileChangedError)) throw error;
           if (attempt >= 3) {
@@ -578,9 +587,11 @@ export class ArtifactStore {
     id: string,
     ops: ReadonlyArray<LimArtifactListOp>,
     actor: LimArtifactActor,
+    guard: ArtifactGuard | undefined,
   ): Promise<OpsResult> {
     {
       const row = await this.current(id);
+      guard?.(this.summary(row));
       if (row.kind !== "md") {
         throw new ArtifactStoreError(
           "invalid_request",
@@ -657,10 +668,12 @@ export class ArtifactStore {
     threadId: string,
     access: LimArtifactLinkAccess,
     actor: LimArtifactActor,
+    guard?: ArtifactGuard,
   ): Promise<LimArtifactSummary> {
     return this.serializer.run(async () => {
       this.checkThreadId(threadId);
       const row = await this.current(id);
+      guard?.(this.summary(row));
       const existing = this.index.links(id).find((link) => link.threadId === threadId);
       if (existing?.access === access) return this.summary(row);
       const undo = new Undo(this.root, this.index);
@@ -694,9 +707,15 @@ export class ArtifactStore {
     });
   }
 
-  detach(id: string, threadId: string, actor: LimArtifactActor): Promise<LimArtifactSummary> {
+  detach(
+    id: string,
+    threadId: string,
+    actor: LimArtifactActor,
+    guard?: ArtifactGuard,
+  ): Promise<LimArtifactSummary> {
     return this.serializer.run(async () => {
       const row = await this.current(id);
+      guard?.(this.summary(row));
       const undo = new Undo(this.root, this.index);
       undo.file(LINKS_FILE);
       undo.artifact(id);

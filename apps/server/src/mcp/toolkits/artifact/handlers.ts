@@ -9,7 +9,11 @@ import * as Schema from "effect/Schema";
 
 import { ArtifactPathError } from "../../../artifacts/ArtifactFiles.ts";
 import { ArtifactStoreHandle } from "../../../artifacts/ArtifactHttp.ts";
-import { type ArtifactStore, ArtifactStoreError } from "../../../artifacts/ArtifactStore.ts";
+import {
+  type ArtifactGuard,
+  type ArtifactStore,
+  ArtifactStoreError,
+} from "../../../artifacts/ArtifactStore.ts";
 import * as McpInvocationContext from "../../McpInvocationContext.ts";
 import * as McpToolAccess from "../../McpToolAccess.ts";
 import { readThread } from "../../threadAccess.ts";
@@ -17,12 +21,26 @@ import { ArtifactToolkit } from "./tools.ts";
 
 const isMcpFailure = Schema.is(OrchestratorMcpFailure);
 
+/** A store call that failed in a way the store didn't anticipate (I/O, SQLite, git). */
+class UnexpectedStoreFailure extends Error {
+  override readonly cause: unknown;
+  constructor(cause: unknown) {
+    super("unexpected artifact store failure");
+    this.cause = cause;
+  }
+}
+
 /** Store errors as tool failures; their messages are written for the agent. */
 export const toFailure = (error: unknown) => {
   if (error instanceof ArtifactStoreError) {
     const revision = error.currentRevision ? ` Current revision: ${error.currentRevision}.` : "";
     return new OrchestratorMcpFailure({
-      code: error.code === "unavailable" ? "orchestration_error" : "invalid_request",
+      code:
+        error.code === "unavailable"
+          ? "orchestration_error"
+          : error.code === "forbidden"
+            ? "capability_denied"
+            : "invalid_request",
       message: `${error.code}: ${error.message}.${revision}`,
     });
   }
@@ -40,7 +58,22 @@ const storeCall = <A>(run: (store: ArtifactStore) => Promise<A>) =>
   Effect.gen(function* () {
     const handle = yield* ArtifactStoreHandle;
     const store = yield* handle.store.pipe(Effect.mapError(toFailure));
-    return yield* Effect.tryPromise({ try: () => run(store), catch: toFailure });
+    return yield* Effect.tryPromise({
+      try: () => run(store),
+      catch: (error) =>
+        error instanceof ArtifactStoreError || error instanceof ArtifactPathError
+          ? toFailure(error)
+          : new UnexpectedStoreFailure(error),
+    }).pipe(
+      // Unexpected failures are logged here, since the agent is told to see the log.
+      Effect.catchIf(
+        (error): error is UnexpectedStoreFailure => error instanceof UnexpectedStoreFailure,
+        (error) =>
+          Effect.logError("artifact tool failed", error.cause).pipe(
+            Effect.andThen(Effect.fail(toFailure(error.cause))),
+          ),
+      ),
+    );
   });
 
 /** The calling thread, as the actor its edits are attributed to (author: its title). */
@@ -64,19 +97,18 @@ const accessOf = (artifact: LimArtifactSummary, threadId: string) =>
 /**
  * Editing an artifact, or sharing it with another thread, needs a write link
  * from the calling thread: an artifact lands in a thread through its creator,
- * Lee, or a thread that may already edit it.
+ * Lee, or a thread that may already edit it. The store checks it inside the
+ * change's turn, so a link removed meanwhile can't be used.
  */
-const requireWrite = (artifact: LimArtifactSummary, threadId: string, action: string) =>
-  accessOf(artifact, threadId) === "write"
-    ? Effect.void
-    : Effect.fail(
-        new OrchestratorMcpFailure({
-          code: "capability_denied",
-          message: `This thread can't ${action} "${artifact.title}": it isn't attached with write access. Ask Lee, or a thread attached with write access, to artifact_attach it here.`,
-        }),
-      );
-
-const readArtifact = (id: string) => storeCall((store) => store.read(id));
+const requireWrite =
+  (threadId: string, action: string): ArtifactGuard =>
+  (artifact) => {
+    if (accessOf(artifact, threadId) === "write") return;
+    throw new ArtifactStoreError(
+      "forbidden",
+      `This thread can't ${action} "${artifact.title}": it isn't attached with write access. Ask Lee, or a thread attached with write access, to artifact_attach it here`,
+    );
+  };
 
 export const handlers = {
   artifact_list: McpToolAccess.readsAsCaller((input) =>
@@ -113,7 +145,7 @@ export const handlers = {
           message: `not_found: no artifact at ${input.path}.`,
         });
       }
-      const { artifact, content, items } = yield* readArtifact(id);
+      const { artifact, content, items } = yield* storeCall((store) => store.read(id));
       return { artifact, content, items };
     }),
   ),
@@ -129,9 +161,9 @@ export const handlers = {
   artifact_patch: McpToolAccess.actsAsCaller((input) =>
     Effect.gen(function* () {
       const { threadId, actor } = yield* callerActor;
-      const { artifact } = yield* readArtifact(input.id);
-      yield* requireWrite(artifact, threadId, "edit");
-      return yield* storeCall((store) => store.applyOps(input.id, input.ops, actor));
+      return yield* storeCall((store) =>
+        store.applyOps(input.id, input.ops, actor, requireWrite(threadId, "edit")),
+      );
     }),
   ),
   artifact_attach: McpToolAccess.writesThreads(
@@ -140,10 +172,14 @@ export const handlers = {
       Effect.gen(function* () {
         const { threadId, actor } = yield* callerActor;
         const target = yield* targetThread(input.threadId, threadId);
-        const { artifact } = yield* readArtifact(input.id);
-        yield* requireWrite(artifact, threadId, "attach");
         const updated = yield* storeCall((store) =>
-          store.attach(input.id, target, input.access ?? "write", actor),
+          store.attach(
+            input.id,
+            target,
+            input.access ?? "write",
+            actor,
+            requireWrite(threadId, "attach"),
+          ),
         );
         return { artifact: updated };
       }),
@@ -154,11 +190,10 @@ export const handlers = {
       Effect.gen(function* () {
         const { threadId, actor } = yield* callerActor;
         const target = yield* targetThread(input.threadId, threadId);
-        const { artifact } = yield* readArtifact(input.id);
         // A thread may always leave an artifact; detaching others needs write.
-        if (target !== threadId)
-          yield* requireWrite(artifact, threadId, "detach other threads from");
-        const updated = yield* storeCall((store) => store.detach(input.id, target, actor));
+        const guard =
+          target === threadId ? undefined : requireWrite(threadId, "detach other threads from");
+        const updated = yield* storeCall((store) => store.detach(input.id, target, actor, guard));
         return { artifact: updated };
       }),
   ),

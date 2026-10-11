@@ -356,6 +356,33 @@ describe("ArtifactStore", () => {
     expect((await store.read(artifact.id)).artifact.createdAt).toBe("2020-01-02T03:04:05.000Z");
   });
 
+  it("checks a guard inside the change's turn, against the links as they are then", async () => {
+    const store = await openStore(tempStoreDir());
+    const { artifact } = await store.create(
+      { title: "Guarded", attach: [{ threadId: "thread-a" }] },
+      LEE,
+    );
+    const canWrite =
+      (threadId: string) => (summary: { links: ReadonlyArray<{ threadId: string }> }) => {
+        if (!summary.links.some((link) => link.threadId === threadId)) {
+          throw new ArtifactStoreError("forbidden", "no write link");
+        }
+      };
+    const commits = commitCount(store.root);
+    // Queued behind the detach: the guard sees the link already gone.
+    const detached = store.detach(artifact.id, "thread-a", LEE);
+    const patched = store.applyOps(
+      artifact.id,
+      [{ op: "add", text: "late" }],
+      ALDER,
+      canWrite("thread-a"),
+    );
+    await detached;
+    await expectStoreError(patched, "forbidden");
+    expect((await store.read(artifact.id)).items).toEqual([]);
+    expect(commitCount(store.root)).toBe(commits + 1);
+  });
+
   it("adopts new files and commits edits made while the server was down", async () => {
     const dir = tempStoreDir();
     const first = await ArtifactStore.open(dir);
