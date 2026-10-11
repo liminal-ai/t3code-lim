@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   claudeEnvAuth,
   classifyClaudeCredentials,
+  settingsEnv,
   usesStoredSubscriptionLogin,
 } from "./ClaudeStoredLogin.ts";
 
@@ -110,5 +111,18 @@ describe("usesStoredSubscriptionLogin", () => {
     );
     expect(usesStoredSubscriptionLogin({ ...login, apiProvider: "bedrock" })).toBe(false);
     expect(usesStoredSubscriptionLogin({ ...login, platform: "darwin" })).toBe(false);
+  });
+});
+
+describe("settingsEnv", () => {
+  it("reads a settings.json env block, so a proxy set there counts as env auth", () => {
+    // Prod's claude-glm-lhc home sets its proxy this way.
+    const env = settingsEnv(
+      JSON.stringify({ env: { ANTHROPIC_BASE_URL: "http://127.0.0.1:8317", N: 1 } }),
+    );
+    expect(env).toEqual({ ANTHROPIC_BASE_URL: "http://127.0.0.1:8317" });
+    expect(claudeEnvAuth(env)).toBe(true);
+    expect(settingsEnv(JSON.stringify({ model: "x" }))).toEqual({});
+    expect(settingsEnv("{not json")).toEqual({});
   });
 });

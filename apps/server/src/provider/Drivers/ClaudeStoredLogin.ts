@@ -11,11 +11,12 @@ import * as Path from "effect/Path";
  * - `env`: an API key, auth token, base URL (a proxy such as cliproxy) or a
  *   cloud backend is set, so the stored login doesn't matter.
  * - `present`: a token that isn't expired, or a refresh token that isn't.
- * - `empty` / `expired`: the stored login can't sign in.
- * - `unknown`: no file (macOS keeps it in the Keychain), no Claude login in
- *   it, or it can't be read; the probe keeps its own answer.
+ * - `missing` / `empty` / `expired`: the stored login can't sign in (off
+ *   macOS the file is where `/login` keeps it, so no file is no login).
+ * - `unknown`: no Claude login in the file, or it can't be read; the probe
+ *   keeps its own answer.
  */
-export type ClaudeStoredLogin = "env" | "present" | "empty" | "expired" | "unknown";
+export type ClaudeStoredLogin = "env" | "present" | "missing" | "empty" | "expired" | "unknown";
 
 const ENV_AUTH_KEYS = [
   "ANTHROPIC_API_KEY",
@@ -47,6 +48,21 @@ export const usesStoredSubscriptionLogin = (input: {
 export const claudeEnvAuth = (environment: NodeJS.ProcessEnv): boolean =>
   ENV_AUTH_KEYS.some((key) => (environment[key]?.trim() ?? "").length > 0) ||
   ENV_AUTH_FLAGS.some((key) => flagOn(environment[key]));
+
+/** The string values of a Claude settings.json `env` block; {} if there's none. */
+export function settingsEnv(text: string): NodeJS.ProcessEnv {
+  try {
+    const env = (JSON.parse(text) as { env?: unknown } | null)?.env;
+    if (env === null || typeof env !== "object") return {};
+    return Object.fromEntries(
+      Object.entries(env).filter(
+        (entry): entry is [string, string] => typeof entry[1] === "string",
+      ),
+    );
+  } catch {
+    return {};
+  }
+}
 
 const token = (value: unknown): boolean => typeof value === "string" && value.trim().length > 0;
 /**
@@ -87,8 +103,14 @@ export const readClaudeStoredLogin = Effect.fn("readClaudeStoredLogin")(function
   if (claudeEnvAuth(environment)) return "env";
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  const text = yield* fileSystem
-    .readFileString(path.join(configDir, ".credentials.json"))
+  // Claude also applies the `env` block of its settings.json (e.g. a proxy's
+  // ANTHROPIC_BASE_URL, as prod's claude-glm-lhc home does).
+  const settings = yield* fileSystem
+    .readFileString(path.join(configDir, "settings.json"))
     .pipe(Effect.orElseSucceed(() => null));
+  if (settings !== null && claudeEnvAuth(settingsEnv(settings))) return "env";
+  const file = path.join(configDir, ".credentials.json");
+  if (!(yield* fileSystem.exists(file).pipe(Effect.orElseSucceed(() => true)))) return "missing";
+  const text = yield* fileSystem.readFileString(file).pipe(Effect.orElseSucceed(() => null));
   return text === null ? "unknown" : classifyClaudeCredentials(text, nowMs);
 });

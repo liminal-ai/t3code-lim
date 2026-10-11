@@ -614,7 +614,7 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
       resolvedEnvironment,
       DateTime.toEpochMillis(yield* DateTime.now),
     );
-    if (login === "empty" || login === "expired") {
+    if (login === "missing" || login === "empty" || login === "expired") {
       return buildServerProvider({
         presentation: CLAUDE_PRESENTATION,
         enabled: claudeSettings.enabled,
@@ -627,7 +627,7 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
           version: parsedVersion,
           status: "error",
           auth: { status: "unauthenticated" },
-          message: `Claude's stored login has ${login === "empty" ? "no tokens" : "only expired tokens"}. ${claudeSignedOutMessage(
+          message: `${login === "missing" ? "Claude has no stored login" : `Claude's stored login has ${login === "empty" ? "no tokens" : "only expired tokens"}`}. ${claudeSignedOutMessage(
             {
               // A custom home (settings or inherited env) must be named, or the hint logs in to the default one.
               configDir:

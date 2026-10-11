@@ -3085,14 +3085,24 @@ it.layer(
   // ── checkClaudeProviderStatus tests ──────────────────────────
 
   describe("checkClaudeProviderStatus", () => {
-    // Fork (lim): the probe reads the stored Claude login; these tests mustn't see the developer's own.
-    const inheritedClaudeConfigDir = process.env.CLAUDE_CONFIG_DIR;
+    // Fork (lim): the probe reads the stored Claude login. Tests that pass no
+    // environment mustn't see the developer's own, and count as signed in via
+    // an env token; the stored-login test below passes its own environment.
+    const isolated = {
+      CLAUDE_CONFIG_DIR: "/nonexistent/t3-claude-status-tests",
+      CLAUDE_CODE_OAUTH_TOKEN: "test-only",
+    } as const;
+    const inherited = Object.fromEntries(
+      Object.keys(isolated).map((key) => [key, process.env[key]]),
+    );
     beforeAll(() => {
-      process.env.CLAUDE_CONFIG_DIR = "/nonexistent/t3-claude-status-tests";
+      Object.assign(process.env, isolated);
     });
     afterAll(() => {
-      if (inheritedClaudeConfigDir === undefined) delete process.env.CLAUDE_CONFIG_DIR;
-      else process.env.CLAUDE_CONFIG_DIR = inheritedClaudeConfigDir;
+      for (const [key, value] of Object.entries(inherited)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
     });
 
     it.effect("returns ready when claude is installed and authenticated", () =>
@@ -3197,6 +3207,29 @@ it.layer(
             { CLAUDE_CONFIG_DIR: dir },
           ).pipe(Effect.provideService(HostProcessPlatform, "darwin"));
           assert.strictEqual(mac.auth.status, "authenticated");
+
+          // Off macOS the file is where /login keeps it: no file is no login.
+          const missing = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({ subscriptionType: "max" }),
+            { CLAUDE_CONFIG_DIR: path.join(dir, "no-login-here") },
+          );
+          assert.strictEqual(missing.auth.status, "unauthenticated");
+          assert.include(missing.message ?? "", "no stored login");
+
+          // A proxy set in the home's settings.json env counts, as on prod's claude-glm-lhc.
+          const glmHome = path.join(dir, "glm");
+          yield* fileSystem.makeDirectory(glmHome);
+          yield* fileSystem.writeFileString(
+            path.join(glmHome, "settings.json"),
+            JSON.stringify({ env: { ANTHROPIC_BASE_URL: "http://127.0.0.1:8317" } }),
+          );
+          const glm = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({}),
+            { CLAUDE_CONFIG_DIR: glmHome },
+          );
+          assert.strictEqual(glm.auth.status, "authenticated");
         }).pipe(
           Effect.provideService(HostProcessPlatform, "linux"),
           Effect.scoped,
