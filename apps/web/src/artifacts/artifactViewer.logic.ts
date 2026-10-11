@@ -68,6 +68,21 @@ export function viewerLinkStale(
   return Date.parse(link.expiresAt) - nowMs <= VIEWER_LINK_MARGIN_MS;
 }
 
+/**
+ * The link an open viewer shows: the one it first loaded for this revision,
+ * kept while links renew in the background, so a PDF or video isn't reloaded
+ * (and downloaded again) every renewal. A new revision, or `pinned` cleared
+ * after a load error, takes the latest link.
+ */
+export function shownViewerLink<T extends { readonly revision: string }>(
+  pinned: T | null,
+  latest: T | null,
+  revision: string,
+): T | null {
+  if (pinned !== null && pinned.revision === revision) return pinned;
+  return latest !== null && latest.revision === revision ? latest : null;
+}
+
 /** "Copy link" and "Copy 7-day link". */
 export const COPY_LINK_CHOICES = [
   { label: "Copy link", seconds: LIM_ARTIFACT_VIEW_LINK_SECONDS, lasts: "24 hours" },

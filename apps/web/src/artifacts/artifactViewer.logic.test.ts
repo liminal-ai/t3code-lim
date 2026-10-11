@@ -5,6 +5,7 @@ import {
   artifactViewerKind,
   COPY_LINK_CHOICES,
   uploadLimitError,
+  shownViewerLink,
   viewerLinkStale,
   viewerNeedsLink,
   withoutItemIds,
@@ -74,5 +75,21 @@ describe("withoutItemIds", () => {
     ).toBe(
       "# Notes\n- [x] shipped\n- [ ] next\n  detail ^no\n```\n- [ ] code ^zz\n```\n- [ ] after",
     );
+  });
+});
+
+describe("shownViewerLink", () => {
+  const first = { url: "/a/first", revision: "r1" };
+  const renewed = { url: "/a/renewed", revision: "r1" };
+  const edited = { url: "/a/edited", revision: "r2" };
+
+  it("keeps the loaded link while it renews, so a PDF or video isn't reloaded", () => {
+    expect(shownViewerLink(first, renewed, "r1")).toBe(first);
+  });
+
+  it("takes the latest link for a new revision, or once the pinned one is cleared", () => {
+    expect(shownViewerLink(first, edited, "r2")).toBe(edited);
+    expect(shownViewerLink(null, renewed, "r1")).toBe(renewed);
+    expect(shownViewerLink(first, null, "r2")).toBeNull();
   });
 });

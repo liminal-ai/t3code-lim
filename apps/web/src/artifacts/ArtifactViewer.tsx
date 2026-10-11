@@ -26,6 +26,7 @@ import {
   artifactViewerKind,
   COPY_LINK_CHOICES,
   VIEWER_LINK_SECONDS,
+  shownViewerLink,
   viewerLinkStale,
   viewerNeedsLink,
 } from "./artifactViewer.logic";
@@ -69,11 +70,20 @@ function useViewerLink(
     const timer = setInterval(() => setCheckedAt(Date.now()), 5 * 60 * 1000);
     return () => clearInterval(timer);
   }, [link]);
+  // The viewer keeps the link it loaded; renewals wait for a load error (shownViewerLink).
+  const [pinned, setPinned] = useState<ViewerLink | null>(null);
+  const shown = shownViewerLink(pinned, link, revision);
+  if (shown !== null && shown !== pinned) setPinned(shown);
   return {
-    url: link?.revision === revision ? link.url : null,
+    url: shown?.url ?? null,
+    /** The newest link, for a download started now. */
+    freshUrl: link?.revision === revision ? link.url : null,
     error,
+    /** A media element failed (e.g. seeking past its link's expiry): take the newest link. */
+    renew: () => setPinned(null),
     retry: () => {
       setLink(null);
+      setPinned(null);
       setCheckedAt(Date.now());
       setError(null);
     },
@@ -150,19 +160,20 @@ export function ArtifactViewer(props: {
             controls
             playsInline
             src={url}
+            onError={link.renew}
             aria-label={artifact.title}
             className="max-h-full max-w-full"
           />
         </div>
       );
     case "audio":
-      return <AudioPreview src={url} name={name} />;
+      return <AudioPreview src={url} name={name} onError={link.renew} />;
     default:
       return (
         <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-2 px-6 text-center">
           <p className="text-sm font-medium">No preview for this file</p>
           <a
-            href={url}
+            href={link.freshUrl ?? url}
             target="_blank"
             rel="noopener noreferrer"
             download={name}
