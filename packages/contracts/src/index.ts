@@ -67,3 +67,5 @@ export * from "./secretRequest.ts";
 export * from "./clientRpcPermissions.ts";
 // Fork-only (agent comms): the /api/comms wire.
 export * from "./comms.ts";
+// Fork seam (artifacts): the /api/artifacts wire.
+export * from "./limArtifacts.ts";
