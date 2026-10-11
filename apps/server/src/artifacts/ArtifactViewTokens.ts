@@ -5,6 +5,9 @@
 // the payload with the server secret `lim-artifacts-view-key`. Nothing else
 // signs with that secret. No token lives longer than 7 days, and the server
 // refuses one that claims to.
+// @effect-diagnostics-next-line nodeBuiltinImport:off -- Effect's Crypto has no timingSafeEqual.
+import * as NodeCrypto from "node:crypto";
+
 import {
   LIM_ARTIFACT_VIEW_MAX_SECONDS,
   LIM_ARTIFACT_VIEW_ROUTE_PREFIX,
@@ -15,12 +18,7 @@ import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 
 import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
-import {
-  base64UrlDecodeUtf8,
-  base64UrlEncode,
-  signPayload,
-  timingSafeEqualBase64Url,
-} from "../auth/utils.ts";
+import { base64UrlDecodeUtf8, base64UrlEncode, signPayload } from "../auth/utils.ts";
 import { ULID_PATTERN } from "./ArtifactFiles.ts";
 
 export const VIEW_KEY_SECRET_NAME = "lim-artifacts-view-key";
@@ -64,7 +62,12 @@ export const verifyViewToken = (
 ): { readonly artifactId: string } | { readonly failure: ViewTokenFailure } => {
   const [payload, signature, extra] = token.split(".");
   if (!payload || !signature || extra !== undefined) return { failure: "malformed" };
-  if (!timingSafeEqualBase64Url(signature, signPayload(payload, secret))) {
+  // Compared as text, not decoded bytes: base64url's last character has
+  // unused bits, so several spellings decode to the same signature, and only
+  // the one this server wrote may open anything.
+  const expected = Buffer.from(signPayload(payload, secret));
+  const presented = Buffer.from(signature);
+  if (presented.length !== expected.length || !NodeCrypto.timingSafeEqual(presented, expected)) {
     return { failure: "bad_signature" };
   }
   let claims: { a?: unknown; i?: unknown; e?: unknown };

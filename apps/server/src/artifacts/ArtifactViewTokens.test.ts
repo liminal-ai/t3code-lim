@@ -41,6 +41,14 @@ describe("view tokens", () => {
       failure: "bad_signature",
     });
     expect(verifyViewToken(OTHER_KEY, token(), NOW)).toEqual({ failure: "bad_signature" });
+    // The last character's unused low bits: decodes to the same bytes, but isn't what was signed.
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
+    const last = alphabet.indexOf(signature.at(-1)!);
+    const respelled = `${signature.slice(0, -1)}${alphabet[last ^ 1]}`;
+    expect(Buffer.from(respelled, "base64url")).toEqual(Buffer.from(signature, "base64url"));
+    expect(verifyViewToken(KEY, `${payload}.${respelled}`, NOW)).toEqual({
+      failure: "bad_signature",
+    });
     expect(verifyViewToken(KEY, payload, NOW)).toEqual({ failure: "malformed" });
     expect(verifyViewToken(KEY, `${token()}.extra`, NOW)).toEqual({ failure: "malformed" });
   });
