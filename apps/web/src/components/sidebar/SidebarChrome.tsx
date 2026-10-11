@@ -1,6 +1,7 @@
 import { ArrowLeftIcon, ChartNoAxesColumnIcon, RadioTowerIcon, SettingsIcon } from "lucide-react";
 // Fork-only (agent comms): the Comms button reads whether comms is configured.
 import { useCommsConfig } from "~/comms/useCommsConfig";
+import { ArtifactsSidebarItem } from "~/artifacts/ArtifactsSidebarItem"; // Fork seam (artifacts)
 import type { ReactNode } from "react";
 import { memo, useCallback } from "react";
 import { Link, useLocation, useNavigate } from "@tanstack/react-router";
@@ -250,6 +251,7 @@ export const SidebarUtilityMenu = memo(function SidebarUtilityMenu() {
           />
           {/* Fork seam (agent comms) */}
           <CommsSidebarItem onNavigate={closeMobileSidebar} />
+          <ArtifactsSidebarItem onNavigate={closeMobileSidebar} /> {/* Fork seam (artifacts) */}
         </>
       )}
       <SidebarUpdatePill />
