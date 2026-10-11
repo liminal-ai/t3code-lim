@@ -29,6 +29,8 @@ export interface ArtifactsRemoteEnvironment {
 /** The primary first, then every other connected environment a plain fetch can reach. */
 export function artifactsEnvironmentOptions(input: {
   readonly primary: { readonly id: string; readonly label: string } | null;
+  /** Unset means connected. */
+  readonly primaryConnected?: boolean;
   readonly remotes: ReadonlyArray<ArtifactsRemoteEnvironment>;
   readonly pageOrigin: string | null;
 }): ReadonlyArray<ArtifactsEnvironmentOption> {
@@ -43,6 +45,9 @@ export function artifactsEnvironmentOptions(input: {
     );
     return route ? [{ id: remote.id, label: remote.label, route }] : [];
   });
+  // A disconnected primary gives way to a reachable remote, even if it was
+  // picked; with no remote it stays, as the store the page waits for.
+  if (input.primaryConnected === false && remotes.length > 0) return remotes;
   return [...primary, ...remotes];
 }
 

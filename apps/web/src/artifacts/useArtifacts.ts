@@ -85,10 +85,11 @@ export function useArtifactsEnvironment(): {
     const hasPrimary = readPrimaryEnvironmentTarget() !== null;
     return artifactsEnvironmentOptions({
       primary: hasPrimary && primaryId !== null ? { id: primaryId, label: label(primaryId) } : null,
+      primaryConnected: primaryId !== null && connected.includes(primaryId),
       remotes,
       pageOrigin: pageOrigin(),
     });
-  }, [prepared, presentationById, primaryId]);
+  }, [connected, prepared, presentationById, primaryId]);
   const selected = pickArtifactsEnvironment(options, { chosenId, activeId });
   return { options, selected, choose };
 }

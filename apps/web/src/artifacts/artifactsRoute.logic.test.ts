@@ -75,3 +75,30 @@ describe("environmentChanged", () => {
     expect(environmentChanged("lim-builder", "lim-builder")).toBe(false);
   });
 });
+
+describe("a disconnected primary", () => {
+  const primary = { id: "local", label: "This Mac" };
+
+  it("gives way to a reachable remote, even when it was picked", () => {
+    const options = artifactsEnvironmentOptions({
+      primary,
+      primaryConnected: false,
+      remotes: [limBuilder],
+      pageOrigin: null,
+    });
+    expect(options.map((option) => option.id)).toEqual(["lim-builder"]);
+    expect(pickArtifactsEnvironment(options, { chosenId: "local", activeId: "local" })?.id).toBe(
+      "lim-builder",
+    );
+  });
+
+  it("stays when nothing else is reachable", () => {
+    const options = artifactsEnvironmentOptions({
+      primary,
+      primaryConnected: false,
+      remotes: [],
+      pageOrigin: null,
+    });
+    expect(options.map((option) => option.id)).toEqual(["local"]);
+  });
+});
