@@ -35,6 +35,7 @@ import {
 import * as PlatformError from "effect/PlatformError";
 import { HttpClient, HttpClientResponse } from "effect/http";
 import { ChildProcessSpawner } from "effect/process";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import { deepMerge } from "@t3tools/shared/Struct";
 import { createModelCapabilities } from "@t3tools/shared/model";
 import { applyServerSettingsPatch } from "@t3tools/shared/serverSettings";
@@ -151,6 +152,7 @@ type TestClaudeCapabilities = {
   readonly email: string | undefined;
   readonly subscriptionType: string | undefined;
   readonly tokenSource: string | undefined;
+  readonly apiKeySource?: string | undefined;
   readonly apiProvider: string | undefined;
   readonly slashCommands: ReadonlyArray<ServerProviderSlashCommand>;
 };
@@ -3145,7 +3147,7 @@ it.layer(
 
     // Fork (lim): the SDK reported an account while the Nucbox's stored login was empty.
     it.effect(
-      "reports a stored login with empty tokens as unauthenticated, unless env auth applies",
+      "reports a stored login with empty tokens as unauthenticated, unless env auth, an API key or macOS applies",
       () =>
         Effect.gen(function* () {
           const fileSystem = yield* FileSystem.FileSystem;
@@ -3179,7 +3181,24 @@ it.layer(
           );
           assert.strictEqual(proxied.status, "ready");
           assert.strictEqual(proxied.auth.status, "authenticated");
+
+          // An API key from apiKeyHelper outranks the stored login.
+          const helper = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({ subscriptionType: "max", apiKeySource: "apiKeyHelper" }),
+            { CLAUDE_CONFIG_DIR: dir },
+          );
+          assert.strictEqual(helper.auth.status, "authenticated");
+
+          // macOS keeps the login in the Keychain; the file is only a fallback there.
+          const mac = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({ subscriptionType: "max" }),
+            { CLAUDE_CONFIG_DIR: dir },
+          ).pipe(Effect.provideService(HostProcessPlatform, "darwin"));
+          assert.strictEqual(mac.auth.status, "authenticated");
         }).pipe(
+          Effect.provideService(HostProcessPlatform, "linux"),
           Effect.scoped,
           Effect.provide(
             layerMockSpawner((args) => {

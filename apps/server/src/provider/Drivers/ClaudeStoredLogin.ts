@@ -26,6 +26,22 @@ const ENV_AUTH_KEYS = [
   "CLAUDE_CODE_USE_VERTEX",
 ] as const;
 
+/**
+ * Whether the active credential is the stored subscription login (`/login`),
+ * the only case `.credentials.json` decides. An API key from any source
+ * (`apiKeyHelper`, env, settings, a Console-managed key) outranks it, a
+ * non-first-party backend doesn't use it, and on macOS the login is in the
+ * Keychain, with the file only a fallback.
+ */
+export const usesStoredSubscriptionLogin = (input: {
+  readonly apiProvider: string | undefined;
+  readonly apiKeySource: string | undefined;
+  readonly platform: NodeJS.Platform;
+}): boolean =>
+  input.platform !== "darwin" &&
+  (input.apiProvider === undefined || input.apiProvider === "firstParty") &&
+  (input.apiKeySource === undefined || input.apiKeySource === "none");
+
 export const claudeEnvAuth = (environment: NodeJS.ProcessEnv): boolean =>
   ENV_AUTH_KEYS.some((key) => (environment[key]?.trim() ?? "").length > 0);
 

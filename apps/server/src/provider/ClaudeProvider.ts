@@ -14,6 +14,7 @@ import * as Ref from "effect/Ref";
 import * as Result from "effect/Result";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { createModelCapabilities } from "@t3tools/shared/model";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import {
   query as claudeQuery,
@@ -41,7 +42,7 @@ import {
   resolveClaudeHomePath,
 } from "./Drivers/ClaudeHome.ts";
 // Fork seam (lim): stored-login check
-import { readClaudeStoredLogin } from "./Drivers/ClaudeStoredLogin.ts";
+import { readClaudeStoredLogin, usesStoredSubscriptionLogin } from "./Drivers/ClaudeStoredLogin.ts";
 import { discoverClaudeSkills } from "./Drivers/ClaudeSkills.ts";
 import type { ProviderWorkspaceSnapshot } from "./ProviderDriver.ts";
 import { makeUnavailableUsageLimits } from "./providerUsageLimits.ts";
@@ -237,6 +238,8 @@ type ClaudeCapabilitiesProbe = {
   readonly email: string | undefined;
   readonly subscriptionType: string | undefined;
   readonly tokenSource: string | undefined;
+  /** Fork (lim): the SDK's `AccountInfo.apiKeySource`; anything but `"none"` means an API key is active. */
+  readonly apiKeySource?: string | undefined;
   /**
    * Active API backend reported by the SDK's `AccountInfo`. Anthropic OAuth
    * login only applies when `"firstParty"`; for Amazon Bedrock (`"bedrock"`)
@@ -392,6 +395,7 @@ const probeClaudeCapabilities = (
               readonly email?: string;
               readonly subscriptionType?: string;
               readonly tokenSource?: string;
+              readonly apiKeySource?: string;
               readonly apiProvider?: string;
             }
           | undefined;
@@ -399,6 +403,7 @@ const probeClaudeCapabilities = (
           email: account?.email,
           subscriptionType: account?.subscriptionType,
           tokenSource: account?.tokenSource,
+          ...(account?.apiKeySource !== undefined ? { apiKeySource: account.apiKeySource } : {}),
           apiProvider: account?.apiProvider,
           slashCommands: parseClaudeInitializationCommands(init.commands),
           ...(usage ? { usage } : {}),
@@ -596,7 +601,11 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
   // Fork seam (lim): a first-party subscription login is checked against the
   // stored tokens, which the SDK's account info doesn't (Drivers/ClaudeStoredLogin.ts).
   if (
-    (capabilities.apiProvider === undefined || capabilities.apiProvider === "firstParty") &&
+    usesStoredSubscriptionLogin({
+      apiProvider: capabilities.apiProvider,
+      apiKeySource: capabilities.apiKeySource,
+      platform: yield* HostProcessPlatform,
+    }) &&
     normalizeClaudeAuthMethod(capabilities.tokenSource) !== "apiKey"
   ) {
     const configDir = yield* resolveClaudeHomePath(claudeSettings, resolvedEnvironment);
