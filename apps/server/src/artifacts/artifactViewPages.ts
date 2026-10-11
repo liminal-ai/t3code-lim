@@ -96,6 +96,28 @@ export const fileContentType = (path: string) => {
     : type;
 };
 
+/**
+ * One byte range from a `Range` header, for media seeking: `bytes=a-b`,
+ * `bytes=a-` or `bytes=-n`. `null` serves the whole file (no header, another
+ * unit, or several ranges); `"unsatisfiable"` is a 416.
+ */
+export const byteRange = (
+  header: string | undefined,
+  size: number,
+): { readonly start: number; readonly end: number } | "unsatisfiable" | null => {
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header?.trim() ?? "");
+  if (!match || (match[1] === "" && match[2] === "")) return null;
+  if (match[1] === "") {
+    const suffix = Number(match[2]);
+    if (suffix === 0 || size === 0) return "unsatisfiable";
+    return { start: Math.max(0, size - suffix), end: size - 1 };
+  }
+  const start = Number(match[1]);
+  if (start >= size) return "unsatisfiable";
+  const end = match[2] === "" ? size - 1 : Math.min(Number(match[2]), size - 1);
+  return end < start ? "unsatisfiable" : { start, end };
+};
+
 /** The response `/a/<token>` sends for an artifact's content (see `ArtifactStore.view`). */
 export const viewResponse = (
   artifact: {

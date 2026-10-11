@@ -2,6 +2,7 @@
 import { describe, expect, it } from "vite-plus/test";
 
 import {
+  byteRange,
   fileContentType,
   markdownPage,
   VIEW_FILE_CSP,
@@ -106,5 +107,23 @@ describe("viewResponse", () => {
       expect(headers["Cache-Control"]).toBe("private, no-store");
       expect(headers["X-Content-Type-Options"]).toBe("nosniff");
     }
+  });
+});
+
+describe("byteRange", () => {
+  it("reads one range, open-ended or a suffix, clamped to the file", () => {
+    expect(byteRange("bytes=0-3", 10)).toEqual({ start: 0, end: 3 });
+    expect(byteRange("bytes=4-", 10)).toEqual({ start: 4, end: 9 });
+    expect(byteRange("bytes=-3", 10)).toEqual({ start: 7, end: 9 });
+    expect(byteRange("bytes=8-99", 10)).toEqual({ start: 8, end: 9 });
+  });
+
+  it("serves the whole file for no header, another unit or several ranges; 416 past the end", () => {
+    expect(byteRange(undefined, 10)).toBeNull();
+    expect(byteRange("items=0-1", 10)).toBeNull();
+    expect(byteRange("bytes=0-1,4-5", 10)).toBeNull();
+    expect(byteRange("bytes=10-", 10)).toBe("unsatisfiable");
+    expect(byteRange("bytes=5-2", 10)).toBe("unsatisfiable");
+    expect(byteRange("bytes=-0", 10)).toBe("unsatisfiable");
   });
 });

@@ -283,6 +283,28 @@ describe("artifact routes", () => {
     expect(html).not.toContain("t3-artifact");
   });
 
+  it("answers byte ranges on files, so media can seek", async () => {
+    const { request, fetchPath } = fixture();
+    const bytes = Uint8Array.from([0, 1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    const uploaded = await fetchPath("/api/artifacts?name=clip.mp4&title=Clip", {
+      method: "POST",
+      headers: { "content-type": "video/mp4" },
+      body: bytes,
+    });
+    const { artifact } = await json(uploaded);
+    const { url } = await json(await request("POST", `/${artifact.id}/view-url`, {}));
+    const whole = await fetchPath(url);
+    expect(whole.status).toBe(200);
+    expect(whole.headers.get("accept-ranges")).toBe("bytes");
+    const part = await fetchPath(url, { headers: { range: "bytes=2-4" } });
+    expect(part.status).toBe(206);
+    expect(part.headers.get("content-range")).toBe("bytes 2-4/10");
+    expect([...new Uint8Array(await part.arrayBuffer())]).toEqual([2, 3, 4]);
+    const past = await fetchPath(url, { headers: { range: "bytes=10-" } });
+    expect(past.status).toBe(416);
+    expect(past.headers.get("content-range")).toBe("bytes */10");
+  });
+
   it("serves markdown as a standalone page", async () => {
     const { request, fetchPath } = fixture();
     const { artifact } = await json(

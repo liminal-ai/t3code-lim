@@ -53,7 +53,7 @@ import {
 } from "./artifactConfig.ts";
 import { ArtifactPathError, kindOfPath, ULID_PATTERN } from "./ArtifactFiles.ts";
 import { ArtifactStore, ArtifactStoreError } from "./ArtifactStore.ts";
-import { viewResponse } from "./artifactViewPages.ts";
+import { byteRange, viewResponse } from "./artifactViewPages.ts";
 import {
   issueViewUrl,
   resolveViewToken,
@@ -543,9 +543,31 @@ const viewHandler = Effect.gen(function* () {
   }
   const { body, headers } = viewResponse(viewed.result.artifact, viewed.result.content);
   const { "Content-Type": contentType, ...rest } = headers;
-  return typeof body === "string"
-    ? HttpServerResponse.text(body, { headers: rest, contentType })
-    : HttpServerResponse.uint8Array(body, { headers: rest, contentType });
+  if (typeof body === "string")
+    return HttpServerResponse.text(body, { headers: rest, contentType });
+  // Files answer byte ranges, so audio and video can seek.
+  const range = byteRange(request.headers["range"], body.length);
+  if (range === "unsatisfiable") {
+    return HttpServerResponse.empty({
+      status: 416,
+      headers: { ...rest, "Accept-Ranges": "bytes", "Content-Range": `bytes */${body.length}` },
+    });
+  }
+  if (range === null) {
+    return HttpServerResponse.uint8Array(body, {
+      headers: { ...rest, "Accept-Ranges": "bytes" },
+      contentType,
+    });
+  }
+  return HttpServerResponse.uint8Array(body.subarray(range.start, range.end + 1), {
+    status: 206,
+    headers: {
+      ...rest,
+      "Accept-Ranges": "bytes",
+      "Content-Range": `bytes ${range.start}-${range.end}/${body.length}`,
+    },
+    contentType,
+  });
 });
 
 /** The routes over whatever store handle is provided (tests provide a temp store). */
