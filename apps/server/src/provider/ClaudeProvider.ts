@@ -43,7 +43,7 @@ import {
 } from "./Drivers/ClaudeHome.ts";
 // Fork seam (lim): stored-login check
 import { readClaudeStoredLogin, usesStoredSubscriptionLogin } from "./Drivers/ClaudeStoredLogin.ts";
-import { discoverClaudeSkills } from "./Drivers/ClaudeSkills.ts";
+import { discoverClaudeSkills, skillOverrideSettingsPaths } from "./Drivers/ClaudeSkills.ts";
 import type { ProviderWorkspaceSnapshot } from "./ProviderDriver.ts";
 import { makeUnavailableUsageLimits } from "./providerUsageLimits.ts";
 import {
@@ -600,17 +600,19 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
 
   // Fork seam (lim): a first-party subscription login is checked against the
   // stored tokens, which the SDK's account info doesn't (Drivers/ClaudeStoredLogin.ts).
+  const platform = yield* HostProcessPlatform;
   if (
     usesStoredSubscriptionLogin({
       apiProvider: capabilities.apiProvider,
       apiKeySource: capabilities.apiKeySource,
-      platform: yield* HostProcessPlatform,
+      platform,
     }) &&
     normalizeClaudeAuthMethod(capabilities.tokenSource) !== "apiKey"
   ) {
     const configDir = yield* resolveClaudeHomePath(claudeSettings, resolvedEnvironment);
     const login = yield* readClaudeStoredLogin(
       configDir,
+      skillOverrideSettingsPaths(yield* Path.Path, configDir, cwd, platform, resolvedEnvironment),
       resolvedEnvironment,
       DateTime.toEpochMillis(yield* DateTime.now),
     );

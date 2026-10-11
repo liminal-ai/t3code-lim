@@ -3230,6 +3230,21 @@ it.layer(
             { CLAUDE_CONFIG_DIR: glmHome },
           );
           assert.strictEqual(glm.auth.status, "authenticated");
+
+          // ...and so does one in the workspace's project settings.
+          const workspace = path.join(dir, "workspace");
+          yield* fileSystem.makeDirectory(path.join(workspace, ".claude"), { recursive: true });
+          yield* fileSystem.writeFileString(
+            path.join(workspace, ".claude", "settings.json"),
+            JSON.stringify({ env: { ANTHROPIC_AUTH_TOKEN: "t" } }),
+          );
+          const project = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({}),
+            { CLAUDE_CONFIG_DIR: path.join(dir, "no-login-here") },
+            workspace,
+          );
+          assert.strictEqual(project.auth.status, "authenticated");
         }).pipe(
           Effect.provideService(HostProcessPlatform, "linux"),
           Effect.scoped,

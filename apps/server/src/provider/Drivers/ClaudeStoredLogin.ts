@@ -95,20 +95,26 @@ export function classifyClaudeCredentials(text: string, nowMs: number): ClaudeSt
   return token(login.accessToken) || token(login.refreshToken) ? "expired" : "empty";
 }
 
+/**
+ * `settingsPaths`: every settings file the CLI loads (user, project, local,
+ * managed); Claude applies each one's `env` block, so a proxy or token set in
+ * any of them counts (prod's claude-glm-lhc sets its proxy in its home's).
+ */
 export const readClaudeStoredLogin = Effect.fn("readClaudeStoredLogin")(function* (
   configDir: string,
+  settingsPaths: ReadonlyArray<string>,
   environment: NodeJS.ProcessEnv,
   nowMs: number,
 ): Effect.fn.Return<ClaudeStoredLogin, never, FileSystem.FileSystem | Path.Path> {
   if (claudeEnvAuth(environment)) return "env";
   const fileSystem = yield* FileSystem.FileSystem;
   const path = yield* Path.Path;
-  // Claude also applies the `env` block of its settings.json (e.g. a proxy's
-  // ANTHROPIC_BASE_URL, as prod's claude-glm-lhc home does).
-  const settings = yield* fileSystem
-    .readFileString(path.join(configDir, "settings.json"))
-    .pipe(Effect.orElseSucceed(() => null));
-  if (settings !== null && claudeEnvAuth(settingsEnv(settings))) return "env";
+  for (const settingsPath of settingsPaths) {
+    const settings = yield* fileSystem
+      .readFileString(settingsPath)
+      .pipe(Effect.orElseSucceed(() => null));
+    if (settings !== null && claudeEnvAuth(settingsEnv(settings))) return "env";
+  }
   const file = path.join(configDir, ".credentials.json");
   if (!(yield* fileSystem.exists(file).pipe(Effect.orElseSucceed(() => true)))) return "missing";
   const text = yield* fileSystem.readFileString(file).pipe(Effect.orElseSucceed(() => null));
