@@ -442,13 +442,17 @@ export class ArtifactStore {
       throw new ArtifactStoreError("too_large", "markdown artifacts are limited to 10 MB");
     }
     const absolute = await resolveInStore(this.root, row.path);
-    if (expect) {
+    // Checked right before the rename, after the temp file is written, so an
+    // outside save during that write is caught too. A save landing between
+    // this synchronous check and the rename itself can't be excluded without
+    // a lock outside editors don't take.
+    await writeFileAtomically(absolute, text, () => {
+      if (!expect) return;
       const before = NodeFS.statSync(absolute, { throwIfNoEntry: false });
       if (!before || before.size !== expect.size || before.mtimeMs !== expect.mtime) {
         throw new FileChangedError(row.path);
       }
-    }
-    await writeFileAtomically(absolute, text);
+    });
     const stat = NodeFS.statSync(absolute);
     return {
       ...row,

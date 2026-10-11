@@ -16,6 +16,7 @@ import {
   resolveInStore,
   slugify,
   ULID_PATTERN,
+  writeFileAtomically,
 } from "./ArtifactFiles.ts";
 
 const temps: string[] = [];
@@ -179,5 +180,37 @@ describe("readFileState", () => {
     await expect(
       readFileState("/x.md", changingFile(["a", "bb", "ccc", "dddd", "eeeee"])),
     ).rejects.toBeInstanceOf(FileUnstableError);
+  });
+});
+
+describe("writeFileAtomically", () => {
+  it("runs beforeRename after the temp file is written and before the target changes", async () => {
+    const dir = tempDir();
+    const target = NodePath.join(dir, "a.md");
+    NodeFS.writeFileSync(target, "old");
+    let seen: { target: string; temps: number } | null = null;
+    await writeFileAtomically(target, "new", () => {
+      seen = {
+        target: NodeFS.readFileSync(target, "utf8"),
+        temps: NodeFS.readdirSync(dir).filter((name) => name.endsWith(".tmp")).length,
+      };
+    });
+    expect(seen).toEqual({ target: "old", temps: 1 });
+    expect(NodeFS.readFileSync(target, "utf8")).toBe("new");
+  });
+
+  it("keeps the target and removes the temp file when beforeRename throws", async () => {
+    const dir = tempDir();
+    const target = NodePath.join(dir, "a.md");
+    NodeFS.writeFileSync(target, "old");
+    await expect(
+      writeFileAtomically(target, "new", () => {
+        // An outside save lands while the temp file was being written.
+        NodeFS.writeFileSync(target, "outside");
+        throw new Error("changed");
+      }),
+    ).rejects.toThrow("changed");
+    expect(NodeFS.readFileSync(target, "utf8")).toBe("outside");
+    expect(NodeFS.readdirSync(dir)).toEqual(["a.md"]);
   });
 });

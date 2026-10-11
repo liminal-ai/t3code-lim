@@ -4,6 +4,7 @@
 // `.git`, `.t3` or `.t3-meta` or any other dot entry), writes are atomic, and markdown
 // carries its metadata in YAML front matter (`id`, `title`, `tags`).
 import * as NodeCrypto from "node:crypto";
+import * as NodeFS from "node:fs";
 import * as NodeFSP from "node:fs/promises";
 import * as NodePath from "node:path";
 import { parse as parseYaml, stringify as stringifyYaml } from "yaml";
@@ -186,7 +187,17 @@ export const renderMarkdownFile = (input: {
 export const firstHeading = (body: string) => /^#\s+(.+?)\s*#*\s*$/m.exec(body)?.[1] ?? null;
 
 /** Replaces a file via a temp file in the same directory and a rename. */
-export const writeFileAtomically = async (absolute: string, contents: string) => {
+/**
+ * Writes through a temp file and a rename. `beforeRename` runs synchronously
+ * just before the rename (no await in between), so a precondition checked
+ * there can't be outdated by anything else in this process; it may throw to
+ * abandon the write.
+ */
+export const writeFileAtomically = async (
+  absolute: string,
+  contents: string,
+  beforeRename?: () => void,
+) => {
   const directory = NodePath.dirname(absolute);
   await NodeFSP.mkdir(directory, { recursive: true });
   const temp = NodePath.join(
@@ -195,7 +206,8 @@ export const writeFileAtomically = async (absolute: string, contents: string) =>
   );
   try {
     await NodeFSP.writeFile(temp, contents, { flag: "wx" });
-    await NodeFSP.rename(temp, absolute);
+    beforeRename?.();
+    NodeFS.renameSync(temp, absolute);
   } catch (error) {
     await NodeFSP.rm(temp, { force: true });
     throw error;
