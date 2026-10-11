@@ -503,6 +503,54 @@ describe("ArtifactStore", () => {
     ]);
   });
 
+  it("rolls back and retries a swap whose scan commit fails", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const a = (await first.create({ title: "Alpha" }, LEE)).artifact;
+    const b = (await first.create({ title: "Beta" }, LEE)).artifact;
+    await first.attach(a.id, "thread-a", "write", LEE);
+    const root = first.root;
+    first.close();
+    const at = (path: string) => NodePath.join(root, path);
+    NodeFS.renameSync(at(a.path), at("swap.tmp"));
+    NodeFS.renameSync(at(b.path), at(a.path));
+    NodeFS.renameSync(at("swap.tmp"), at(b.path));
+    const fixGit = breakGit(root);
+    await rejects(ArtifactStore.open(dir));
+    fixGit();
+    const store = await openStore(dir);
+    expect((await store.read(a.id)).artifact.path).toBe(b.path);
+    expect((await store.read(a.id)).artifact.links.map((link) => link.threadId)).toEqual([
+      "thread-a",
+    ]);
+    expect(git(store.root, "log", "-1", "--format=%B")).toContain("T3-Action: moved");
+    expect(git(store.root, "status", "--porcelain").trim()).toBe("");
+  });
+
+  it("serves the body of the file the row describes when an editor replaces it after the check", async () => {
+    const store = await openStore(tempStoreDir());
+    const { artifact } = await store.create({ title: "Swap", content: "- [ ] a\n" }, LEE);
+    const absolute = NodePath.join(store.root, artifact.path);
+    const internals = store as unknown as { current: (id: string) => Promise<unknown> };
+    const current = internals.current.bind(store);
+    let replaced = false;
+    vi.spyOn(internals, "current").mockImplementation(async (id) => {
+      const row = await current(id);
+      if (!replaced) {
+        replaced = true;
+        const next = `${NodeFS.readFileSync(absolute, "utf8")}- [ ] replaced\n`;
+        NodeFS.writeFileSync(`${absolute}.tmp`, next);
+        NodeFS.renameSync(`${absolute}.tmp`, absolute);
+        touchLater(absolute);
+      }
+      return row;
+    });
+    const result = await store.read(artifact.id);
+    expect(result.items.map((item) => item.text)).toEqual(["a", "replaced"]);
+    expect(result.artifact.revision).not.toBe(artifact.revision);
+    expect(git(store.root, "log", "-1", "--format=%B")).toContain("T3-Action: external");
+  });
+
   it("names every op's item even when the ops leave the file unchanged", async () => {
     const store = await openStore(tempStoreDir());
     const { artifact, items } = await store.create({ title: "Noop", content: "- [x] a\n" }, LEE);

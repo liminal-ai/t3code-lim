@@ -377,10 +377,32 @@ export class ArtifactStore {
 
   read(id: string): Promise<ReadResult> {
     return this.serializer.run(async () => {
-      const row = await this.current(id);
-      const { body } = this.readBody(row);
-      return { artifact: this.summary(row), content: body, items: this.items(row.id, body) };
+      // The body served must be the file the row describes: if an editor
+      // replaced it after the check, reconcile again (a few times at most).
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        const row = await this.current(id);
+        const body = this.readBodyIfUnchanged(row);
+        if (body !== null) {
+          return { artifact: this.summary(row), content: body, items: this.items(row.id, body) };
+        }
+      }
+      throw new ArtifactStoreError("unavailable", "the file keeps changing outside T3; try again");
     });
+  }
+
+  /** The body, read through one handle, or null when the file no longer matches the row. */
+  private readBodyIfUnchanged(row: ArtifactRow): string | null {
+    const fd = NodeFS.openSync(NodePath.join(this.root, ...row.path.split("/")), "r");
+    try {
+      const stat = NodeFS.fstatSync(fd);
+      if (stat.size !== row.size || stat.mtimeMs !== row.mtime) return null;
+      const text = NodeFS.readFileSync(fd, "utf8");
+      const after = NodeFS.fstatSync(fd);
+      if (after.size !== stat.size || after.mtimeMs !== stat.mtimeMs) return null;
+      return parseMarkdownFile(text).body;
+    } finally {
+      NodeFS.closeSync(fd);
+    }
   }
 
   /** Records events for a commit that just landed and tells watchers. */

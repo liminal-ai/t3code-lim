@@ -476,6 +476,9 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     // moved one already at its destination would otherwise never retry).
     ctx.index.transaction(() => {
       for (const row of ctx.index.all()) if (!before.has(row.id)) ctx.index.remove(row.id);
+      // Park every row first: after a swap, a saved row's path is still held
+      // by another row, and paths are unique.
+      for (const row of ctx.index.all()) ctx.index.upsert({ ...row, path: `${PARKED}${row.id}` });
       for (const [id, row] of before) {
         ctx.index.upsert(row);
         ctx.index.replaceLinks(id, linksByIdBefore.get(id) ?? []);
