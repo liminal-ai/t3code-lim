@@ -35,7 +35,13 @@ import {
   type ServerProviderDraft,
 } from "./providerSnapshot.ts";
 import { resolveClaudeSdkExecutablePath } from "./Drivers/ClaudeExecutable.ts";
-import { makeClaudeEnvironment } from "./Drivers/ClaudeHome.ts";
+import {
+  claudeSignedOutMessage,
+  makeClaudeEnvironment,
+  resolveClaudeHomePath,
+} from "./Drivers/ClaudeHome.ts";
+// Fork seam (lim): stored-login check
+import { readClaudeStoredLogin } from "./Drivers/ClaudeStoredLogin.ts";
 import { discoverClaudeSkills } from "./Drivers/ClaudeSkills.ts";
 import type { ProviderWorkspaceSnapshot } from "./ProviderDriver.ts";
 import { makeUnavailableUsageLimits } from "./providerUsageLimits.ts";
@@ -585,6 +591,37 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
         message: "Could not verify Claude authentication status from initialization result.",
       },
     });
+  }
+
+  // Fork seam (lim): a first-party subscription login is checked against the
+  // stored tokens, which the SDK's account info doesn't (Drivers/ClaudeStoredLogin.ts).
+  if (
+    (capabilities.apiProvider === undefined || capabilities.apiProvider === "firstParty") &&
+    normalizeClaudeAuthMethod(capabilities.tokenSource) !== "apiKey"
+  ) {
+    const configDir = yield* resolveClaudeHomePath(claudeSettings, resolvedEnvironment);
+    const login = yield* readClaudeStoredLogin(
+      configDir,
+      resolvedEnvironment,
+      DateTime.toEpochMillis(yield* DateTime.now),
+    );
+    if (login === "empty" || login === "expired") {
+      return buildServerProvider({
+        presentation: CLAUDE_PRESENTATION,
+        enabled: claudeSettings.enabled,
+        checkedAt,
+        models,
+        slashCommands: dedupedSlashCommands,
+        skills,
+        probe: {
+          installed: true,
+          version: parsedVersion,
+          status: "error",
+          auth: { status: "unauthenticated" },
+          message: `Claude's stored login has ${login === "empty" ? "no tokens" : "only expired tokens"}. ${claudeSignedOutMessage({ configDir: resolvedEnvironment.CLAUDE_CONFIG_DIR?.trim() || undefined, cwd: cwd ?? process.cwd() })}`,
+        },
+      });
+    }
   }
 
   const authMetadata =

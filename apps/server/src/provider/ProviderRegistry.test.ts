@@ -9,6 +9,7 @@ import * as Effect from "effect/Effect";
 import * as Path from "effect/Path";
 import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as PubSub from "effect/PubSub";
 import * as Ref from "effect/Ref";
@@ -3130,6 +3131,52 @@ it.layer(
           }),
         ),
       ),
+    );
+
+    // Fork (lim): the SDK reported an account while the Nucbox's stored login was empty.
+    it.effect(
+      "reports a stored login with empty tokens as unauthenticated, unless env auth applies",
+      () =>
+        Effect.gen(function* () {
+          const fileSystem = yield* FileSystem.FileSystem;
+          const path = yield* Path.Path;
+          const dir = yield* fileSystem.makeTempDirectoryScoped();
+          yield* fileSystem.writeFileString(
+            path.join(dir, ".credentials.json"),
+            JSON.stringify({
+              claudeAiOauth: {
+                accessToken: "",
+                refreshToken: "",
+                expiresAt: 0,
+                subscriptionType: "max",
+              },
+            }),
+          );
+          const signedOut = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({ subscriptionType: "max" }),
+            { CLAUDE_CONFIG_DIR: dir },
+          );
+          assert.strictEqual(signedOut.status, "error");
+          assert.strictEqual(signedOut.auth.status, "unauthenticated");
+          assert.include(signedOut.message ?? "", "no tokens");
+
+          const proxied = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({ subscriptionType: "max" }),
+            { CLAUDE_CONFIG_DIR: dir, ANTHROPIC_BASE_URL: "http://127.0.0.1:8317" },
+          );
+          assert.strictEqual(proxied.status, "ready");
+          assert.strictEqual(proxied.auth.status, "authenticated");
+        }).pipe(
+          Effect.scoped,
+          Effect.provide(
+            layerMockSpawner((args) => {
+              if (args.join(" ") === "--version") return { stdout: "1.0.0\n", stderr: "", code: 0 };
+              throw new Error(`Unexpected args: ${args.join(" ")}`);
+            }),
+          ),
+        ),
     );
 
     it.effect("returns a display label for claude subscription types", () =>

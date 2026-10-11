@@ -1,0 +1,67 @@
+// Fork-only (lim): whether Claude's stored subscription login can actually sign in.
+// The SDK's initialization result reports an account even when
+// `.credentials.json` holds empty tokens (Nucbox, 2026-10-10: status said
+// "authenticated" and only a real turn failed), so the status probe also reads
+// the stored login. Env and proxy auth don't use that file.
+import * as Effect from "effect/Effect";
+import * as FileSystem from "effect/FileSystem";
+import * as Path from "effect/Path";
+
+/**
+ * - `env`: an API key, auth token, base URL (a proxy such as cliproxy) or a
+ *   cloud backend is set, so the stored login doesn't matter.
+ * - `present`: a token that isn't expired, or a refresh token that isn't.
+ * - `empty` / `expired`: the stored login can't sign in.
+ * - `unknown`: no file (macOS keeps it in the Keychain), no Claude login in
+ *   it, or it can't be read; the probe keeps its own answer.
+ */
+export type ClaudeStoredLogin = "env" | "present" | "empty" | "expired" | "unknown";
+
+const ENV_AUTH_KEYS = [
+  "ANTHROPIC_API_KEY",
+  "ANTHROPIC_AUTH_TOKEN",
+  "CLAUDE_CODE_OAUTH_TOKEN",
+  "ANTHROPIC_BASE_URL",
+  "CLAUDE_CODE_USE_BEDROCK",
+  "CLAUDE_CODE_USE_VERTEX",
+] as const;
+
+export const claudeEnvAuth = (environment: NodeJS.ProcessEnv): boolean =>
+  ENV_AUTH_KEYS.some((key) => (environment[key]?.trim() ?? "").length > 0);
+
+const token = (value: unknown): boolean => typeof value === "string" && value.trim().length > 0;
+/** Unset or 0 means the file gives no expiry for that token. */
+const unexpired = (expiresAt: unknown, nowMs: number): boolean =>
+  typeof expiresAt !== "number" || expiresAt <= 0 || expiresAt > nowMs;
+
+export function classifyClaudeCredentials(text: string, nowMs: number): ClaudeStoredLogin {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(text);
+  } catch {
+    return "unknown";
+  }
+  const oauth =
+    parsed !== null && typeof parsed === "object"
+      ? (parsed as { claudeAiOauth?: unknown }).claudeAiOauth
+      : undefined;
+  if (oauth === null || typeof oauth !== "object") return "unknown";
+  const login = oauth as Record<string, unknown>;
+  if (token(login.accessToken) && unexpired(login.expiresAt, nowMs)) return "present";
+  if (token(login.refreshToken) && unexpired(login.refreshTokenExpiresAt, nowMs)) return "present";
+  return token(login.accessToken) || token(login.refreshToken) ? "expired" : "empty";
+}
+
+export const readClaudeStoredLogin = Effect.fn("readClaudeStoredLogin")(function* (
+  configDir: string,
+  environment: NodeJS.ProcessEnv,
+  nowMs: number,
+): Effect.fn.Return<ClaudeStoredLogin, never, FileSystem.FileSystem | Path.Path> {
+  if (claudeEnvAuth(environment)) return "env";
+  const fileSystem = yield* FileSystem.FileSystem;
+  const path = yield* Path.Path;
+  const text = yield* fileSystem
+    .readFileString(path.join(configDir, ".credentials.json"))
+    .pipe(Effect.orElseSucceed(() => null));
+  return text === null ? "unknown" : classifyClaudeCredentials(text, nowMs);
+});
