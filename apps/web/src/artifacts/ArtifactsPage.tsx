@@ -29,7 +29,7 @@ import { useEnvironmentScope } from "~/state/session";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
 
 import { artifactListView } from "./artifactList.logic";
-import { artifactsRouteKey, displayStorePath } from "./artifactsRoute.logic";
+import { artifactsRouteKey, displayStorePath, environmentChanged } from "./artifactsRoute.logic";
 import type { ArtifactWatchStatus } from "./artifactsWatch.logic";
 import { ArtifactDetail } from "./ListEditor";
 import { NewListDialog } from "./NewListDialog";
@@ -58,6 +58,20 @@ export function ArtifactsPage(props: {
   const watch = useArtifactsWatch(route);
   const [creating, setCreating] = useState(false);
   const { refetch } = list;
+  // The open artifact belongs to the store it came from (artifactsRoute.logic.ts).
+  const nextEnvironment = selected?.id ?? null;
+  const [shownEnvironment, setShownEnvironment] = useState(nextEnvironment);
+  // The first environment to resolve is the one a `?id=` link opens in.
+  if (shownEnvironment === null && nextEnvironment !== null) setShownEnvironment(nextEnvironment);
+  const switched = environmentChanged(shownEnvironment, nextEnvironment);
+  const selectedId = switched ? undefined : props.selectedId;
+  const { onSelect } = props;
+  useEffect(() => {
+    if (!switched) return;
+    // Moved on only once the old id has left the URL, so it's never read from the new store.
+    if (props.selectedId !== undefined) onSelect(undefined);
+    else setShownEnvironment(nextEnvironment);
+  }, [nextEnvironment, onSelect, props.selectedId, switched]);
   // Any change may add, retitle or reorder artifacts; reads are coalesced.
   useEffect(() => watch.hub.subscribe(() => refetch()), [refetch, watch.hub]);
 
@@ -123,30 +137,30 @@ export function ArtifactsPage(props: {
             <div
               className={cn(
                 "min-h-0 w-full flex-col md:flex md:w-80 md:shrink-0 md:border-r md:border-border",
-                props.selectedId ? "hidden" : "flex",
+                selectedId ? "hidden" : "flex",
               )}
             >
               <ArtifactList
                 artifacts={list.data?.artifacts}
                 error={list.error}
-                selectedId={props.selectedId}
+                selectedId={selectedId}
                 onSelect={props.onSelect}
               />
             </div>
             <div
               className={cn(
                 "min-h-0 min-w-0 flex-1 flex-col",
-                props.selectedId ? "flex" : "hidden md:flex",
+                selectedId ? "flex" : "hidden md:flex",
               )}
             >
-              {props.selectedId ? (
+              {selectedId ? (
                 <ArtifactDetail
                   // A new store or artifact starts from a fresh editor.
-                  key={`${artifactsRouteKey(selected.route)}\u0000${props.selectedId}`}
+                  key={`${artifactsRouteKey(selected.route)}\u0000${selectedId}`}
                   route={selected.route}
                   environmentId={selected.id}
                   canWrite={canWrite}
-                  artifactId={props.selectedId}
+                  artifactId={selectedId}
                   hub={watch.hub}
                   onBack={() => props.onSelect(undefined)}
                 />

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vite-plus/test";
 import {
   artifactsEnvironmentOptions,
   displayStorePath,
+  environmentChanged,
   pickArtifactsEnvironment,
 } from "./artifactsRoute.logic";
 
@@ -59,5 +60,18 @@ describe("which store the page shows", () => {
     );
     expect(displayStorePath("/Users/lee/.t3/artifacts")).toBe("~/.t3/artifacts");
     expect(displayStorePath("/srv/t3/artifacts")).toBe("/srv/t3/artifacts");
+  });
+});
+
+describe("environmentChanged", () => {
+  it("clears an open artifact when the page falls back to, or back from, another store", () => {
+    expect(environmentChanged("lim-builder", "local")).toBe(true);
+    expect(environmentChanged("local", "lim-builder")).toBe(true);
+  });
+
+  it("keeps it while the first environment resolves, while none is connected, and when nothing changed", () => {
+    expect(environmentChanged(null, "lim-builder")).toBe(false);
+    expect(environmentChanged("lim-builder", null)).toBe(false);
+    expect(environmentChanged("lim-builder", "lim-builder")).toBe(false);
   });
 });

@@ -59,6 +59,16 @@ export function pickArtifactsEnvironment(
   );
 }
 
+/**
+ * An open artifact belongs to the store it was opened from. When the page's
+ * environment changes under it (a remote disconnects and the page falls back,
+ * or it reconnects and the page goes back), the selection is cleared rather
+ * than read from the other store. Not when the first environment resolves, so
+ * a `?id=` link opens.
+ */
+export const environmentChanged = (shown: string | null, next: string | null): boolean =>
+  shown !== null && next !== null && shown !== next;
+
 /** Identifies a route for keying state that belongs to one server. */
 export const artifactsRouteKey = (route: ArtifactsRoute): string => JSON.stringify(route);
 
