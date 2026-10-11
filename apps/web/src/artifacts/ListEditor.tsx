@@ -406,6 +406,7 @@ function ListItemRow(props: {
           <button
             type="button"
             disabled={!editable}
+            aria-label={`Edit ${item.text}`}
             className={cn(
               "min-w-0 flex-1 truncate text-left",
               item.checked && "text-muted-foreground line-through",
