@@ -184,39 +184,46 @@ function ArtifactList(props: {
   }
   const sorted = props.artifacts.toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return (
-    <ScrollArea className="min-h-0 flex-1">
-      <ul aria-label="Artifacts">
-        {sorted.map((artifact) => {
-          const Icon = artifact.kind === "md" ? ListChecksIcon : FileTextIcon;
-          return (
-            <li key={artifact.id}>
-              <button
-                type="button"
-                aria-current={artifact.id === props.selectedId ? "true" : undefined}
-                className={cn(
-                  "flex w-full items-start gap-2.5 border-b border-border px-4 py-2.5 text-left text-sm hover:bg-accent/50",
-                  artifact.id === props.selectedId && "bg-accent",
-                )}
-                onClick={() => props.onSelect(artifact.id)}
-              >
-                <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate font-medium">{artifact.title}</span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {artifact.path}
-                    {artifact.links.length
-                      ? ` · ${artifact.links.length} thread${artifact.links.length === 1 ? "" : "s"}`
-                      : ""}
+    <>
+      {props.error ? (
+        <p className="px-4 py-2 text-2xs text-warning" role="status">
+          {props.error.message}
+        </p>
+      ) : null}
+      <ScrollArea className="min-h-0 flex-1">
+        <ul aria-label="Artifacts">
+          {sorted.map((artifact) => {
+            const Icon = artifact.kind === "md" ? ListChecksIcon : FileTextIcon;
+            return (
+              <li key={artifact.id}>
+                <button
+                  type="button"
+                  aria-current={artifact.id === props.selectedId ? "true" : undefined}
+                  className={cn(
+                    "flex w-full items-start gap-2.5 border-b border-border px-4 py-2.5 text-left text-sm hover:bg-accent/50",
+                    artifact.id === props.selectedId && "bg-accent",
+                  )}
+                  onClick={() => props.onSelect(artifact.id)}
+                >
+                  <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{artifact.title}</span>
+                    <span className="block truncate text-xs text-muted-foreground">
+                      {artifact.path}
+                      {artifact.links.length
+                        ? ` · ${artifact.links.length} thread${artifact.links.length === 1 ? "" : "s"}`
+                        : ""}
+                    </span>
                   </span>
-                </span>
-                <span className="shrink-0 text-2xs text-muted-foreground">
-                  {formatRelativeTimeLabel(artifact.updatedAt)}
-                </span>
-              </button>
-            </li>
-          );
-        })}
-      </ul>
-    </ScrollArea>
+                  <span className="shrink-0 text-2xs text-muted-foreground">
+                    {formatRelativeTimeLabel(artifact.updatedAt)}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      </ScrollArea>
+    </>
   );
 }

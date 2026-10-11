@@ -90,7 +90,7 @@ export function ArtifactDetail(props: {
     dispatch({ type: "fetchStarted" });
     readArtifact(route, artifactId).then(
       (read) => dispatch({ type: "fetched", epoch, read }),
-      (error: unknown) => dispatch({ type: "fetchFailed", failure: toFailure(error) }),
+      (error: unknown) => dispatch({ type: "fetchFailed", epoch, failure: toFailure(error) }),
     );
   }, [artifactId, route, state]);
 
@@ -126,9 +126,10 @@ export function ArtifactDetail(props: {
   const unassigned = items.some((item) => item.id === null);
   const assignIds = () => {
     // An empty op batch is a T3 write: the server gives every item an id.
+    const { epoch } = state;
     applyArtifactOps(route, artifactId, []).then(
       () => dispatch({ type: "resync" }),
-      (error: unknown) => dispatch({ type: "fetchFailed", failure: toFailure(error) }),
+      (error: unknown) => dispatch({ type: "fetchFailed", epoch, failure: toFailure(error) }),
     );
   };
 

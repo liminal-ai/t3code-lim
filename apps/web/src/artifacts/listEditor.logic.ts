@@ -80,7 +80,7 @@ export type ListEditorAction =
   | { readonly type: "failed"; readonly key: number; readonly failure: ListEditorFailure }
   | { readonly type: "fetchStarted" }
   | { readonly type: "fetched"; readonly epoch: number; readonly read: LimArtifactReadResponse }
-  | { readonly type: "fetchFailed"; readonly failure: ListEditorFailure }
+  | { readonly type: "fetchFailed"; readonly epoch: number; readonly failure: ListEditorFailure }
   | { readonly type: "change"; readonly change: LimArtifactChange }
   | { readonly type: "resync" }
   | { readonly type: "dismissNotice" };
@@ -211,7 +211,9 @@ export function listEditorReducer(
         head.tempId !== null && realId !== undefined
           ? rest.map((queued) => ({ ...queued, op: renameIn(queued.op, head.tempId!, realId) }))
           : rest;
-      return afterDrain({
+      // When the list just became empty, the last read's body is stale: clear it
+      // and trigger a fresh read so the fallback doesn't show ghost items.
+      const base: ListEditorState = {
         ...state,
         artifact: action.artifact,
         items: action.items,
@@ -219,7 +221,10 @@ export function listEditorReducer(
         sending: null,
         epoch: state.epoch + 1,
         unexplained: state.unexplained.filter((revision) => revision !== action.artifact.revision),
-      });
+        content: action.items.length === 0 ? "" : state.content,
+        wantFetch: state.wantFetch || action.items.length === 0,
+      };
+      return afterDrain(base);
     }
     case "failed": {
       const [head, ...rest] = state.pending;
@@ -253,13 +258,18 @@ export function listEditorReducer(
         loadError: null,
       };
     }
-    case "fetchFailed":
+    case "fetchFailed": {
+      // Drop a stale failure (started before an op settled or while one is queued).
+      if (state.pending.length > 0 || action.epoch !== state.epoch) {
+        return { ...state, fetching: false };
+      }
       return {
         ...state,
         fetching: false,
         gone: action.failure.code === "not_found",
         loadError: action.failure.message,
       };
+    }
     case "change": {
       const { revision } = action.change;
       // Our own op's frame, after its answer already updated the list.
