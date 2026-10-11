@@ -1,7 +1,7 @@
 import * as Effect from "effect/Effect";
 import * as Schema from "effect/Schema";
 import * as SchemaTransformation from "effect/SchemaTransformation";
-import { TrimmedNonEmptyString } from "./baseSchemas.ts";
+import { PositiveInt, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { ProviderDriverKind } from "./providerInstance.ts";
 
 export const ProviderOptionDescriptorType = Schema.Literals(["select", "boolean"]);
@@ -131,11 +131,15 @@ export type ModelCapabilities = typeof ModelCapabilities.Type;
  * A user-authored custom model. `name` and `capabilities` are optional so a
  * bare slug keeps its driver-default presentation; when `capabilities` is
  * set, its descriptors replace the driver default in the model picker.
+ * `contextWindow` (fork: Mira #305/#308) is the model's real window in tokens,
+ * for models the driver's catalog doesn't know; Claude-LHC fits its compaction
+ * to it and passes it to Claude Code.
  */
 export const CustomModelEntry = Schema.Struct({
   slug: TrimmedNonEmptyString,
   name: Schema.optional(TrimmedNonEmptyString),
   capabilities: Schema.optional(ModelCapabilities),
+  contextWindow: Schema.optional(PositiveInt),
 });
 export type CustomModelEntry = typeof CustomModelEntry.Type;
 

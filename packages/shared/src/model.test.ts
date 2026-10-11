@@ -291,6 +291,23 @@ describe("readCustomModelEntries", () => {
     expect(readCustomModelEntries("not a list")).toEqual([]);
   });
 
+  it("keeps a custom model's contextWindow through a read and write back", () => {
+    const [entry] = readCustomModelEntries([{ slug: "glm-5.3", contextWindow: 1_000_000 }]);
+    expect(entry).toEqual({
+      slug: "glm-5.3",
+      name: "glm-5.3",
+      capabilities: null,
+      contextWindow: 1_000_000,
+    });
+    expect(toCustomModelSetting(entry!)).toEqual({ slug: "glm-5.3", contextWindow: 1_000_000 });
+    // An invalid window is dropped, not kept.
+    expect(readCustomModelEntries([{ slug: "x", contextWindow: -1 }])[0]).toEqual({
+      slug: "x",
+      name: "x",
+      capabilities: null,
+    });
+  });
+
   it("writes the compact stored shape back", () => {
     expect(toCustomModelSetting({ slug: "x", name: "x", capabilities: null })).toBe("x");
     expect(

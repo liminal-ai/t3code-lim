@@ -73,6 +73,15 @@ an option; Opus 5.5 and Fable default to 1M. A thread's `modelSelection` carries
 it. Settings can only set the new-thread default (`defaultModelSelection`, one instance, environment
 or per project); threads created over the API (onboarding and test scripts, wherever agent threads are created) must pass the option themselves; the comms adapter only dispatches into existing threads, so it needs nothing. Defaults remain installation-specific configuration.
 
+Models the catalog doesn't know (custom models such as GLM through cliproxy) take their window from
+the custom model entry's optional `contextWindow`, and a bare entry fits as 200k, so an unknown model
+is never uncapped. A declared window also overrides the catalog for that slug. Each query sizes its
+own model, because a model change opens a new Claude Code process (the API model id is part of the
+query's identity). When the opened model declares a window, the sidecar passes it to Claude Code as
+`CLAUDE_CODE_MAX_CONTEXT_TOKENS`, since Claude Code otherwise assumes 200k for a non-Claude model
+name. An explicit value in the environment wins for both. (Mira #305, #308; Codex review on #32;
+2026-10-10)
+
 ## Known limits
 
 - New compaction windows apply when a session opens: V2 keeps a thread's query open across turns, so
