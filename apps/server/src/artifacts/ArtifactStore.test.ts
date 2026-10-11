@@ -910,6 +910,7 @@ describe("ArtifactStore content types", () => {
       LEE,
     );
     expect(big.artifact.size).toBeGreaterThan(1024 * 1024);
+    expect(big.content).toBe("");
     expect((await store.read(big.artifact.id)).content).toBe("");
   });
 

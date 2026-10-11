@@ -659,10 +659,11 @@ export class ArtifactStore {
           at,
         });
         this.record(events, row.revision);
+        // Same rule as a read (contentOf): a text file over 1 MB isn't sent inline.
         const content =
           kind === "other"
             ? isTextFile(path)
-              ? (decodeText(contents as Uint8Array) ?? "")
+              ? this.contentOf(row, Buffer.from(contents as Uint8Array))
               : ""
             : text!.body;
         return {
