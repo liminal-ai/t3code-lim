@@ -4,7 +4,8 @@
 // read and write, find edits made outside T3 (an agent's own file tools, an
 // editor, git) and commit them as "external" before anything is served or
 // applied. When the index is new (deleted, unreadable or an old schema), the
-// scan rebuilds it: artifacts and tags from the files, links from
+// scan rebuilds it: artifacts and tags from the files (other files, which
+// carry no metadata, from `.t3-meta/links.json`), links from
 // `.t3-meta/links.json`, events from the commit log.
 import * as NodeFS from "node:fs";
 import * as NodeFSP from "node:fs/promises";
@@ -12,14 +13,16 @@ import * as NodePath from "node:path";
 
 import type { LimArtifactActor, LimArtifactLink } from "@t3tools/contracts";
 
-import { MAX_TEXT_ARTIFACT_BYTES } from "./artifactConfig.ts";
+import { maxArtifactBytes } from "./artifactConfig.ts";
 import {
   contentRevision,
   firstHeading,
+  htmlSearchText,
+  htmlTitle,
   kindOfPath,
   newUlid,
-  parseMarkdownFile,
-  renderMarkdownFile,
+  parseTextArtifact,
+  renderTextArtifact,
   toRelative,
   writeFileAtomically,
 } from "./ArtifactFiles.ts";
@@ -46,29 +49,43 @@ export interface ReconcileContext {
   readonly emit: (event: ArtifactEventRow) => void;
 }
 
+/**
+ * One artifact in links.json: its path and links, and for other files (which
+ * can't carry metadata themselves) their title and tags, so a rebuilt index
+ * keeps them.
+ */
+interface LinksEntry {
+  readonly path: string;
+  readonly links: ReadonlyArray<LimArtifactLink>;
+  readonly title?: string;
+  readonly tags?: ReadonlyArray<string>;
+}
+
 interface LinksFile {
   readonly version: 1;
-  readonly artifacts: Record<
-    string,
-    { readonly path: string; readonly links: ReadonlyArray<LimArtifactLink> }
-  >;
+  readonly artifacts: Record<string, LinksEntry>;
 }
 
 const EMPTY_LINKS_FILE = `${JSON.stringify({ version: 1, artifacts: {} }, null, 2)}\n`;
 
-/** `.t3-meta/links.json` as the index says it should be: artifacts with links, sorted. */
+/**
+ * `.t3-meta/links.json` as the index says it should be: artifacts with links,
+ * and every other file with its title and tags, sorted.
+ */
 export const renderLinksFile = (index: ArtifactIndex) => {
-  const artifacts: Record<string, { path: string; links: LimArtifactLink[] }> = {};
+  const artifacts: Record<string, LinksEntry> = {};
   const byArtifact = index.allLinks();
-  for (const id of [...byArtifact.keys()].sort()) {
+  const others = index.all().filter((row) => row.kind === "other");
+  const ids = new Set([...byArtifact.keys(), ...others.map((row) => row.id)]);
+  for (const id of [...ids].sort()) {
     const row = index.get(id);
-    const links = byArtifact.get(id)!;
-    if (row && links.length > 0) {
-      artifacts[id] = {
-        path: row.path,
-        links: [...links].sort((a, b) => a.threadId.localeCompare(b.threadId)),
-      };
-    }
+    const links = byArtifact.get(id) ?? [];
+    if (!row || (links.length === 0 && row.kind !== "other")) continue;
+    artifacts[id] = {
+      path: row.path,
+      links: [...links].sort((a, b) => a.threadId.localeCompare(b.threadId)),
+      ...(row.kind === "other" ? { title: row.title, tags: [...row.tags] } : {}),
+    };
   }
   const file: LinksFile = { version: 1, artifacts };
   return `${JSON.stringify(file, null, 2)}\n`;
@@ -100,11 +117,23 @@ const readLinksFile = async (root: string): Promise<LinksFile | null> => {
   // that aren't well formed are skipped, the rest restored.
   const artifacts = (parsed as { artifacts?: unknown } | null)?.artifacts;
   if (!artifacts || typeof artifacts !== "object" || Array.isArray(artifacts)) return null;
-  const valid: Record<string, { path: string; links: LimArtifactLink[] }> = {};
+  const valid: Record<string, LinksEntry> = {};
   for (const [id, entry] of Object.entries(artifacts)) {
-    const { path, links } = (entry ?? {}) as { path?: unknown; links?: unknown };
+    const { path, links, title, tags } = (entry ?? {}) as {
+      path?: unknown;
+      links?: unknown;
+      title?: unknown;
+      tags?: unknown;
+    };
     if (typeof path !== "string" || !Array.isArray(links)) continue;
-    valid[id] = { path, links: links.filter(isLink) };
+    valid[id] = {
+      path,
+      links: links.filter(isLink),
+      ...(typeof title === "string" ? { title } : {}),
+      ...(Array.isArray(tags)
+        ? { tags: tags.filter((tag): tag is string => typeof tag === "string") }
+        : {}),
+    };
   }
   return { version: 1, artifacts: valid };
 };
@@ -128,8 +157,8 @@ const isLink = (value: unknown): value is LimArtifactLink => {
   );
 };
 
-/** Store-relative paths of markdown files, skipping dot entries and symlinks. */
-const walkMarkdown = async (root: string): Promise<string[]> => {
+/** Store-relative paths of artifact files, skipping dot entries and symlinks. */
+const walkFiles = async (root: string): Promise<string[]> => {
   const found: string[] = [];
   const visit = async (directory: string) => {
     const entries = await NodeFSP.readdir(directory, { withFileTypes: true });
@@ -137,23 +166,27 @@ const walkMarkdown = async (root: string): Promise<string[]> => {
       if (entry.name.startsWith(".")) continue;
       const absolute = NodePath.join(directory, entry.name);
       if (entry.isDirectory()) await visit(absolute);
-      else if (entry.isFile() && kindOfPath(entry.name) === "md") {
-        found.push(toRelative(root, absolute));
-      }
+      else if (entry.isFile()) found.push(toRelative(root, absolute));
     }
   };
   await visit(root);
   return found.sort();
 };
 
-/** A file's front matter, reading only its head (for files too large to read whole). */
-const headFrontMatter = async (absolute: string) => {
+/**
+ * A markdown or HTML file's metadata, reading only its head (for files too
+ * large to read whole). Other files carry none.
+ */
+const headMetadata = async (absolute: string) => {
+  const kind = kindOfPath(absolute);
+  if (kind === "other") return null;
   const handle = await NodeFSP.open(absolute, "r").catch(() => null);
   if (!handle) return null;
   try {
     const head = Buffer.alloc(64 * 1024);
     const { bytesRead } = await handle.read(head, 0, head.length, 0);
-    return parseMarkdownFile(head.subarray(0, bytesRead).toString("utf8")).frontMatter ?? null;
+    const text = head.subarray(0, bytesRead).toString("utf8");
+    return parseTextArtifact(kind, text).frontMatter ?? null;
   } finally {
     await handle.close();
   }
@@ -163,7 +196,7 @@ const headFrontMatter = async (absolute: string) => {
 export class FileUnstableError extends Error {}
 
 export interface FileState {
-  readonly text: string;
+  readonly bytes: Buffer;
   readonly size: number;
   readonly mtime: number;
 }
@@ -172,21 +205,23 @@ export interface FileState {
  * The file's bytes with the size and mtime of those same bytes: read through
  * one handle, so an editor replacing the file meanwhile can't pair old text
  * with the new file's metadata (the next check then sees the new file). An
- * in-place write during the read is retried.
+ * in-place write during the read is retried. Files over their kind's size
+ * limit (10 MB for markdown and HTML, 50 MB for others) aren't read.
  */
 export const readFileState = async (
   absolute: string,
   fs: Pick<typeof NodeFSP, "lstat" | "open"> = NodeFSP,
 ): Promise<FileState | "too_large" | null> => {
+  const limit = maxArtifactBytes(kindOfPath(absolute));
   const stat = await fs.lstat(absolute).catch(() => null);
   if (!stat || !stat.isFile()) return null;
-  if (stat.size > MAX_TEXT_ARTIFACT_BYTES) return "too_large";
+  if (stat.size > limit) return "too_large";
   const handle = await fs.open(absolute, "r").catch(() => null);
   if (!handle) return null;
   try {
     for (let attempt = 1; ; attempt++) {
       const opened = await handle.stat();
-      if (opened.size > MAX_TEXT_ARTIFACT_BYTES) return "too_large";
+      if (opened.size > limit) return "too_large";
       // Positional reads from offset 0, so a retry rereads the whole file
       // (readFile would continue from where the last read stopped).
       const buffer = Buffer.alloc(opened.size);
@@ -196,10 +231,10 @@ export const readFileState = async (
         if (bytesRead === 0) break;
         length += bytesRead;
       }
-      const text = buffer.subarray(0, length).toString("utf8");
+      const bytes = buffer.subarray(0, length);
       const after = await handle.stat();
       if (after.size === opened.size && after.mtimeMs === opened.mtimeMs) {
-        return { text, size: after.size, mtime: after.mtimeMs };
+        return { bytes, size: after.size, mtime: after.mtimeMs };
       }
       // Never index a read that may be torn: refuse, and the caller retries later.
       if (attempt >= 3) throw new FileUnstableError(absolute);
@@ -209,36 +244,78 @@ export const readFileState = async (
   }
 };
 
+/** What links.json remembers about an other file, for a rebuilt index. */
+interface RememberedMetadata {
+  readonly title?: string | undefined;
+  readonly tags?: ReadonlyArray<string> | undefined;
+}
+
 /**
- * Index state for a markdown file, giving it `id` (rewriting its front matter
- * when the file lacks that id). Returns the row and whether the file was rewritten.
+ * Index state for a file, giving it `id`. A markdown or HTML file that lacks
+ * that id gets its metadata rewritten; other files carry none and keep the
+ * title and tags the index (or links.json) has for them. Returns the row and
+ * whether the file was rewritten.
  */
-const indexMarkdown = async (
+const indexFile = async (
   ctx: ReconcileContext,
   path: string,
   id: string,
   state: FileState,
   previous: ArtifactRow | undefined,
+  remembered?: RememberedMetadata,
 ): Promise<{ row: ArtifactRow; rewritten: boolean }> => {
   const absolute = NodePath.join(ctx.root, ...path.split("/"));
-  const parsed = parseMarkdownFile(state.text);
+  const kind = kindOfPath(path);
+  const stem = NodePath.basename(path, NodePath.extname(path));
+  const at = ctx.now().toISOString();
+  const base = {
+    id,
+    path,
+    kind,
+    state: previous?.state ?? "kept",
+    createdBy: previous?.createdBy ?? null,
+    createdAt: previous?.createdAt ?? new Date(state.mtime).toISOString(),
+  } as const;
+  if (kind === "other") {
+    const revision = contentRevision(state.bytes);
+    return {
+      rewritten: false,
+      row: {
+        ...base,
+        title: previous?.title ?? (remembered?.title?.trim() || stem),
+        updatedAt: previous && previous.revision === revision ? previous.updatedAt : at,
+        revision,
+        size: state.size,
+        mtime: state.mtime,
+        bodyText: "",
+        tags: previous?.tags ?? remembered?.tags ?? [],
+      },
+    };
+  }
+  const parsed = parseTextArtifact(kind, state.bytes.toString("utf8"));
   let current = state;
   let rewritten = false;
   const title =
     parsed.frontMatter?.title?.trim() ||
     previous?.title ||
-    firstHeading(parsed.body) ||
-    NodePath.basename(path, NodePath.extname(path));
-  if (parsed.frontMatter?.id !== id) {
+    (kind === "md" ? firstHeading(parsed.body) : htmlTitle(parsed.body)) ||
+    stem;
+  const rendered =
+    parsed.frontMatter?.id === id
+      ? null
+      : renderTextArtifact(kind, {
+          id,
+          title,
+          tags: parsed.frontMatter?.tags ?? [],
+          extra: parsed.frontMatter?.extra,
+          body: parsed.body,
+        });
+  // A file within the limit whose metadata would push it over is left as it
+  // is: it stays indexed by its path, rather than being made too large to open.
+  if (rendered !== null && Buffer.byteLength(rendered) <= maxArtifactBytes(kind)) {
     await writeFileAtomically(
       absolute,
-      renderMarkdownFile({
-        id,
-        title,
-        tags: parsed.frontMatter?.tags ?? [],
-        extra: parsed.frontMatter?.extra,
-        body: parsed.body,
-      }),
+      rendered,
       // Don't overwrite a save that landed since the read: refuse, and the
       // next access reconciles the newer file.
       () => {
@@ -252,26 +329,36 @@ const indexMarkdown = async (
     if (after !== null && after !== "too_large") current = after;
     rewritten = true;
   }
-  const at = ctx.now().toISOString();
+  const revision = contentRevision(current.bytes);
   return {
     rewritten,
     row: {
-      id,
-      path,
+      ...base,
       title,
-      kind: "md",
-      state: previous?.state ?? "kept",
-      createdBy: previous?.createdBy ?? null,
-      createdAt: previous?.createdAt ?? new Date(state.mtime).toISOString(),
-      updatedAt:
-        previous && previous.revision === contentRevision(current.text) ? previous.updatedAt : at,
-      revision: contentRevision(current.text),
+      updatedAt: previous && previous.revision === revision ? previous.updatedAt : at,
+      revision,
       size: current.size,
       mtime: current.mtime,
-      bodyText: parsed.body,
+      bodyText: kind === "md" ? parsed.body : htmlSearchText(parsed.body),
       tags: parsed.frontMatter?.tags ?? [],
     },
   };
+};
+
+/**
+ * Where an artifact was committed before it moved while too large to commit:
+ * paths whose committed file carries its id but that are gone from disk. The
+ * commit that finally adds the moved file removes them too, so the move is one
+ * commit and the old path doesn't stay deleted but uncommitted. Only asked
+ * when the artifact's own path isn't in git yet (other files carry no id and
+ * can't be traced).
+ */
+const strandedPaths = async (ctx: ReconcileContext, id: string, path: string) => {
+  const carrying = await ctx.git.committedPathsContaining(id);
+  return carrying.filter(
+    (candidate) =>
+      candidate !== path && !NodeFS.existsSync(NodePath.join(ctx.root, ...candidate.split("/"))),
+  );
 };
 
 /** Commits external changes and records one event per artifact. */
@@ -328,17 +415,18 @@ const restoreEvents = async (ctx: ReconcileContext) => {
 };
 
 /**
- * The startup scan: indexes every markdown file, adopts new ones (giving them
- * an id), notices moves and removals, and commits whatever changed outside T3.
- * With `rebuild`, also restores links and events.
+ * The startup scan: indexes every file, adopts new ones (giving markdown and
+ * HTML an id in their metadata), notices moves and removals, and commits
+ * whatever changed outside T3. With `rebuild`, also restores links and events.
  */
 export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boolean }) => {
-  const paths = await walkMarkdown(ctx.root);
+  const paths = await walkFiles(ctx.root);
   const linksFile = options.rebuild ? await readLinksFile(ctx.root) : null;
   const linkedEntries = Object.entries(linksFile?.artifacts ?? {});
   const idByLinkedPath = new Map(linkedEntries.map(([id, entry]) => [entry.path, id]));
   const idPathFromLinks = new Map(linkedEntries.map(([id, entry]) => [id, entry.path]));
   const dirty = new Set(await ctx.git.changedPaths());
+  const tracked = new Set(await ctx.git.trackedPaths());
   // The index as it was: moves and swaps are judged against it, and an artifact
   // is removed only when no file carries it after the whole scan.
   const before = new Map(ctx.index.all().map((row) => [row.id, row]));
@@ -349,6 +437,7 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
   // an artifact may also have moved, and its id is reserved for it.
   const tooLargeIds = new Map<string, string>();
   const tooLargeTitles = new Map<string, string>();
+  const tooLargeTags = new Map<string, ReadonlyArray<string>>();
   const commitPaths = new Set<string>();
   const events: Array<ArtifactCommitEvent & { revision: string | null }> = [];
 
@@ -357,18 +446,37 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     const state = await readFileState(NodePath.join(ctx.root, ...path.split("/")));
     if (state === "too_large") {
       tooLarge.add(path);
-      const front = await headFrontMatter(NodePath.join(ctx.root, ...path.split("/")));
-      const id = front?.id ?? null;
+      const front = await headMetadata(NodePath.join(ctx.root, ...path.split("/")));
+      // An other file carries no id: in a rebuild, links.json names it by path.
+      const linkedId = kindOfPath(path) === "other" ? (idByLinkedPath.get(path) ?? null) : null;
+      const id = front?.id ?? linkedId;
       if (id !== null && !tooLargeIds.has(id)) {
+        const linked = linkedId === null ? undefined : linksFile?.artifacts[linkedId];
         tooLargeIds.set(id, path);
         tooLargeTitles.set(
           id,
-          front?.title?.trim() || NodePath.basename(path, NodePath.extname(path)),
+          front?.title?.trim() ||
+            linked?.title?.trim() ||
+            NodePath.basename(path, NodePath.extname(path)),
         );
+        if (linked?.tags) tooLargeTags.set(id, linked.tags);
       }
     }
     if (state === null || state === "too_large") continue;
-    files.push({ path, state, fileId: parseMarkdownFile(state.text).frontMatter?.id ?? null });
+    const kind = kindOfPath(path);
+    const fileId =
+      kind === "other"
+        ? null
+        : (parseTextArtifact(kind, state.bytes.toString("utf8")).frontMatter?.id ?? null);
+    files.push({ path, state, fileId });
+  }
+  // Other files carry no id: one moved outside T3 is found by its content, as
+  // an indexed other file whose path is gone with the same revision.
+  const onDisk = new Set(paths);
+  const movedOthers = new Map<string, string[]>();
+  for (const row of before.values()) {
+    if (row.kind !== "other" || onDisk.has(row.path)) continue;
+    movedOthers.set(row.revision, [...(movedOthers.get(row.revision) ?? []), row.id]);
   }
   // When two files carry one id (a copy), the file the index or links.json
   // already knows at that path keeps it, then other files carrying that id,
@@ -392,6 +500,16 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     // An id only reaches this file by its path (it carries none): never take
     // one an oversized file still carries elsewhere.
     if (id !== null && fileId === null && tooLargeIds.has(id)) id = null;
+    // A file carrying the id of an artifact whose oversized file is still at
+    // the artifact's own path is a copy of it: the oversized one keeps the id.
+    if (id !== null && id === fileId && tooLargeIds.has(id)) {
+      const known = before.get(id)?.path ?? idPathFromLinks.get(id);
+      if (known !== undefined && known === tooLargeIds.get(id)) id = null;
+    }
+    if (id === null && kindOfPath(path) === "other") {
+      const revision = contentRevision(state.bytes);
+      id = movedOthers.get(revision)?.find((candidate) => !seen.has(candidate)) ?? null;
+    }
     const adopted = id === null;
     id ??= newUlid(ctx.now().getTime());
     seen.add(id);
@@ -399,13 +517,29 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     // Another artifact is indexed at this path (two files swapped, or a file
     // moved onto it): park its row, links intact, until its own file turns up.
     if (byPath && byPath.id !== id) ctx.index.upsert({ ...byPath, path: `${PARKED}${byPath.id}` });
-    const { row, rewritten } = await indexMarkdown(ctx, path, id, state, previous);
+    const { row, rewritten } = await indexFile(
+      ctx,
+      path,
+      id,
+      state,
+      previous,
+      linksFile?.artifacts[id],
+    );
     ctx.index.upsert(row);
-    const moved = previous !== undefined && previous.path !== path;
+    // Moved while too large to commit: the commit adding it removes where it was.
+    const stranded =
+      !adopted &&
+      !tracked.has(path) &&
+      kindOfPath(path) !== "other" &&
+      (previous === undefined || previous.path === path)
+        ? await strandedPaths(ctx, id, path)
+        : [];
+    const moved = (previous !== undefined && previous.path !== path) || stranded.length > 0;
     const edited = previous !== undefined && previous.revision !== row.revision;
     if (rewritten || dirty.has(path) || moved || edited || (adopted && !options.rebuild)) {
       commitPaths.add(path);
-      if (moved) commitPaths.add(previous.path);
+      if (previous !== undefined && previous.path !== path) commitPaths.add(previous.path);
+      for (const source of stranded) commitPaths.add(source);
       const action = adopted ? "adopted" : moved ? "moved" : "external";
       events.push({
         artifactId: id,
@@ -427,7 +561,7 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
       id,
       path,
       title: tooLargeTitles.get(id) ?? id,
-      kind: "md",
+      kind: kindOfPath(path),
       state: "kept",
       createdBy: null,
       createdAt: at,
@@ -436,7 +570,7 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
       size: -1,
       mtime: -1,
       bodyText: "",
-      tags: [],
+      tags: [...(tooLargeTags.get(id) ?? [])],
     });
   }
 
@@ -454,6 +588,10 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     }
     ctx.index.remove(row.id);
     commitPaths.add(path);
+    // Removed after moving while too large to commit: remove where it was committed.
+    if (!tracked.has(path) && original.kind !== "other") {
+      for (const source of await strandedPaths(ctx, row.id, path)) commitPaths.add(source);
+    }
     events.push({
       artifactId: row.id,
       action: "removed",
@@ -528,28 +666,38 @@ export const checkArtifact = async (
     await scanStore(ctx, { rebuild: false });
     return "rescanned";
   }
-  const { row: next, rewritten } = await indexMarkdown(ctx, row.path, row.id, state, row);
+  const { row: next, rewritten } = await indexFile(ctx, row.path, row.id, state, row);
   ctx.index.upsert(next);
-  if (!rewritten && next.revision === row.revision) return "unchanged";
+  // A file that moved while too large to commit is a move now it fits.
+  const stranded =
+    row.kind !== "other" && !(await ctx.git.isTracked(row.path))
+      ? await strandedPaths(ctx, row.id, row.path)
+      : [];
+  if (!rewritten && next.revision === row.revision && stranded.length === 0) return "unchanged";
+  const paths = [row.path, ...stranded];
   try {
-    await commitExternal(
-      ctx,
-      [row.path],
-      [
-        {
-          artifactId: row.id,
-          action: "external",
-          actor: EXTERNAL_ACTOR,
-          summary: "edited outside T3",
-          revision: next.revision,
-        },
-      ],
-    );
+    await commitExternal(ctx, paths, [
+      stranded.length > 0
+        ? {
+            artifactId: row.id,
+            action: "moved",
+            actor: EXTERNAL_ACTOR,
+            summary: `moved to ${row.path}`,
+            revision: next.revision,
+          }
+        : {
+            artifactId: row.id,
+            action: "external",
+            actor: EXTERNAL_ACTOR,
+            summary: "edited outside T3",
+            revision: next.revision,
+          },
+    ]);
   } catch (error) {
     // Back to the old row, so the next access sees the edit again and retries
     // the commit instead of serving it with no history.
     ctx.index.upsert(row);
-    await ctx.git.unstage([row.path]).catch(() => undefined);
+    await ctx.git.unstage(paths).catch(() => undefined);
     throw error;
   }
   return "reindexed";

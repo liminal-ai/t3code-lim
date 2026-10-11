@@ -9,9 +9,12 @@ import { FileUnstableError, readFileState } from "./ArtifactReconcile.ts";
 import { resolveArtifactsDir } from "./artifactConfig.ts";
 import {
   ArtifactPathError,
+  htmlTitle,
   newUlid,
   normalizeRelativePath,
+  parseHtmlFile,
   parseMarkdownFile,
+  renderHtmlFile,
   renderMarkdownFile,
   resolveInStore,
   slugify,
@@ -147,6 +150,60 @@ describe("store location", () => {
   });
 });
 
+describe("HTML metadata", () => {
+  const ID = "01ARZ3NDEKTSV4RRFFQ69G5FAV";
+
+  it("round-trips id, title and tags through the first-line comment", () => {
+    const text = renderHtmlFile({
+      id: ID,
+      title: 'A "quoted" <title> --> & more',
+      tags: ["viz", "q3 plan"],
+      body: "<!doctype html><p>x</p>",
+    });
+    expect(text.split("\n")).toHaveLength(2);
+    expect(text).not.toMatch(/-->.*-->/);
+    expect(parseHtmlFile(text)).toEqual({
+      frontMatter: {
+        id: ID,
+        title: 'A "quoted" <title> --> & more',
+        tags: ["viz", "q3 plan"],
+        extra: {},
+      },
+      body: "<!doctype html><p>x</p>",
+    });
+  });
+
+  it("keeps a lone tag with a space whole", () => {
+    const text = renderHtmlFile({ id: ID, title: "t", tags: ["q3 plan"], body: "" });
+    expect(parseHtmlFile(text).frontMatter?.tags).toEqual(["q3 plan"]);
+  });
+
+  it("reads hand-written lines, and leaves a document without one alone", () => {
+    expect(parseHtmlFile(`<!-- t3-artifact id=${ID} tags="a b" -->\n<p>`)).toMatchObject({
+      frontMatter: { id: ID, title: null, tags: ["a", "b"] },
+      body: "<p>",
+    });
+    expect(parseHtmlFile("<!-- t3-artifact id=nope -->\n").frontMatter?.id).toBeNull();
+    expect(parseHtmlFile("<!doctype html>\n<!-- t3-artifact id=x -->")).toEqual({
+      frontMatter: null,
+      body: "<!doctype html>\n<!-- t3-artifact id=x -->",
+    });
+    expect(htmlTitle("<head><title> A &amp; B </title></head>")).toBe("A & B");
+    expect(htmlTitle("<p>no title</p>")).toBeNull();
+    // A tag containing a comma reads back as one tag.
+    const tags = ["a, b", "c", 'q"&'];
+    const html = renderHtmlFile({
+      id: "01J0000000000000000000000A",
+      title: "T",
+      tags,
+      body: "<p/>",
+    });
+    expect(parseHtmlFile(html).frontMatter?.tags).toEqual(tags);
+    // Out of Unicode, and a surrogate: U+FFFD as in a browser, not a RangeError.
+    expect(htmlTitle("<title>a &#999999999; b &#xD800;</title>")).toBe("a \uFFFD b \uFFFD");
+  });
+});
+
 describe("readFileState", () => {
   /** A file whose contents change while it is read, `versions` times. */
   const changingFile = (versions: ReadonlyArray<string>) => {
@@ -173,7 +230,7 @@ describe("readFileState", () => {
 
   it("rereads the whole file from the start when an in-place write lands mid-read", async () => {
     const state = await readFileState("/x.md", changingFile(["one\n", "two\n"]));
-    expect(state).toEqual({ text: "two\n", size: 4, mtime: 1 });
+    expect(state).toEqual({ bytes: Buffer.from("two\n"), size: 4, mtime: 1 });
   });
 
   it("refuses a file that keeps changing on every read", async () => {

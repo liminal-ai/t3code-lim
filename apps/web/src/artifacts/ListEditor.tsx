@@ -1,7 +1,9 @@
-// Fork-only (artifacts): one artifact on the Artifacts page, with its list
-// editor: check, add, inline edit, drag to reorder, remove, and the last change
-// per item. State lives in listEditor.logic.ts; this file sends what it queues
-// and re-reads when it asks.
+// Fork-only (artifacts): one artifact on the Artifacts page. Markdown gets the
+// list editor: check, add, inline edit, drag to reorder, remove, and the last
+// change per item (a document without checklist items renders as markdown).
+// HTML and other files open in ArtifactViewer. Every kind can copy a signed
+// link. State lives in listEditor.logic.ts; this file sends what it queues and
+// re-reads when it asks.
 import {
   DndContext,
   type DragEndEvent,
@@ -35,6 +37,8 @@ import { formatRelativeTimeLabel } from "~/timestampFormat";
 
 import { ArtifactsError, applyArtifactOps, readArtifact } from "./artifactsClient";
 import type { ArtifactsRoute } from "./artifactsRoute.logic";
+import { ArtifactLinkActions, ArtifactMarkdown, ArtifactViewer } from "./ArtifactViewer";
+import { withoutItemIds } from "./artifactViewer.logic";
 import {
   initialListEditorState,
   isTempId,
@@ -74,6 +78,8 @@ export function ArtifactDetail(props: {
   const [state, dispatch] = useReducer(listEditorReducer, initialListEditorState);
   const items = useMemo(() => visibleItems(state), [state]);
   const [adding, setAdding] = useState("");
+  // A list can also be read as the whole document (headings, prose, mermaid).
+  const [view, setView] = useState<"list" | "document">("list");
 
   useEffect(
     () =>
@@ -167,12 +173,8 @@ export function ArtifactDetail(props: {
   const open = items.filter((item) => !item.checked).length;
   // A failed re-read leaves the last list showing, with the reason.
   const notice = state.notice ?? state.loadError;
-  return (
-    <DetailFrame
-      onBack={props.onBack}
-      title={artifact.title}
-      subtitle={`${artifact.path} · ${items.length ? `${open} open · ` : ""}rev ${artifact.revision.slice(0, 7)}`}
-    >
+  const header = (
+    <>
       <LinkChips
         environmentId={props.environmentId}
         threadIds={artifact.links.map((l) => l.threadId)}
@@ -193,6 +195,71 @@ export function ArtifactDetail(props: {
           </Button>
         </div>
       ) : null}
+    </>
+  );
+  const linkActions = <ArtifactLinkActions route={route} artifactId={artifact.id} />;
+  if (artifact.kind !== "md") {
+    return (
+      <DetailFrame
+        onBack={props.onBack}
+        title={artifact.title}
+        subtitle={`${artifact.path} · rev ${artifact.revision.slice(0, 7)}`}
+        actions={linkActions}
+      >
+        {header}
+        <ArtifactViewer route={route} artifact={artifact} content={state.content} />
+      </DetailFrame>
+    );
+  }
+  const showDocument = view === "document" && items.length > 0;
+  const actions = (
+    <>
+      {items.length > 0 ? (
+        <div className="flex shrink-0 items-center" role="group" aria-label="Show as">
+          {(["list", "document"] as const).map((mode) => (
+            <Button
+              key={mode}
+              size="xs"
+              variant={view === mode ? "secondary" : "ghost"}
+              aria-pressed={view === mode}
+              onClick={() => {
+                if (mode === view) return;
+                setView(mode);
+                // Op answers carry items, not the body: read it fresh for the document.
+                if (mode === "document") dispatch({ type: "resync" });
+              }}
+            >
+              {mode === "list" ? "List" : "Document"}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+      {linkActions}
+    </>
+  );
+  if (showDocument) {
+    return (
+      <DetailFrame
+        onBack={props.onBack}
+        title={artifact.title}
+        subtitle={`${artifact.path} · rev ${artifact.revision.slice(0, 7)}`}
+        actions={actions}
+      >
+        {header}
+        <ScrollArea className="min-h-0 flex-1">
+          <ArtifactMarkdown text={withoutItemIds(state.content)} />
+        </ScrollArea>
+      </DetailFrame>
+    );
+  }
+  return (
+    <DetailFrame
+      onBack={props.onBack}
+      title={artifact.title}
+      subtitle={`${artifact.path} · ${items.length ? `${open} open · ` : ""}rev ${artifact.revision.slice(0, 7)}`}
+      actions={actions}
+    >
+      {header}
       {canWrite ? null : (
         <p className="mx-4 mb-2 text-xs text-muted-foreground">
           Read-only: this device's pairing can't change artifacts.
@@ -210,10 +277,8 @@ export function ArtifactDetail(props: {
       <ScrollArea className="min-h-0 flex-1">
         <div className="px-4 pb-6">
           {content !== null ? (
-            // v0 edits checklist items only; anything else in the file is shown as it is.
-            <pre className="mb-3 font-mono text-xs whitespace-pre-wrap text-muted-foreground">
-              {content}
-            </pre>
+            // A document without checklist items renders as markdown (mermaid, checkboxes).
+            <ArtifactMarkdown text={content} className="mx-auto mb-3 max-w-4xl py-3" />
           ) : null}
           <DndContext
             sensors={sensors}
@@ -278,11 +343,12 @@ function DetailFrame(props: {
   readonly onBack: () => void;
   readonly title?: string;
   readonly subtitle?: string;
+  readonly actions?: ReactNode;
   readonly children: ReactNode;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+      <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
         <Button
           size="icon-xs"
           variant="ghost-muted"
@@ -292,12 +358,14 @@ function DetailFrame(props: {
         >
           <ArrowLeftIcon />
         </Button>
-        <div className="min-w-0">
+        {/* Actions wrap below the title on narrow screens. */}
+        <div className="min-w-40 flex-1">
           {props.title ? <h2 className="truncate text-sm font-medium">{props.title}</h2> : null}
           {props.subtitle ? (
             <p className="truncate font-mono text-2xs text-muted-foreground">{props.subtitle}</p>
           ) : null}
         </div>
+        {props.actions}
       </div>
       {props.children}
     </div>

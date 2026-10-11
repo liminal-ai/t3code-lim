@@ -122,6 +122,15 @@ export const renderList = (doc: ListDocument): string => {
   return lines.join(doc.newline) + (doc.trailingNewline ? doc.newline : "");
 };
 
+/** The body as a reader sees it: every item without its `^id` marker. */
+export const withoutItemIds = (body: string): string => {
+  const doc = parseList(body);
+  return renderList({
+    ...doc,
+    blocks: doc.blocks.map((block) => (block.kind === "item" ? { ...block, id: null } : block)),
+  });
+};
+
 export const listItems = (doc: ListDocument): ReadonlyArray<ListItem> =>
   doc.blocks.filter((block): block is ListItem => block.kind === "item");
 

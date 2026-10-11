@@ -2,13 +2,22 @@
 // button (PROPOSAL §2.9, v0). Its header names the environment and store it
 // shows; below are the store's artifacts and the open one, side by side on wide
 // screens and as separate views on narrow ones. One change stream per store
-// keeps both current.
+// keeps both current. New list makes a list; Upload adds any file (PR 4).
 import {
   AuthOrchestrationOperateScope,
   type EnvironmentId,
   type LimArtifactSummary,
 } from "@t3tools/contracts";
-import { FileTextIcon, ListChecksIcon, PlusIcon } from "lucide-react";
+import {
+  FileCodeIcon,
+  FileIcon,
+  FileImageIcon,
+  FileSpreadsheetIcon,
+  FileTextIcon,
+  ListChecksIcon,
+  PlusIcon,
+  UploadIcon,
+} from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
@@ -23,12 +32,14 @@ import {
 } from "~/components/ui/select";
 import { SidebarInset } from "~/components/ui/sidebar";
 import { Spinner } from "~/components/ui/spinner";
+import { toastManager } from "~/components/ui/toast";
 import { isElectron } from "~/env";
 import { cn } from "~/lib/utils";
 import { useEnvironmentScope } from "~/state/session";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
 
 import { artifactListView } from "./artifactList.logic";
+import { uploadArtifact } from "./artifactsClient";
 import {
   artifactsRouteKey,
   displayStorePath,
@@ -36,9 +47,22 @@ import {
   stillOn,
 } from "./artifactsRoute.logic";
 import type { ArtifactWatchStatus } from "./artifactsWatch.logic";
+import { artifactViewerKind, uploadLimitError } from "./artifactViewer.logic";
 import { ArtifactDetail } from "./ListEditor";
 import { NewListDialog } from "./NewListDialog";
 import { useArtifactList, useArtifactsEnvironment, useArtifactsWatch } from "./useArtifacts";
+
+const KIND_ICON = {
+  markdown: ListChecksIcon,
+  html: FileCodeIcon,
+  pdf: FileTextIcon,
+  image: FileImageIcon,
+  video: FileIcon,
+  audio: FileIcon,
+  table: FileSpreadsheetIcon,
+  text: FileTextIcon,
+  none: FileIcon,
+} as const;
 
 const STATUS_LABEL: Record<ArtifactWatchStatus, string> = {
   connecting: "Connecting",
@@ -63,6 +87,8 @@ export function ArtifactsPage(props: {
   const watch = useArtifactsWatch(route);
   // The environment New list was opened on (stillOn, artifactsRoute.logic.ts).
   const [creatingOn, setCreatingOn] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
   const { refetch } = list;
   // The open artifact belongs to the store it came from (artifactsRoute.logic.ts).
   const nextEnvironment = selected?.id ?? null;
@@ -84,6 +110,32 @@ export function ArtifactsPage(props: {
   }, [onSelect, staleId]);
   // Any change may add, retitle or reorder artifacts; reads are coalesced.
   useEffect(() => watch.hub.subscribe(() => refetch()), [refetch, watch.hub]);
+
+  const upload = (file: File) => {
+    const tooLarge = uploadLimitError(file);
+    if (tooLarge) {
+      toastManager.add({ type: "error", title: "Couldn't upload", description: tooLarge });
+      return;
+    }
+    if (!selected) return;
+    const uploadedOn = selected.id;
+    setUploading(true);
+    uploadArtifact(selected.route, file)
+      .then((created) => {
+        // An upload that lands after the page moved on belongs to the old store.
+        if (!stillOn(uploadedOn, currentEnvironment.current)) return;
+        refetch();
+        props.onSelect(created.artifact.id);
+      })
+      .catch((cause: unknown) =>
+        toastManager.add({
+          type: "error",
+          title: `Couldn't upload ${file.name}`,
+          description: cause instanceof Error ? cause.message : "Try again.",
+        }),
+      )
+      .finally(() => setUploading(false));
+  };
 
   const store = list.data?.store;
   const storePath = store ? displayStorePath(store.storeDir) : null;
@@ -134,6 +186,25 @@ export function ArtifactsPage(props: {
               {watch.status === "failed" && watch.error ? `: ${watch.error.message}` : ""}
             </span>
           ) : null}
+          <input
+            ref={fileInput}
+            type="file"
+            className="hidden"
+            aria-label="File to upload"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              event.target.value = "";
+              if (file) upload(file);
+            }}
+          />
+          <Button
+            size="compact"
+            variant="outline"
+            disabled={!route || !canWrite || uploading}
+            onClick={() => fileInput.current?.click()}
+          >
+            {uploading ? <Spinner /> : <UploadIcon />} Upload
+          </Button>
           <Button
             size="compact"
             disabled={!route || !canWrite}
@@ -180,7 +251,7 @@ export function ArtifactsPage(props: {
                 />
               ) : (
                 <p className="p-6 text-sm text-muted-foreground">
-                  Pick an artifact, or make a new list.
+                  Pick an artifact, make a new list, or upload a file.
                 </p>
               )}
             </div>
@@ -237,7 +308,7 @@ function ArtifactList(props: {
       <ScrollArea className="min-h-0 flex-1">
         <ul aria-label="Artifacts">
           {view.artifacts.map((artifact) => {
-            const Icon = artifact.kind === "md" ? ListChecksIcon : FileTextIcon;
+            const Icon = KIND_ICON[artifactViewerKind(artifact)];
             return (
               <li key={artifact.id}>
                 <button

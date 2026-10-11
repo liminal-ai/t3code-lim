@@ -293,7 +293,8 @@ describe("ArtifactStore", () => {
       { title: "x", folder: ".git/hooks" },
       { title: "x", folder: "escape" },
       { title: "x", name: "../x.md" },
-      { title: "x", name: "x.html" },
+      { title: "x", folder: "escape", name: "x.html" },
+      { title: "", folder: "escape", name: "x.png", bytes: new Uint8Array(1) },
     ]) {
       await expect(store.create(input, LEE)).rejects.toThrow();
     }
@@ -381,6 +382,32 @@ describe("ArtifactStore", () => {
     await expectStoreError(patched, "forbidden");
     expect((await store.read(artifact.id)).items).toEqual([]);
     expect(commitCount(store.root)).toBe(commits + 1);
+  });
+
+  it("leaves a dropped-in HTML file alone when its metadata would push it over 10 MB", async () => {
+    const dir = tempStoreDir();
+    (await ArtifactStore.open(dir)).close();
+    const shell = "<html><head><title>Edge</title></head><body></body></html>";
+    const text = shell.replace("<body>", `<body>${"x".repeat(10 * 1024 * 1024 - shell.length)}`);
+    const absolute = NodePath.join(dir, "edge.html");
+    NodeFS.writeFileSync(absolute, text);
+    const store = await openStore(dir);
+    expect(NodeFS.readFileSync(absolute, "utf8")).toBe(text);
+    const edge = (await store.list()).find((entry) => entry.path === "edge.html");
+    expect(edge?.title).toBe("Edge");
+    expect((await store.read(edge!.id)).artifact.path).toBe("edge.html");
+  });
+
+  it("opens with an HTML file whose title has an out-of-range numeric entity", async () => {
+    const dir = tempStoreDir();
+    (await ArtifactStore.open(dir)).close();
+    NodeFS.writeFileSync(
+      NodePath.join(dir, "odd.html"),
+      "<html><head><title>Odd &#999999999;</title></head><body></body></html>\n",
+    );
+    const store = await openStore(dir);
+    const listed = await store.list();
+    expect(listed.find((entry) => entry.path === "odd.html")?.title).toBe("Odd \uFFFD");
   });
 
   it("adopts new files and commits edits made while the server was down", async () => {
@@ -781,6 +808,269 @@ describe("ArtifactStore", () => {
       "thread-a",
     ]);
     expect((await store.read(bad.id)).artifact.links).toEqual([]);
+  });
+});
+
+describe("ArtifactStore content types", () => {
+  const HTML =
+    "<!doctype html><html><head><title>Chart &amp; Notes</title></head><body>hi</body></html>";
+
+  it("creates HTML with a first-line metadata comment, and rebuilds it from the file", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const before = commitCount(first.root);
+    const created = await first.create(
+      { title: 'Q3 "draft" -->', name: "q3.html", content: HTML, tags: ["viz", "q3"] },
+      LEE,
+    );
+    expect(created.artifact).toMatchObject({ kind: "html", path: "q3.html" });
+    expect(created.content).toBe(HTML);
+    const text = file(first, "q3.html");
+    expect(text.split("\n")[0]).toBe(
+      `<!-- t3-artifact id=${created.artifact.id} title="Q3 &quot;draft&quot; --&gt;" tags="viz, q3" -->`,
+    );
+    expect(commitCount(first.root)).toBe(before + 1);
+    expect((await first.read(created.artifact.id)).content).toBe(HTML);
+    expect((await first.list({ kind: "html", query: "hi" })).map((a) => a.id)).toEqual([
+      created.artifact.id,
+    ]);
+    const root = first.root;
+    first.close();
+    NodeFS.rmSync(NodePath.join(root, ".t3", "index.sqlite"));
+    const rebuilt = await openStore(dir);
+    const [back] = await rebuilt.list();
+    expect(back).toMatchObject({
+      id: created.artifact.id,
+      title: 'Q3 "draft" -->',
+      tags: ["q3", "viz"],
+      kind: "html",
+    });
+  });
+
+  it("adopts an HTML file dropped into the store, titled from its <title>", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    first.close();
+    NodeFS.writeFileSync(NodePath.join(dir, "dropped.html"), HTML);
+    const store = await openStore(dir);
+    const [adopted] = await store.list();
+    expect(adopted).toMatchObject({ title: "Chart & Notes", kind: "html", path: "dropped.html" });
+    expect(file(store, "dropped.html")).toBe(
+      `<!-- t3-artifact id=${adopted!.id} title="Chart &amp; Notes" -->\n${HTML}`,
+    );
+    expect(git(dir, "status", "--porcelain").trim()).toBe("");
+  });
+
+  it("uploads other files byte for byte, keeping their title and tags in links.json", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const bytes = Uint8Array.from([0, 1, 2, 250, 251, 252, 253, 254, 255]);
+    const created = await first.create(
+      { title: "", name: "scan.pdf", bytes, tags: ["receipts"] },
+      LEE,
+    );
+    expect(created.artifact).toMatchObject({ kind: "other", title: "scan", size: bytes.length });
+    expect(created.content).toBe("");
+    expect(new Uint8Array(NodeFS.readFileSync(NodePath.join(first.root, "scan.pdf")))).toEqual(
+      bytes,
+    );
+    expect(lastCommitFiles(first.root)).toEqual([".t3-meta/links.json", "scan.pdf"]);
+    expect((await first.view(created.artifact.id)).content).toEqual(Buffer.from(bytes));
+    const csv = await first.create({ title: "Data", name: "data.csv", content: "a,b\n1,2\n" }, LEE);
+    expect(csv.content).toBe("a,b\n1,2\n");
+    expect((await first.read(csv.artifact.id)).content).toBe("a,b\n1,2\n");
+    await first.attach(created.artifact.id, "thread-a", "read", LEE);
+    const root = first.root;
+    first.close();
+    NodeFS.rmSync(NodePath.join(root, ".t3", "index.sqlite"));
+    const rebuilt = await openStore(dir);
+    const back = (await rebuilt.list()).find((entry) => entry.path === "scan.pdf");
+    expect(back).toMatchObject({ id: created.artifact.id, title: "scan", tags: ["receipts"] });
+    expect(back?.links.map((link) => link.threadId)).toEqual(["thread-a"]);
+    expect((await rebuilt.list()).find((entry) => entry.path === "data.csv")?.id).toBe(
+      csv.artifact.id,
+    );
+  });
+
+  it("keeps an oversized other file's id, title, tags and links through an index rebuild", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const { artifact } = await first.create(
+      { title: "Scan", name: "scan.bin", tags: ["receipts"], bytes: Uint8Array.from([1, 2, 3]) },
+      LEE,
+    );
+    await first.attach(artifact.id, "thread-a", "write", LEE);
+    const root = first.root;
+    first.close();
+    const absolute = NodePath.join(root, artifact.path);
+    const original = NodeFS.readFileSync(absolute);
+    NodeFS.truncateSync(absolute, 50 * 1024 * 1024 + 1);
+    NodeFS.rmSync(NodePath.join(root, ".t3", "index.sqlite"));
+    const store = await openStore(dir);
+    await expectStoreError(store.read(artifact.id), "too_large");
+    expect(file(store, ".t3-meta/links.json")).toContain("thread-a");
+    NodeFS.writeFileSync(absolute, original);
+    const back = (await store.list()).find((entry) => entry.path === artifact.path);
+    expect(back).toMatchObject({ id: artifact.id, title: "Scan", tags: ["receipts"] });
+    expect(back?.links.map((link) => link.threadId)).toEqual(["thread-a"]);
+  });
+
+  it("reads only a requested slice of a file for a view", async () => {
+    const store = await openStore(tempStoreDir());
+    const bytes = Uint8Array.from({ length: 64 }, (_, i) => i);
+    const { artifact } = await store.create({ title: "Clip", name: "clip.mp4", bytes }, LEE);
+    const part = await store.view(artifact.id, () => ({ start: 10, end: 12 }));
+    expect(part.slice).toEqual({ start: 10, end: 12 });
+    expect([...(part.content as Uint8Array)]).toEqual([10, 11, 12]);
+    const none = await store.view(artifact.id, () => "unsatisfiable");
+    expect(none.slice).toBe("unsatisfiable");
+    expect((none.content as Uint8Array).length).toBe(0);
+    expect((await store.view(artifact.id)).content).toEqual(Buffer.from(bytes));
+  });
+
+  it("sends a text file over 1 MB through a view link, not inline", async () => {
+    const store = await openStore(tempStoreDir());
+    const small = await store.create({ title: "Small", name: "small.csv", content: "a,b\n" }, LEE);
+    expect((await store.read(small.artifact.id)).content).toBe("a,b\n");
+    const big = await store.create(
+      { title: "Big", name: "big.csv", content: `${"a,b\n".repeat(300 * 1024)}` },
+      LEE,
+    );
+    expect(big.artifact.size).toBeGreaterThan(1024 * 1024);
+    expect(big.content).toBe("");
+    expect((await store.read(big.artifact.id)).content).toBe("");
+  });
+
+  it("follows an other file moved outside T3 by its content", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const { artifact } = await first.create(
+      { title: "Logo", name: "logo.png", bytes: Uint8Array.from([1, 2, 3]) },
+      LEE,
+    );
+    await first.attach(artifact.id, "thread-a", "write", LEE);
+    first.close();
+    NodeFS.mkdirSync(NodePath.join(dir, "img"));
+    NodeFS.renameSync(NodePath.join(dir, "logo.png"), NodePath.join(dir, "img", "logo.png"));
+    const store = await openStore(dir);
+    const [moved] = await store.list();
+    expect(moved).toMatchObject({ id: artifact.id, path: "img/logo.png", title: "Logo" });
+    expect(moved?.links.map((link) => link.threadId)).toEqual(["thread-a"]);
+    expect(git(dir, "log", "-1", "--format=%B")).toContain("T3-Action: moved");
+    expect(git(dir, "status", "--porcelain").trim()).toBe("");
+  });
+
+  it("limits markdown and HTML to 10 MB and other files to 50 MB", async () => {
+    const store = await openStore(tempStoreDir());
+    const tenMb = 10 * 1024 * 1024;
+    await expectStoreError(
+      store.create({ title: "Huge", name: "huge.html", content: "x".repeat(tenMb + 1) }, LEE),
+      "too_large",
+    );
+    const twenty = await store.create(
+      { title: "", name: "big.bin", bytes: new Uint8Array(2 * tenMb) },
+      LEE,
+    );
+    expect(twenty.artifact.size).toBe(2 * tenMb);
+    // Read back through the per-access check: 20 MB isn't "too large" for an other file.
+    expect((await store.read(twenty.artifact.id)).artifact.id).toBe(twenty.artifact.id);
+    await expectStoreError(
+      store.create({ title: "", name: "huge.bin", bytes: new Uint8Array(5 * tenMb + 1) }, LEE),
+      "too_large",
+    );
+    expect(git(store.root, "status", "--porcelain").trim()).toBe("");
+  });
+
+  it("adopts an other file of 20 MB dropped in, and keeps one grown past 50 MB with its links", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const { artifact } = await first.create(
+      { title: "", name: "grows.bin", bytes: new Uint8Array(10) },
+      LEE,
+    );
+    await first.attach(artifact.id, "thread-a", "write", LEE);
+    first.close();
+    NodeFS.writeFileSync(NodePath.join(dir, "dropped.bin"), new Uint8Array(20 * 1024 * 1024));
+    NodeFS.writeFileSync(NodePath.join(dir, "grows.bin"), new Uint8Array(50 * 1024 * 1024 + 1));
+    const store = await openStore(dir);
+    expect((await store.list()).map((entry) => entry.path)).toEqual(["dropped.bin"]);
+    await expectStoreError(store.read(artifact.id), "too_large");
+    NodeFS.writeFileSync(NodePath.join(dir, "grows.bin"), new Uint8Array(20));
+    const back = await store.read(artifact.id);
+    expect(back.artifact.links.map((link) => link.threadId)).toEqual(["thread-a"]);
+  });
+
+  it("keeps an oversized artifact's id when a normal-size copy of it appears (PR 1 deferred)", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const { artifact } = await first.create({ title: "Grows", content: "- [ ] a\n" }, LEE);
+    await first.attach(artifact.id, "thread-a", "write", LEE);
+    const root = first.root;
+    first.close();
+    const absolute = NodePath.join(root, artifact.path);
+    const original = NodeFS.readFileSync(absolute, "utf8");
+    NodeFS.appendFileSync(absolute, "x".repeat(10 * 1024 * 1024));
+    // A normal-size copy carrying the same id, as if trimmed from the big file.
+    NodeFS.writeFileSync(NodePath.join(root, "copy.md"), original);
+    const store = await openStore(dir);
+    const copy = (await store.list()).find((entry) => entry.path === "copy.md");
+    expect(copy?.id).not.toBe(artifact.id);
+    expect(copy?.links).toEqual([]);
+    expect(file(store, "copy.md")).not.toContain(artifact.id);
+    await expectStoreError(store.read(artifact.id), "too_large");
+    NodeFS.writeFileSync(absolute, original);
+    const back = await store.read(artifact.id);
+    expect(back.artifact.path).toBe(artifact.path);
+    expect(back.artifact.links.map((link) => link.threadId)).toEqual(["thread-a"]);
+  });
+
+  it.each(["on the next read", "on a restart"])(
+    "commits a move made while oversized as one move once the file shrinks, %s (PR 1 deferred)",
+    async (when) => {
+      const dir = tempStoreDir();
+      const first = await ArtifactStore.open(dir);
+      const { artifact } = await first.create({ title: "Grows" }, LEE);
+      await first.attach(artifact.id, "thread-a", "write", LEE);
+      const root = first.root;
+      first.close();
+      const moved = NodePath.join(root, "moved.md");
+      NodeFS.renameSync(NodePath.join(root, artifact.path), moved);
+      const original = NodeFS.readFileSync(moved, "utf8");
+      NodeFS.appendFileSync(moved, "x".repeat(10 * 1024 * 1024));
+      let store = await openStore(dir);
+      await expectStoreError(store.read(artifact.id), "too_large");
+      NodeFS.writeFileSync(moved, original);
+      if (when === "on a restart") {
+        store.close();
+        store = await openStore(dir);
+      }
+      const back = await store.read(artifact.id);
+      expect(back.artifact.path).toBe("moved.md");
+      expect(git(root, "status", "--porcelain").trim()).toBe("");
+      expect(git(root, "log", "-1", "--format=%B")).toContain("T3-Action: moved");
+      // One commit: git sees the old path's removal and the new file as a rename.
+      expect(git(root, "show", "--format=", "--name-status", "--find-renames", "HEAD")).toMatch(
+        new RegExp(`^R\\d+\\t${artifact.path}\\tmoved\\.md$`, "m"),
+      );
+    },
+  );
+
+  it("commits the old path's removal when a file moved while oversized is deleted", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const { artifact } = await first.create({ title: "Grows" }, LEE);
+    const root = first.root;
+    first.close();
+    const moved = NodePath.join(root, "moved.md");
+    NodeFS.renameSync(NodePath.join(root, artifact.path), moved);
+    NodeFS.appendFileSync(moved, "x".repeat(10 * 1024 * 1024));
+    let store = await openStore(dir);
+    store.close();
+    NodeFS.rmSync(moved);
+    store = await openStore(dir);
+    expect(await store.list()).toEqual([]);
+    expect(git(root, "status", "--porcelain").trim()).toBe("");
+    expect(git(root, "log", "-1", "--format=%B")).toContain("T3-Action: removed");
   });
 });
 

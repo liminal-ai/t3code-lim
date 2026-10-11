@@ -275,6 +275,32 @@ export class ArtifactGit {
     return paths;
   }
 
+  /** Every path git tracks, store-relative. */
+  async trackedPaths(): Promise<string[]> {
+    const { stdout } = await this.run(["ls-files", "-z"]);
+    return stdout.split("\0").filter(Boolean);
+  }
+
+  async isTracked(path: string): Promise<boolean> {
+    const { code } = await this.run(["ls-files", "--error-unmatch", "--", path], {
+      allowExit: [1],
+    });
+    return code === 0;
+  }
+
+  /** Paths whose last committed file contains `text` (store metadata excluded). */
+  async committedPathsContaining(text: string): Promise<string[]> {
+    const { stdout, code } = await this.run(
+      ["grep", "-l", "-z", "-F", "-e", text, "HEAD", "--", ".", ":(exclude).t3-meta"],
+      { allowExit: [1, 128] },
+    );
+    if (code !== 0) return [];
+    return stdout
+      .split("\0")
+      .filter(Boolean)
+      .map((entry) => entry.replace(/^HEAD:/, ""));
+  }
+
   /** Every event recorded in commit trailers, oldest first. */
   async loggedEvents(): Promise<LoggedEvent[]> {
     const { stdout, code } = await this.run(

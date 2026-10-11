@@ -602,6 +602,9 @@ importers:
       effect:
         specifier: 4.0.1
         version: 4.0.1(patch_hash=a33cba07c41f32374c2aaa86ea4a84d3ab9a872a78c94b65e929b19f8361856f)
+      hast-util-to-html:
+        specifier: 9.0.5
+        version: 9.0.5
       jose:
         specifier: 'catalog:'
         version: 6.2.2

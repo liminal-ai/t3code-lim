@@ -7,10 +7,27 @@
 // overrides both, for tests and QA only.
 import * as NodePath from "node:path";
 
+import {
+  LIM_ARTIFACT_MAX_OTHER_BYTES,
+  LIM_ARTIFACT_MAX_TEXT_BYTES,
+  type LimArtifactKind,
+} from "@t3tools/contracts";
+
 export const ARTIFACTS_DIR_ENV = "T3_ARTIFACTS_DIR";
 
 /** Markdown and HTML files over this size are refused. */
-export const MAX_TEXT_ARTIFACT_BYTES = 10 * 1024 * 1024;
+export const MAX_TEXT_ARTIFACT_BYTES = LIM_ARTIFACT_MAX_TEXT_BYTES;
+
+/** Other files over this size are refused. */
+export const MAX_OTHER_ARTIFACT_BYTES = LIM_ARTIFACT_MAX_OTHER_BYTES;
+
+/** The size limit for a kind: 10 MB for markdown and HTML, 50 MB for other files. */
+export const maxArtifactBytes = (kind: LimArtifactKind) =>
+  kind === "other" ? MAX_OTHER_ARTIFACT_BYTES : MAX_TEXT_ARTIFACT_BYTES;
+
+/** "10 MB", for messages. */
+export const describeLimit = (kind: LimArtifactKind) =>
+  `${maxArtifactBytes(kind) / (1024 * 1024)} MB`;
 
 /** The person behind T3 sessions; commits from the UI are authored as this name. */
 export const ARTIFACTS_USER_NAME = "Lee";
