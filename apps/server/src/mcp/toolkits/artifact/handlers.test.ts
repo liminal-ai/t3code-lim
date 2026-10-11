@@ -119,6 +119,20 @@ describe("artifact toolkit handlers", () => {
     }),
   );
 
+  it.effect("creates an HTML page when the name says so, and reads it back", () =>
+    Effect.gen(function* () {
+      const { call } = yield* makeHarness;
+      const page = "<!doctype html><title>Viz</title><p>chart</p>";
+      const created = ok(
+        yield* call(CLAUDE, "artifact_create", { title: "Viz", name: "viz.html", content: page }),
+      );
+      expect(created.artifact).toMatchObject({ kind: "html", path: "viz.html" });
+      const read = ok(yield* call(CODEX, "artifact_read", { id: created.artifact.id }));
+      expect(read.content).toBe(page);
+      expect(read.items).toEqual([]);
+    }),
+  );
+
   it.effect("lets a thread attached with write edit the list, and no one else", () =>
     Effect.gen(function* () {
       const { call } = yield* makeHarness;

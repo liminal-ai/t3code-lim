@@ -81,10 +81,21 @@ export const ArtifactReadTool = Tool.make("artifact_read", {
 
 export const ArtifactCreateTool = Tool.make("artifact_create", {
   ...shared,
-  description: `Create a markdown artifact, such as a list, spec or doc. It is attached to this thread with write access. ${ITEMS_HELP} Items get ids when created.`,
+  description: `Create an artifact: markdown (a list, spec or doc) by default, or an HTML page (a visualization, mockup or HTML spec) or another text file when \`name\` has that extension. It is attached to this thread with write access. ${ITEMS_HELP} Items get ids when created.`,
   parameters: Schema.Struct({
     title: Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(200)),
-    content: Schema.optional(Schema.String),
+    content: Schema.optional(
+      Schema.String.annotate({
+        description:
+          "The file's text: markdown without front matter, or a whole HTML document (sandboxed when viewed; it may use the html_render theme variables).",
+      }),
+    ),
+    name: Schema.optional(
+      Schema.String.annotate({
+        description:
+          "File name with its extension, e.g. `chart.html` or `data.csv`. Default: the title as a `.md` name.",
+      }),
+    ),
     folder: Schema.optional(
       Schema.String.annotate({
         description: "A folder inside the store, e.g. `t3` or `research/agents`.",
