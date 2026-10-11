@@ -14,6 +14,7 @@ import {
   initialListContent,
   initialListEditorState,
   itemRows,
+  needsIds,
   lastChangeLabel,
   listEditorReducer,
   moveTarget,
@@ -378,10 +379,18 @@ describe("duplicate item ids", () => {
   ];
 
   it("disables rows that share an id, like rows without one, with unique keys", () => {
-    const rows = itemRows(items);
+    const rows = itemRows(items, true);
     expect(rows.map((row) => row.editable)).toEqual([true, false, false, false, true]);
     const keys = rows.map((row) => row.key);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("offers nothing to edit, and no 'Give them ids', to a session without operate", () => {
+    const rows = itemRows(items, false);
+    expect(rows.map((row) => row.editable)).toEqual([false, false, false, false, false]);
+    expect(rows.map((row) => row.key)).toEqual(itemRows(items, true).map((row) => row.key));
+    expect(needsIds(rows, false)).toBe(false);
+    expect(needsIds(itemRows(items, true), true)).toBe(true);
   });
 
   it("never moves an item after a shared id", () => {

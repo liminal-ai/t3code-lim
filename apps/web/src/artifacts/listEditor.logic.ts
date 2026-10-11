@@ -331,15 +331,26 @@ export interface ItemRow {
   /** Unique among the rows: the React key and the drag id. */
   readonly key: string;
   /** Ops need the item's own id; items with none, or a shared one, wait for "Give them ids". */
+  readonly ownId: boolean;
+  /** Has its own id, and the session may write (`orchestration:operate`). */
   readonly editable: boolean;
 }
 
-export function itemRows(items: ReadonlyArray<LimArtifactListItem>): ReadonlyArray<ItemRow> {
+/** `canWrite`: the session has `orchestration:operate`; without it every op is a 403. */
+export function itemRows(
+  items: ReadonlyArray<LimArtifactListItem>,
+  canWrite: boolean,
+): ReadonlyArray<ItemRow> {
   const duplicates = duplicateItemIds(items);
   return items.map((item, index) => {
-    const editable = item.id !== null && !duplicates.has(item.id);
-    return { item, key: editable ? item.id! : `row:${index}`, editable };
+    const ownId = item.id !== null && !duplicates.has(item.id);
+    return { item, key: ownId ? item.id! : `row:${index}`, ownId, editable: ownId && canWrite };
   });
+}
+
+/** "Give them ids" is a write too, so a read-only session isn't offered it. */
+export function needsIds(rows: ReadonlyArray<ItemRow>, canWrite: boolean): boolean {
+  return canWrite && rows.some((row) => !row.ownId);
 }
 
 /**

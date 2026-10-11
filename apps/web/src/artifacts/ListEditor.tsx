@@ -39,6 +39,7 @@ import {
   initialListEditorState,
   isTempId,
   itemRows,
+  needsIds,
   lastChangeLabel,
   type ListEditorFailure,
   listEditorReducer,
@@ -64,6 +65,8 @@ export function ArtifactDetail(props: {
   readonly environmentId: string;
   readonly artifactId: string;
   readonly hub: ArtifactWatchHub;
+  /** The session has `orchestration:operate`; without it the list is read-only. */
+  readonly canWrite: boolean;
   /** Narrow screens show the list and the detail as separate views. */
   readonly onBack: () => void;
 }) {
@@ -107,7 +110,8 @@ export function ArtifactDetail(props: {
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const rows = useMemo(() => itemRows(items), [items]);
+  const { canWrite } = props;
+  const rows = useMemo(() => itemRows(items, canWrite), [items, canWrite]);
   const sortIds = rows.map((row) => row.key);
   const handleDragEnd = (event: DragEndEvent) => {
     if (event.over === null || event.active.id === event.over.id) return;
@@ -124,7 +128,7 @@ export function ArtifactDetail(props: {
     dispatch({ type: "enqueue", op: { op: "add", text, at: "bottom" } });
     setAdding("");
   };
-  const unassigned = rows.some((row) => !row.editable);
+  const unassigned = needsIds(rows, canWrite);
   const assignIds = () => {
     // An empty op batch is a T3 write: the server gives every item its own id.
     applyArtifactOps(route, artifactId, []).then(
@@ -189,6 +193,11 @@ export function ArtifactDetail(props: {
           </Button>
         </div>
       ) : null}
+      {canWrite ? null : (
+        <p className="mx-4 mb-2 text-xs text-muted-foreground">
+          Read-only: this device's pairing can't change artifacts.
+        </p>
+      )}
       {unassigned ? (
         <div className="mx-4 mb-2 flex items-center gap-2 text-xs text-muted-foreground">
           Some items were written outside T3 without an id of their own, so they can't be edited
@@ -239,24 +248,26 @@ export function ArtifactDetail(props: {
               </ul>
             </SortableContext>
           </DndContext>
-          <form
-            className="mt-2 flex items-center gap-2"
-            onSubmit={(event) => {
-              event.preventDefault();
-              add();
-            }}
-          >
-            <Input
-              size="compact"
-              aria-label="New item"
-              placeholder="Add item"
-              value={adding}
-              onChange={(event) => setAdding(event.target.value)}
-            />
-            <Button type="submit" size="xs" variant="outline" disabled={!adding.trim()}>
-              <PlusIcon /> Add
-            </Button>
-          </form>
+          {canWrite ? (
+            <form
+              className="mt-2 flex items-center gap-2"
+              onSubmit={(event) => {
+                event.preventDefault();
+                add();
+              }}
+            >
+              <Input
+                size="compact"
+                aria-label="New item"
+                placeholder="Add item"
+                value={adding}
+                onChange={(event) => setAdding(event.target.value)}
+              />
+              <Button type="submit" size="xs" variant="outline" disabled={!adding.trim()}>
+                <PlusIcon /> Add
+              </Button>
+            </form>
+          ) : null}
         </div>
       </ScrollArea>
     </DetailFrame>

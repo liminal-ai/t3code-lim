@@ -3,7 +3,11 @@
 // shows; below are the store's artifacts and the open one, side by side on wide
 // screens and as separate views on narrow ones. One change stream per store
 // keeps both current.
-import type { LimArtifactSummary } from "@t3tools/contracts";
+import {
+  AuthOrchestrationOperateScope,
+  type EnvironmentId,
+  type LimArtifactSummary,
+} from "@t3tools/contracts";
 import { FileTextIcon, ListChecksIcon, PlusIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 
@@ -21,6 +25,7 @@ import { SidebarInset } from "~/components/ui/sidebar";
 import { Spinner } from "~/components/ui/spinner";
 import { isElectron } from "~/env";
 import { cn } from "~/lib/utils";
+import { useEnvironmentScope } from "~/state/session";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
 
 import { artifactListView } from "./artifactList.logic";
@@ -44,6 +49,11 @@ export function ArtifactsPage(props: {
   const environment = useArtifactsEnvironment();
   const selected = environment.selected;
   const route = selected?.route ?? null;
+  // Reads need orchestration:read, writes orchestration:operate (ArtifactHttp.ts).
+  const canWrite = useEnvironmentScope(
+    (selected?.id ?? null) as EnvironmentId | null,
+    AuthOrchestrationOperateScope,
+  );
   const list = useArtifactList(route);
   const watch = useArtifactsWatch(route);
   const [creating, setCreating] = useState(false);
@@ -100,7 +110,7 @@ export function ArtifactsPage(props: {
               {watch.status === "failed" && watch.error ? `: ${watch.error.message}` : ""}
             </span>
           ) : null}
-          <Button size="compact" disabled={!route} onClick={() => setCreating(true)}>
+          <Button size="compact" disabled={!route || !canWrite} onClick={() => setCreating(true)}>
             <PlusIcon /> New list
           </Button>
         </WorkspacePageHeader>
@@ -135,6 +145,7 @@ export function ArtifactsPage(props: {
                   key={`${artifactsRouteKey(selected.route)}\u0000${props.selectedId}`}
                   route={selected.route}
                   environmentId={selected.id}
+                  canWrite={canWrite}
                   artifactId={props.selectedId}
                   hub={watch.hub}
                   onBack={() => props.onSelect(undefined)}
@@ -148,7 +159,7 @@ export function ArtifactsPage(props: {
           </div>
         )}
       </div>
-      {creating && selected ? (
+      {creating && selected && canWrite ? (
         <NewListDialog
           // A new environment's threads are different: remount, dropping the picks.
           key={selected.id}
