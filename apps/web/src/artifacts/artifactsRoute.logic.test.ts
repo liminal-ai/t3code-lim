@@ -4,6 +4,7 @@ import {
   artifactsEnvironmentOptions,
   displayStorePath,
   environmentChanged,
+  stillOn,
   pickArtifactsEnvironment,
 } from "./artifactsRoute.logic";
 
@@ -100,5 +101,14 @@ describe("a disconnected primary", () => {
       pageOrigin: null,
     });
     expect(options.map((option) => option.id)).toEqual(["local"]);
+  });
+});
+
+describe("stillOn", () => {
+  it("keeps the New list dialog and its create only on the environment it was opened on", () => {
+    expect(stillOn("lim-builder", "lim-builder")).toBe(true);
+    expect(stillOn("lim-builder", "local")).toBe(false);
+    expect(stillOn("lim-builder", null)).toBe(false);
+    expect(stillOn(null, "lim-builder")).toBe(false);
   });
 });

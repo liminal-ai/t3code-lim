@@ -9,7 +9,7 @@ import {
   type LimArtifactSummary,
 } from "@t3tools/contracts";
 import { FileTextIcon, ListChecksIcon, PlusIcon } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { WorkspacePageHeader } from "~/components/WorkspacePageHeader";
 import { Button } from "~/components/ui/button";
@@ -29,7 +29,12 @@ import { useEnvironmentScope } from "~/state/session";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
 
 import { artifactListView } from "./artifactList.logic";
-import { artifactsRouteKey, displayStorePath, environmentChanged } from "./artifactsRoute.logic";
+import {
+  artifactsRouteKey,
+  displayStorePath,
+  environmentChanged,
+  stillOn,
+} from "./artifactsRoute.logic";
 import type { ArtifactWatchStatus } from "./artifactsWatch.logic";
 import { ArtifactDetail } from "./ListEditor";
 import { NewListDialog } from "./NewListDialog";
@@ -56,10 +61,15 @@ export function ArtifactsPage(props: {
   );
   const list = useArtifactList(route);
   const watch = useArtifactsWatch(route);
-  const [creating, setCreating] = useState(false);
+  // The environment New list was opened on (stillOn, artifactsRoute.logic.ts).
+  const [creatingOn, setCreatingOn] = useState<string | null>(null);
   const { refetch } = list;
   // The open artifact belongs to the store it came from (artifactsRoute.logic.ts).
   const nextEnvironment = selected?.id ?? null;
+  const currentEnvironment = useRef(nextEnvironment);
+  useEffect(() => {
+    currentEnvironment.current = nextEnvironment;
+  }, [nextEnvironment]);
   const [shownEnvironment, setShownEnvironment] = useState(nextEnvironment);
   // The first environment to resolve is the one a `?id=` link opens in.
   if (shownEnvironment === null && nextEnvironment !== null) setShownEnvironment(nextEnvironment);
@@ -124,7 +134,11 @@ export function ArtifactsPage(props: {
               {watch.status === "failed" && watch.error ? `: ${watch.error.message}` : ""}
             </span>
           ) : null}
-          <Button size="compact" disabled={!route || !canWrite} onClick={() => setCreating(true)}>
+          <Button
+            size="compact"
+            disabled={!route || !canWrite}
+            onClick={() => setCreatingOn(selected?.id ?? null)}
+          >
             <PlusIcon /> New list
           </Button>
         </WorkspacePageHeader>
@@ -173,15 +187,17 @@ export function ArtifactsPage(props: {
           </div>
         )}
       </div>
-      {creating && selected && canWrite ? (
+      {selected && canWrite && stillOn(creatingOn, selected.id) ? (
         <NewListDialog
-          // A new environment's threads are different: remount, dropping the picks.
+          // Closes, rather than remounting on another store, if the environment changes.
           key={selected.id}
           open
-          onOpenChange={setCreating}
+          onOpenChange={(open) => setCreatingOn(open ? selected.id : null)}
           route={selected.route}
           environmentId={selected.id}
           onCreated={(id) => {
+            // A create that lands after the page moved on belongs to the old store.
+            if (!stillOn(selected.id, currentEnvironment.current)) return;
             refetch();
             props.onSelect(id);
           }}

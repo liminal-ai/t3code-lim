@@ -74,6 +74,14 @@ export function pickArtifactsEnvironment(
 export const environmentChanged = (shown: string | null, next: string | null): boolean =>
   shown !== null && next !== null && shown !== next;
 
+/**
+ * The New list dialog, and a create still in flight from it, belong to the
+ * environment it was opened on: if the page's environment changes, the dialog
+ * closes and the create's result doesn't open anything.
+ */
+export const stillOn = (openedOn: string | null, current: string | null): boolean =>
+  openedOn !== null && openedOn === current;
+
 /** Identifies a route for keying state that belongs to one server. */
 export const artifactsRouteKey = (route: ArtifactsRoute): string => JSON.stringify(route);
 
