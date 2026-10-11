@@ -113,7 +113,8 @@ export interface ListFilter {
 
 type Row = Record<string, NodeSqlite.SQLOutputValue>;
 
-const str = (value: NodeSqlite.SQLOutputValue) => (value == null ? null : String(value));
+const str = (value: NodeSqlite.SQLOutputValue | undefined) =>
+  value == null ? null : String(value);
 
 const actorOf = (kind: unknown, id: unknown, name: unknown): LimArtifactActor | null =>
   typeof kind === "string" && typeof id === "string"
@@ -355,6 +356,12 @@ export class ArtifactIndex {
         link.linkedBy.name,
         link.linkedAt,
       );
+  }
+
+  /** Sets an artifact's links to exactly `links` (undoing a failed change). */
+  replaceLinks(id: string, links: ReadonlyArray<LimArtifactLink>) {
+    this.db.prepare("DELETE FROM artifact_links WHERE artifact_id = ?").run(id);
+    for (const link of links) this.setLink(id, link);
   }
 
   removeLink(id: string, threadId: string) {

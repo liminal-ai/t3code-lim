@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off - the artifact store is a Node filesystem and git boundary, outside the Effect runtime.
 // Fork-only (artifacts): where the store lives and its limits.
 //
 // The store is `<baseDir>/artifacts`, next to `userdata/`, so the prod deploy's

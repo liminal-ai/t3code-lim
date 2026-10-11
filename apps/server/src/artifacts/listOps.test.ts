@@ -158,3 +158,25 @@ describe("applyListOps", () => {
     expect(listItems(doc)[0]!.id).toMatch(/^[a-z0-9]{2}$/);
   });
 });
+
+describe("fenced code and item details", () => {
+  it("never treats checklist lines inside a fenced code block as items", () => {
+    const body = "```md\n- [ ] example\n```\n~~~\n- [x] also code\n~~~\n- [ ] real\n";
+    const doc = assignItemIds(parseList(body), () => 0.5);
+    expect(listItems(doc).map((item) => item.text)).toEqual(["real"]);
+    expect(renderList(doc)).toContain("- [ ] example\n```");
+    expect(renderList(doc)).not.toContain("example ^");
+  });
+
+  it("moves and removes an item with its blank-separated detail paragraphs", () => {
+    const body = "- [ ] a ^aa\n  first\n   \n\n  second\n- [ ] b ^bb\n\ntail\n";
+    const doc = parseList(body);
+    expect(listItems(doc)[0]!.details).toEqual(["  first", "   ", "", "  second"]);
+    const moved = applyListOps(doc, [{ op: "move", id: "aa", to: "after:bb" }]);
+    expect(renderList(moved.doc)).toBe(
+      "- [ ] b ^bb\n- [ ] a ^aa\n  first\n   \n\n  second\n\ntail\n",
+    );
+    const removed = applyListOps(doc, [{ op: "remove", id: "aa" }]);
+    expect(renderList(removed.doc)).toBe("- [ ] b ^bb\n\ntail\n");
+  });
+});

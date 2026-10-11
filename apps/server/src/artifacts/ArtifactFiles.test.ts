@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off - the artifact store is a Node filesystem and git boundary, outside the Effect runtime.
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";

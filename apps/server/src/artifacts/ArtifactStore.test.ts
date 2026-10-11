@@ -1,10 +1,12 @@
+// @effect-diagnostics nodeBuiltinImport:off globalDate:off - the artifact store is a Node filesystem and git boundary, outside the Effect runtime.
 import * as NodeChildProcess from "node:child_process";
 import * as NodeFS from "node:fs";
 import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import type { LimArtifactActor, LimArtifactChange } from "@t3tools/contracts";
-import { afterEach, describe, expect, it } from "vite-plus/test";
+import { afterEach, describe, expect, it, vi } from "vite-plus/test";
 
+import { commitMessage, parseCommitEvents } from "./ArtifactGit.ts";
 import { ArtifactStore, ArtifactStoreError } from "./ArtifactStore.ts";
 
 const LEE: LimArtifactActor = { kind: "user", id: "session-1", name: "Lee" };
@@ -44,6 +46,21 @@ const touchLater = (absolute: string) => {
   const later = new Date(Date.now() + 5_000);
   NodeFS.utimesSync(absolute, later, later);
 };
+
+/** Makes every git write in the store fail until the returned function runs. */
+const breakGit = (root: string) => {
+  const lock = NodePath.join(root, ".git", "index.lock");
+  NodeFS.writeFileSync(lock, "");
+  return () => NodeFS.rmSync(lock, { force: true });
+};
+
+const rejects = async (promise: Promise<unknown>) =>
+  expect(
+    await promise.then(
+      () => "resolved",
+      () => "rejected",
+    ),
+  ).toBe("rejected");
 
 const expectStoreError = async (promise: Promise<unknown>, code: string) => {
   const error = await promise.then(
@@ -381,5 +398,189 @@ describe("ArtifactStore", () => {
       "too_large",
     );
     expect(git(store.root, "status", "--porcelain").trim()).toBe("");
+  });
+
+  it("undoes an op whose commit fails, so a retried add applies once", async () => {
+    const store = await openStore(tempStoreDir());
+    const { artifact } = await store.create({ title: "Retry", content: "- [ ] a\n" }, LEE);
+    const before = file(store, artifact.path);
+    const commits = commitCount(store.root);
+    const fixGit = breakGit(store.root);
+    await rejects(store.applyOps(artifact.id, [{ op: "add", text: "b" }], LEE));
+    fixGit();
+    expect(file(store, artifact.path)).toBe(before);
+    expect((await store.read(artifact.id)).items.map((item) => item.text)).toEqual(["a"]);
+    await store.applyOps(artifact.id, [{ op: "add", text: "b" }], LEE);
+    expect((await store.read(artifact.id)).items.map((item) => item.text)).toEqual(["a", "b"]);
+    expect(commitCount(store.root)).toBe(commits + 1);
+    expect(git(store.root, "status", "--porcelain").trim()).toBe("");
+  });
+
+  it("undoes a create, attach or detach whose commit fails", async () => {
+    const store = await openStore(tempStoreDir());
+    let fixGit = breakGit(store.root);
+    await rejects(store.create({ title: "Never", attach: [{ threadId: "thread-a" }] }, LEE));
+    fixGit();
+    expect(await store.list()).toEqual([]);
+    expect(NodeFS.existsSync(NodePath.join(store.root, "never.md"))).toBe(false);
+
+    const { artifact } = await store.create({ title: "Linked" }, LEE);
+    fixGit = breakGit(store.root);
+    await rejects(store.attach(artifact.id, "thread-a", "write", LEE));
+    fixGit();
+    expect((await store.read(artifact.id)).artifact.links).toEqual([]);
+    // The retry isn't skipped as already attached: it commits links.json.
+    await store.attach(artifact.id, "thread-a", "write", LEE);
+    expect(lastCommitFiles(store.root)).toEqual([".t3-meta/links.json"]);
+
+    fixGit = breakGit(store.root);
+    await rejects(store.detach(artifact.id, "thread-a", LEE));
+    fixGit();
+    expect((await store.read(artifact.id)).artifact.links.map((link) => link.threadId)).toEqual([
+      "thread-a",
+    ]);
+    expect(file(store, ".t3-meta/links.json")).toContain("thread-a");
+    expect(git(store.root, "status", "--porcelain").trim()).toBe("");
+  });
+
+  it("retries an outside edit's commit on the next access after it fails", async () => {
+    const store = await openStore(tempStoreDir());
+    const { artifact } = await store.create({ title: "Hand", content: "- [ ] a\n" }, LEE);
+    const absolute = NodePath.join(store.root, artifact.path);
+    NodeFS.appendFileSync(absolute, "- [ ] by hand\n");
+    const fixGit = breakGit(store.root);
+    await rejects(store.read(artifact.id));
+    fixGit();
+    await store.read(artifact.id);
+    expect(git(store.root, "log", "-1", "--format=%B")).toContain("T3-Action: external");
+    expect(git(store.root, "status", "--porcelain").trim()).toBe("");
+  });
+
+  it("keeps an outside edit's event in git when the outside writer committed it", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const { artifact } = await first.create({ title: "Self", content: "- [ ] a\n" }, LEE);
+    NodeFS.appendFileSync(NodePath.join(first.root, artifact.path), "- [ ] committed outside\n");
+    git(first.root, "-c", "user.name=x", "-c", "user.email=x@x", "commit", "-qam", "outside");
+    await first.read(artifact.id);
+    expect(git(first.root, "log", "-1", "--format=%B")).toContain("T3-Action: external");
+    const root = first.root;
+    first.close();
+    NodeFS.rmSync(NodePath.join(root, ".t3", "index.sqlite"));
+    const second = await openStore(dir);
+    const changes: string[] = [];
+    // The rebuilt index has the event: the artifact's history includes it.
+    expect(git(second.root, "log", "--format=%B")).toContain("T3-Action: external");
+    for (const line of git(second.root, "log", "--format=%B").split("\n")) {
+      if (line.startsWith("T3-Action: ")) changes.push(line.slice("T3-Action: ".length));
+    }
+    expect(changes).toContain("external");
+  });
+
+  it("doesn't overwrite an outside edit that lands while an op is being applied", async () => {
+    const store = await openStore(tempStoreDir());
+    const { artifact } = await store.create({ title: "Race", content: "- [ ] a\n" }, LEE);
+    const absolute = NodePath.join(store.root, artifact.path);
+    const readBody = (store as unknown as { readBody: (row: unknown) => unknown }).readBody.bind(
+      store,
+    );
+    let raced = false;
+    vi.spyOn(
+      store as unknown as { readBody: (row: unknown) => unknown },
+      "readBody",
+    ).mockImplementation((row) => {
+      const result = readBody(row);
+      if (!raced) {
+        raced = true;
+        NodeFS.appendFileSync(absolute, "- [ ] outside ^zz\n");
+        touchLater(absolute);
+      }
+      return result;
+    });
+    await store.applyOps(artifact.id, [{ op: "add", text: "from T3" }], LEE);
+    const texts = (await store.read(artifact.id)).items.map((item) => item.text);
+    expect(texts).toEqual(["a", "outside", "from T3"]);
+    expect(git(store.root, "status", "--porcelain").trim()).toBe("");
+  });
+
+  it("keeps ids, links and creators when two files swap names outside T3", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const a = (await first.create({ title: "Alpha" }, LEE)).artifact;
+    const b = (await first.create({ title: "Beta" }, ALDER)).artifact;
+    await first.attach(a.id, "thread-a", "write", LEE);
+    await first.attach(b.id, "thread-b", "write", ALDER);
+    const root = first.root;
+    first.close();
+    const at = (path: string) => NodePath.join(root, path);
+    NodeFS.renameSync(at(a.path), at("swap.tmp"));
+    NodeFS.renameSync(at(b.path), at(a.path));
+    NodeFS.renameSync(at("swap.tmp"), at(b.path));
+    const store = await openStore(dir);
+    const alpha = (await store.read(a.id)).artifact;
+    const beta = (await store.read(b.id)).artifact;
+    expect([alpha.path, beta.path]).toEqual([b.path, a.path]);
+    expect(alpha.links.map((link) => link.threadId)).toEqual(["thread-a"]);
+    expect(beta.links.map((link) => link.threadId)).toEqual(["thread-b"]);
+    expect([alpha.createdBy?.name, beta.createdBy?.name]).toEqual(["Lee", "Alder"]);
+    expect(file(store, ".t3-meta/links.json")).toContain("thread-b");
+  });
+
+  it("keeps a moved file's id when a new file takes its old path", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const moved = (await first.create({ title: "Mover" }, LEE)).artifact;
+    await first.attach(moved.id, "thread-a", "write", LEE);
+    const root = first.root;
+    first.close();
+    NodeFS.renameSync(NodePath.join(root, moved.path), NodePath.join(root, "moved.md"));
+    NodeFS.writeFileSync(NodePath.join(root, moved.path), "# Newcomer\n");
+    const store = await openStore(dir);
+    const after = (await store.read(moved.id)).artifact;
+    expect(after.path).toBe("moved.md");
+    expect(after.links.map((link) => link.threadId)).toEqual(["thread-a"]);
+    const newcomer = (await store.list()).find((row) => row.path === moved.path);
+    expect(newcomer?.id).not.toBe(moved.id);
+  });
+
+  it("opens with a hand-broken links.json, restoring the entries that are well formed", async () => {
+    const dir = tempStoreDir();
+    const first = await ArtifactStore.open(dir);
+    const good = (await first.create({ title: "Good" }, LEE)).artifact;
+    const bad = (await first.create({ title: "Bad" }, LEE)).artifact;
+    await first.attach(good.id, "thread-a", "write", LEE);
+    const root = first.root;
+    first.close();
+    const linksPath = NodePath.join(root, ".t3-meta", "links.json");
+    const links = JSON.parse(NodeFS.readFileSync(linksPath, "utf8"));
+    links.artifacts[bad.id] = { path: 5, links: "nope" };
+    links.artifacts[good.id].links.push({ threadId: 7 });
+    NodeFS.writeFileSync(linksPath, JSON.stringify(links));
+    NodeFS.rmSync(NodePath.join(root, ".t3", "index.sqlite"));
+    const store = await openStore(dir);
+    expect((await store.read(good.id)).artifact.links.map((link) => link.threadId)).toEqual([
+      "thread-a",
+    ]);
+    expect((await store.read(bad.id)).artifact.links).toEqual([]);
+  });
+});
+
+describe("commit trailers", () => {
+  it("round-trip actor ids and names containing ':' and '%'", () => {
+    const actor: LimArtifactActor = { kind: "user", id: "team:lee", name: "Lee: 100%" };
+    const message = commitMessage("x", [
+      { artifactId: "a", action: "created", actor, summary: "created a" },
+    ]);
+    expect(parseCommitEvents(message, "2026-10-10T00:00:00.000Z")[0]?.actor).toEqual(actor);
+  });
+
+  it("still parse older unescaped trailers", () => {
+    const body =
+      "x\n\nT3-Artifact: a\nT3-Action: created\nT3-Actor: user:lee:Lee: the boss\nT3-Summary: s\n";
+    expect(parseCommitEvents(body, "2026-10-10T00:00:00.000Z")[0]?.actor).toEqual({
+      kind: "user",
+      id: "lee",
+      name: "Lee: the boss",
+    });
   });
 });

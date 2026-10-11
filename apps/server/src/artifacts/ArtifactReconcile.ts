@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off globalDate:off - the artifact store is a Node filesystem and git boundary, outside the Effect runtime.
 // Fork-only (artifacts): keeping the index true to the files without a
 // filesystem watcher. A scan at startup, and a size/mtime check before every
 // read and write, find edits made outside T3 (an agent's own file tools, an
@@ -25,6 +26,9 @@ import type { ArtifactCommitEvent, ArtifactGit } from "./ArtifactGit.ts";
 import type { ArtifactEventRow, ArtifactIndex, ArtifactRow } from "./ArtifactIndex.ts";
 
 export const LINKS_FILE = ".t3-meta/links.json";
+
+/** A path no file can have: where a scan parks a row whose path another file took. */
+const PARKED = ".t3-parked/";
 
 export const EXTERNAL_ACTOR: LimArtifactActor = {
   kind: "external",
@@ -85,12 +89,42 @@ const readLinksFile = async (root: string): Promise<LinksFile | null> => {
     () => null,
   );
   if (text === null) return null;
+  let parsed: unknown;
   try {
-    const parsed = JSON.parse(text) as LinksFile;
-    return parsed && typeof parsed.artifacts === "object" ? parsed : null;
+    parsed = JSON.parse(text);
   } catch {
     return null;
   }
+  // Hand-edited metadata must never stop the store opening: entries and links
+  // that aren't well formed are skipped, the rest restored.
+  const artifacts = (parsed as { artifacts?: unknown } | null)?.artifacts;
+  if (!artifacts || typeof artifacts !== "object" || Array.isArray(artifacts)) return null;
+  const valid: Record<string, { path: string; links: LimArtifactLink[] }> = {};
+  for (const [id, entry] of Object.entries(artifacts)) {
+    const { path, links } = (entry ?? {}) as { path?: unknown; links?: unknown };
+    if (typeof path !== "string" || !Array.isArray(links)) continue;
+    valid[id] = { path, links: links.filter(isLink) };
+  }
+  return { version: 1, artifacts: valid };
+};
+
+const isActor = (value: unknown): value is LimArtifactActor => {
+  const actor = value as Partial<LimArtifactActor> | null;
+  return (
+    typeof actor?.id === "string" &&
+    typeof actor.name === "string" &&
+    ["user", "agent", "external", "system"].includes(actor.kind as string)
+  );
+};
+
+const isLink = (value: unknown): value is LimArtifactLink => {
+  const link = value as Partial<LimArtifactLink> | null;
+  return (
+    typeof link?.threadId === "string" &&
+    (link.access === "read" || link.access === "write") &&
+    typeof link.linkedAt === "string" &&
+    isActor(link.linkedBy)
+  );
 };
 
 /** Store-relative paths of markdown files, skipping dot entries and symlinks. */
@@ -194,9 +228,9 @@ const commitExternal = async (
     events.length === 1
       ? `External edit: ${ctx.index.get(events[0]!.artifactId)?.path ?? events[0]!.summary}`
       : `External edits (${events.length} artifacts)`;
-  // Nothing to commit when the outside writer committed the edit itself; the
-  // index still changed, so the events stand.
-  await ctx.git.commit({ paths, subject, events, author: EXTERNAL_ACTOR });
+  // When the outside writer committed the edit itself, an empty commit still
+  // carries the events, so a rebuilt index recovers them.
+  await ctx.git.commit({ paths, subject, events, author: EXTERNAL_ACTOR, keepEvents: true });
   const at = ctx.now().toISOString();
   for (const event of events) {
     ctx.emit(
@@ -248,6 +282,9 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
   const idByLinkedPath = new Map(linkedEntries.map(([id, entry]) => [entry.path, id]));
   const idPathFromLinks = new Map(linkedEntries.map(([id, entry]) => [id, entry.path]));
   const dirty = new Set(await ctx.git.changedPaths());
+  // The index as it was: moves and swaps are judged against it, and an artifact
+  // is removed only when no file carries it after the whole scan.
+  const before = new Map(ctx.index.all().map((row) => [row.id, row]));
   const seen = new Set<string>();
   const tooLarge = new Set<string>();
   const commitPaths = new Set<string>();
@@ -282,8 +319,10 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
     const adopted = id === null;
     id ??= newUlid(ctx.now().getTime());
     seen.add(id);
-    const previous = ctx.index.get(id);
-    if (byPath && byPath.id !== id) ctx.index.remove(byPath.id);
+    const previous = before.get(id);
+    // Another artifact is indexed at this path (two files swapped, or a file
+    // moved onto it): park its row, links intact, until its own file turns up.
+    if (byPath && byPath.id !== id) ctx.index.upsert({ ...byPath, path: `${PARKED}${byPath.id}` });
     const { row, rewritten } = await indexMarkdown(ctx, path, id, state, previous);
     ctx.index.upsert(row);
     const moved = previous !== undefined && previous.path !== path;
@@ -305,14 +344,15 @@ export const scanStore = async (ctx: ReconcileContext, options: { rebuild: boole
   for (const row of ctx.index.all()) {
     if (seen.has(row.id)) continue;
     ctx.index.remove(row.id);
+    const path = before.get(row.id)?.path ?? row.path;
     // Grown past the size limit outside T3: no longer served, but not removed.
-    if (tooLarge.has(row.path)) continue;
-    commitPaths.add(row.path);
+    if (tooLarge.has(path)) continue;
+    commitPaths.add(path);
     events.push({
       artifactId: row.id,
       action: "removed",
       actor: EXTERNAL_ACTOR,
-      summary: `removed ${row.path} outside T3`,
+      summary: `removed ${path} outside T3`,
       revision: null,
     });
   }
@@ -356,18 +396,26 @@ export const checkArtifact = async (
   const { row: next, rewritten } = await indexMarkdown(ctx, row.path, row.id, state, row);
   ctx.index.upsert(next);
   if (!rewritten && next.revision === row.revision) return "unchanged";
-  await commitExternal(
-    ctx,
-    [row.path],
-    [
-      {
-        artifactId: row.id,
-        action: "external",
-        actor: EXTERNAL_ACTOR,
-        summary: "edited outside T3",
-        revision: next.revision,
-      },
-    ],
-  );
+  try {
+    await commitExternal(
+      ctx,
+      [row.path],
+      [
+        {
+          artifactId: row.id,
+          action: "external",
+          actor: EXTERNAL_ACTOR,
+          summary: "edited outside T3",
+          revision: next.revision,
+        },
+      ],
+    );
+  } catch (error) {
+    // Back to the old row, so the next access sees the edit again and retries
+    // the commit instead of serving it with no history.
+    ctx.index.upsert(row);
+    await ctx.git.unstage([row.path]).catch(() => undefined);
+    throw error;
+  }
   return "reindexed";
 };

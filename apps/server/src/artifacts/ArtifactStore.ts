@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off globalDate:off - the artifact store is a Node filesystem and git boundary, outside the Effect runtime.
 // Fork-only (artifacts): the store. Files plus git under one directory, a
 // rebuildable index beside them, list ops, links to threads, and a change feed
 // for watchers. Every change is one commit; `.t3-meta/links.json` is written in
@@ -10,6 +11,7 @@ import * as NodePath from "node:path";
 import type {
   LimArtifactActor,
   LimArtifactChange,
+  LimArtifactLink,
   LimArtifactLinkAccess,
   LimArtifactListItem,
   LimArtifactListOp,
@@ -39,6 +41,7 @@ import {
 } from "./ArtifactIndex.ts";
 import {
   checkArtifact,
+  LINKS_FILE,
   scanStore,
   writeLinksFile,
   type ReconcileContext,
@@ -116,6 +119,60 @@ const toChange = (event: ArtifactEventRow): LimArtifactChange => ({
 const cleanTags = (tags: ReadonlyArray<string> | undefined) => [
   ...new Set((tags ?? []).map((tag) => tag.trim().replace(/^#/, "")).filter(Boolean)),
 ];
+
+/**
+ * What a change touched, so a failed commit can put it back: the files' bytes,
+ * and the index rows and links. Without it a failed commit left the edit
+ * applied but uncommitted, and a retried `add` applied twice.
+ */
+class Undo {
+  private readonly files = new Map<string, Buffer | null>();
+  private readonly artifacts = new Map<
+    string,
+    { readonly row: ArtifactRow | undefined; readonly links: LimArtifactLink[] }
+  >();
+
+  private readonly root: string;
+  private readonly index: ArtifactIndex;
+
+  constructor(root: string, index: ArtifactIndex) {
+    this.root = root;
+    this.index = index;
+  }
+
+  file(path: string) {
+    if (this.files.has(path)) return;
+    const absolute = NodePath.join(this.root, ...path.split("/"));
+    this.files.set(path, NodeFS.existsSync(absolute) ? NodeFS.readFileSync(absolute) : null);
+  }
+
+  artifact(id: string) {
+    if (this.artifacts.has(id)) return;
+    this.artifacts.set(id, { row: this.index.get(id), links: this.index.links(id) });
+  }
+
+  async restore(git: ArtifactGit) {
+    for (const [path, bytes] of this.files) {
+      const absolute = NodePath.join(this.root, ...path.split("/"));
+      if (bytes === null) NodeFS.rmSync(absolute, { force: true });
+      else await writeFileAtomically(absolute, bytes.toString("utf8"));
+    }
+    this.index.transaction(() => {
+      for (const [id, { row, links }] of this.artifacts) {
+        if (!row) {
+          this.index.remove(id);
+          continue;
+        }
+        this.index.upsert(row);
+        this.index.replaceLinks(id, links);
+      }
+    });
+    await git.unstage([...this.files.keys()]);
+  }
+}
+
+/** The file changed outside T3 between reading it and writing the edit. */
+class FileChangedError extends Error {}
 
 /** One writer at a time: each task runs after the previous one settles. */
 class Serializer {
@@ -262,6 +319,16 @@ export class ArtifactStore {
     return fresh;
   }
 
+  /** Runs a change; when it fails (a git commit that didn't land), undoes what it touched. */
+  private async undoable<T>(undo: Undo, run: () => Promise<T>): Promise<T> {
+    try {
+      return await run();
+    } catch (error) {
+      await undo.restore(this.git);
+      throw error;
+    }
+  }
+
   private readBody(row: ArtifactRow) {
     const text = NodeFS.readFileSync(NodePath.join(this.root, ...row.path.split("/")), "utf8");
     return parseMarkdownFile(text);
@@ -307,17 +374,28 @@ export class ArtifactStore {
     });
   }
 
-  /** Writes a markdown artifact's file and returns its new index row. */
+  /**
+   * Writes a markdown artifact's file and returns its new index row. With
+   * `expect` (the file as last read), throws FileChangedError instead of
+   * overwriting a newer outside edit.
+   */
   private async writeMarkdown(
     row: Omit<ArtifactRow, "revision" | "size" | "mtime" | "bodyText">,
     body: string,
     extra?: Readonly<Record<string, unknown>>,
+    expect?: { readonly size: number; readonly mtime: number },
   ): Promise<ArtifactRow> {
     const text = renderMarkdownFile({ id: row.id, title: row.title, tags: row.tags, extra, body });
     if (Buffer.byteLength(text) > MAX_TEXT_ARTIFACT_BYTES) {
       throw new ArtifactStoreError("too_large", "markdown artifacts are limited to 10 MB");
     }
     const absolute = await resolveInStore(this.root, row.path);
+    if (expect) {
+      const before = NodeFS.statSync(absolute, { throwIfNoEntry: false });
+      if (!before || before.size !== expect.size || before.mtimeMs !== expect.mtime) {
+        throw new FileChangedError(row.path);
+      }
+    }
     await writeFileAtomically(absolute, text);
     const stat = NodeFS.statSync(absolute);
     return {
@@ -363,49 +441,55 @@ export class ArtifactStore {
       const body = renderList(assignItemIds(parseList(input.content ?? ""), this.random));
       const at = this.now().toISOString();
       const id = newUlid(this.now().getTime());
-      const row = await this.writeMarkdown(
-        {
-          id,
-          path,
-          title,
-          kind: "md",
-          state: "kept",
-          createdBy: actor,
-          createdAt: at,
-          updatedAt: at,
-          tags: cleanTags(input.tags),
-        },
-        body,
-      );
-      const events: ArtifactCommitEvent[] = [
-        { artifactId: id, action: "created", actor, summary: `created ${path}` },
-      ];
-      this.index.transaction(() => {
-        this.index.upsert(row);
-        for (const link of attach) {
-          this.index.setLink(id, {
-            threadId: link.threadId,
-            access: link.access ?? "write",
-            linkedBy: actor,
-            linkedAt: at,
-          });
-          events.push({
-            artifactId: id,
-            action: "attached",
-            actor,
-            summary: `attached to ${link.threadId}`,
-          });
-        }
+      const undo = new Undo(this.root, this.index);
+      undo.file(path);
+      undo.file(LINKS_FILE);
+      undo.artifact(id);
+      return this.undoable(undo, async () => {
+        const row = await this.writeMarkdown(
+          {
+            id,
+            path,
+            title,
+            kind: "md",
+            state: "kept",
+            createdBy: actor,
+            createdAt: at,
+            updatedAt: at,
+            tags: cleanTags(input.tags),
+          },
+          body,
+        );
+        const events: ArtifactCommitEvent[] = [
+          { artifactId: id, action: "created", actor, summary: `created ${path}` },
+        ];
+        this.index.transaction(() => {
+          this.index.upsert(row);
+          for (const link of attach) {
+            this.index.setLink(id, {
+              threadId: link.threadId,
+              access: link.access ?? "write",
+              linkedBy: actor,
+              linkedAt: at,
+            });
+            events.push({
+              artifactId: id,
+              action: "attached",
+              actor,
+              summary: `attached to ${link.threadId}`,
+            });
+          }
+        });
+        const links = await writeLinksFile(this.ctx);
+        await this.git.commit({
+          paths: links ? [path, links] : [path],
+          subject: `Create ${title}`,
+          events,
+          author: actor,
+        });
+        this.record(events, row.revision);
+        return { artifact: this.summary(row), content: body, items: this.items(id, body) };
       });
-      const links = await writeLinksFile(this.ctx);
-      await this.git.commit({
-        paths: links ? [path, links] : [path],
-        subject: `Create ${title}`,
-        events,
-        author: actor,
-      });
-      this.record(events, row.revision);
-      return { artifact: this.summary(row), content: body, items: this.items(id, body) };
     });
   }
 
@@ -415,6 +499,30 @@ export class ArtifactStore {
     actor: LimArtifactActor,
   ): Promise<OpsResult> {
     return this.serializer.run(async () => {
+      // An outside edit landing between the read and the write is reconciled
+      // and the ops applied again on top of it, a few times at most.
+      for (let attempt = 1; ; attempt++) {
+        try {
+          return await this.applyOpsOnce(id, ops, actor);
+        } catch (error) {
+          if (!(error instanceof FileChangedError)) throw error;
+          if (attempt >= 3) {
+            throw new ArtifactStoreError(
+              "unavailable",
+              "the file keeps changing outside T3; try again",
+            );
+          }
+        }
+      }
+    });
+  }
+
+  private async applyOpsOnce(
+    id: string,
+    ops: ReadonlyArray<LimArtifactListOp>,
+    actor: LimArtifactActor,
+  ): Promise<OpsResult> {
+    {
       const row = await this.current(id);
       if (row.kind !== "md") {
         throw new ArtifactStoreError(
@@ -440,34 +548,40 @@ export class ArtifactStore {
       if (body === file.body) {
         return { artifact: this.summary(row), items: this.items(row.id, body), itemIds: [] };
       }
+      const undo = new Undo(this.root, this.index);
+      undo.file(row.path);
+      undo.artifact(id);
       const next = await this.writeMarkdown(
         { ...row, updatedAt: this.now().toISOString() },
         body,
         file.frontMatter?.extra,
+        { size: row.size, mtime: row.mtime },
       );
-      this.index.upsert(next);
-      const events: ArtifactCommitEvent[] =
-        result.applied.length > 0
-          ? result.applied.map((applied) => ({
-              artifactId: id,
-              action: applied.op,
-              itemId: applied.itemId,
-              actor,
-              summary: applied.summary,
-            }))
-          : [{ artifactId: id, action: "ids", actor, summary: "assigned item ids" }];
-      const subject =
-        events.length === 1
-          ? `${actor.name} ${events[0]!.summary}`
-          : `${actor.name}: ${events.length} list edits`;
-      await this.git.commit({ paths: [row.path], subject, events, author: actor });
-      this.record(events, next.revision);
-      return {
-        artifact: this.summary(next),
-        items: this.items(id, body),
-        itemIds: result.applied.map((applied) => applied.itemId),
-      };
-    });
+      return this.undoable(undo, async () => {
+        this.index.upsert(next);
+        const events: ArtifactCommitEvent[] =
+          result.applied.length > 0
+            ? result.applied.map((applied) => ({
+                artifactId: id,
+                action: applied.op,
+                itemId: applied.itemId,
+                actor,
+                summary: applied.summary,
+              }))
+            : [{ artifactId: id, action: "ids", actor, summary: "assigned item ids" }];
+        const subject =
+          events.length === 1
+            ? `${actor.name} ${events[0]!.summary}`
+            : `${actor.name}: ${events.length} list edits`;
+        await this.git.commit({ paths: [row.path], subject, events, author: actor });
+        this.record(events, next.revision);
+        return {
+          artifact: this.summary(next),
+          items: this.items(id, body),
+          itemIds: result.applied.map((applied) => applied.itemId),
+        };
+      });
+    }
   }
 
   private checkThreadId(threadId: string) {
@@ -487,50 +601,60 @@ export class ArtifactStore {
       const row = await this.current(id);
       const existing = this.index.links(id).find((link) => link.threadId === threadId);
       if (existing?.access === access) return this.summary(row);
-      this.index.setLink(id, {
-        threadId,
-        access,
-        linkedBy: existing?.linkedBy ?? actor,
-        linkedAt: existing?.linkedAt ?? this.now().toISOString(),
+      const undo = new Undo(this.root, this.index);
+      undo.file(LINKS_FILE);
+      undo.artifact(id);
+      return this.undoable(undo, async () => {
+        this.index.setLink(id, {
+          threadId,
+          access,
+          linkedBy: existing?.linkedBy ?? actor,
+          linkedAt: existing?.linkedAt ?? this.now().toISOString(),
+        });
+        const events: ArtifactCommitEvent[] = [
+          {
+            artifactId: id,
+            action: "attached",
+            actor,
+            summary: `attached to ${threadId} (${access})`,
+          },
+        ];
+        const links = await writeLinksFile(this.ctx);
+        await this.git.commit({
+          paths: links ? [links] : [],
+          subject: `${actor.name} attached ${row.title} to ${threadId}`,
+          events,
+          author: actor,
+        });
+        this.record(events, row.revision);
+        return this.summary(row);
       });
-      const events: ArtifactCommitEvent[] = [
-        {
-          artifactId: id,
-          action: "attached",
-          actor,
-          summary: `attached to ${threadId} (${access})`,
-        },
-      ];
-      const links = await writeLinksFile(this.ctx);
-      await this.git.commit({
-        paths: links ? [links] : [],
-        subject: `${actor.name} attached ${row.title} to ${threadId}`,
-        events,
-        author: actor,
-      });
-      this.record(events, row.revision);
-      return this.summary(row);
     });
   }
 
   detach(id: string, threadId: string, actor: LimArtifactActor): Promise<LimArtifactSummary> {
     return this.serializer.run(async () => {
       const row = await this.current(id);
-      if (!this.index.removeLink(id, threadId)) {
-        throw new ArtifactStoreError("not_found", `${row.title} isn't attached to ${threadId}`);
-      }
-      const events: ArtifactCommitEvent[] = [
-        { artifactId: id, action: "detached", actor, summary: `detached from ${threadId}` },
-      ];
-      const links = await writeLinksFile(this.ctx);
-      await this.git.commit({
-        paths: links ? [links] : [],
-        subject: `${actor.name} detached ${row.title} from ${threadId}`,
-        events,
-        author: actor,
+      const undo = new Undo(this.root, this.index);
+      undo.file(LINKS_FILE);
+      undo.artifact(id);
+      return this.undoable(undo, async () => {
+        if (!this.index.removeLink(id, threadId)) {
+          throw new ArtifactStoreError("not_found", `${row.title} isn't attached to ${threadId}`);
+        }
+        const events: ArtifactCommitEvent[] = [
+          { artifactId: id, action: "detached", actor, summary: `detached from ${threadId}` },
+        ];
+        const links = await writeLinksFile(this.ctx);
+        await this.git.commit({
+          paths: links ? [links] : [],
+          subject: `${actor.name} detached ${row.title} from ${threadId}`,
+          events,
+          author: actor,
+        });
+        this.record(events, row.revision);
+        return this.summary(row);
       });
-      this.record(events, row.revision);
-      return this.summary(row);
     });
   }
 }

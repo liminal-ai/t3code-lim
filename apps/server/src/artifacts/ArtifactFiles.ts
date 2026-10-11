@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off globalDate:off - the artifact store is a Node filesystem and git boundary, outside the Effect runtime.
 // Fork-only (artifacts): files in the store. Paths are confined to the store
 // (no `..`, no absolute paths, no symlinks, nothing under the store's own
 // `.git`, `.t3` or `.t3-meta` or any other dot entry), writes are atomic, and markdown

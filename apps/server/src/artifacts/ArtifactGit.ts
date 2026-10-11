@@ -1,3 +1,4 @@
+// @effect-diagnostics nodeBuiltinImport:off globalDate:off - the artifact store is a Node filesystem and git boundary, outside the Effect runtime.
 // Fork-only (artifacts): the store's git history, through the git CLI as
 // checkpoints use it. One commit per change; its author is the person or agent
 // thread behind it. Trailers on each commit (`T3-Artifact`, `T3-Action`,
@@ -51,12 +52,20 @@ const emailFor = (actor: LimArtifactActor) =>
 /** Trailer values are single-line. */
 const oneLine = (text: string) => text.replace(/[\r\n]+/g, " ").trim();
 
+/**
+ * Actor fields in `T3-Actor: kind:id:name` escape `%` and `:`, so ids and names
+ * containing `:` (CLI session subjects are arbitrary) round-trip. Older trailers
+ * have no escapes; they still parse, with `:` in the name kept.
+ */
+const escapeActorField = (text: string) => oneLine(text).replace(/%/g, "%25").replace(/:/g, "%3A");
+const unescapeActorField = (text: string) => text.replace(/%3A/gi, ":").replace(/%25/g, "%");
+
 export const commitMessage = (subject: string, events: ReadonlyArray<ArtifactCommitEvent>) => {
   const trailers = events.flatMap((event) => [
     `T3-Artifact: ${event.artifactId}`,
     `T3-Action: ${oneLine(event.action)}`,
     ...(event.itemId ? [`T3-Item: ${event.itemId}`] : []),
-    `T3-Actor: ${event.actor.kind}:${oneLine(event.actor.id)}:${oneLine(event.actor.name)}`,
+    `T3-Actor: ${event.actor.kind}:${escapeActorField(event.actor.id)}:${escapeActorField(event.actor.name)}`,
     `T3-Summary: ${oneLine(event.summary)}`,
   ]);
   return `${oneLine(subject) || "Update artifacts"}\n\n${trailers.join("\n")}\n`;
@@ -65,7 +74,9 @@ export const commitMessage = (subject: string, events: ReadonlyArray<ArtifactCom
 /** Events recorded in one commit message's trailers, in order. */
 export const parseCommitEvents = (body: string, at: string): LoggedEvent[] => {
   const events: LoggedEvent[] = [];
-  let current: Partial<ArtifactCommitEvent> & { artifactId?: string } = {};
+  let current: { -readonly [K in keyof ArtifactCommitEvent]?: ArtifactCommitEvent[K] } & {
+    artifactId?: string;
+  } = {};
   const flush = () => {
     if (current.artifactId && current.action && current.actor) {
       events.push({
@@ -92,10 +103,11 @@ export const parseCommitEvents = (body: string, at: string): LoggedEvent[] => {
     else {
       const [kind = "", id = "", ...name] = value.split(":");
       if (["user", "agent", "external", "system"].includes(kind)) {
+        const restoredId = unescapeActorField(id);
         current.actor = {
           kind: kind as LimArtifactActor["kind"],
-          id,
-          name: name.join(":") || id,
+          id: restoredId,
+          name: unescapeActorField(name.join(":")) || restoredId,
         };
       }
     }
@@ -169,15 +181,40 @@ export class ArtifactGit {
 
   /**
    * Commits exactly `paths` (added, changed or deleted) with the events as
-   * trailers. Returns the commit, or null when nothing in them changed.
+   * trailers. Returns the commit, or null when nothing in them changed. With
+   * `keepEvents`, a change git already has (an outside writer committed it)
+   * still gets an empty commit carrying the events, so a rebuilt index finds them.
    */
   async commit(input: {
     readonly paths: ReadonlyArray<string>;
     readonly subject: string;
     readonly events: ReadonlyArray<ArtifactCommitEvent>;
     readonly author: LimArtifactActor;
+    readonly keepEvents?: boolean;
   }): Promise<string | null> {
-    if (input.paths.length === 0) return null;
+    const authorEnv = {
+      GIT_AUTHOR_NAME: oneLine(input.author.name) || "T3 Code",
+      GIT_AUTHOR_EMAIL: emailFor(input.author),
+      GIT_COMMITTER_NAME: COMMITTER.name,
+      GIT_COMMITTER_EMAIL: COMMITTER.email,
+    };
+    const eventsOnly = async () => {
+      if (!input.keepEvents || input.events.length === 0) return null;
+      await this.run(
+        [
+          "commit",
+          "-q",
+          "--no-verify",
+          "--allow-empty",
+          "--only",
+          "-m",
+          commitMessage(input.subject, input.events),
+        ],
+        { env: authorEnv },
+      );
+      return (await this.run(["rev-parse", "HEAD"])).stdout.trim();
+    };
+    if (input.paths.length === 0) return eventsOnly();
     // A path git never tracked and that no longer exists can't be named to git.
     const tracked = new Set(
       (await this.run(["ls-files", "-z", "--", ...input.paths])).stdout.split("\0"),
@@ -190,12 +227,12 @@ export class ArtifactGit {
       );
       if (exists || tracked.has(path)) paths.push(path);
     }
-    if (paths.length === 0) return null;
+    if (paths.length === 0) return eventsOnly();
     await this.run(["add", "-A", "--", ...paths]);
     const staged = await this.run(["diff", "--cached", "--quiet", "--", ...paths], {
       allowExit: [1],
     });
-    if (staged.code === 0) return null;
+    if (staged.code === 0) return eventsOnly();
     await this.run(
       [
         "commit",
@@ -206,16 +243,15 @@ export class ArtifactGit {
         "--",
         ...paths,
       ],
-      {
-        env: {
-          GIT_AUTHOR_NAME: oneLine(input.author.name) || "T3 Code",
-          GIT_AUTHOR_EMAIL: emailFor(input.author),
-          GIT_COMMITTER_NAME: COMMITTER.name,
-          GIT_COMMITTER_EMAIL: COMMITTER.email,
-        },
-      },
+      { env: authorEnv },
     );
     return (await this.run(["rev-parse", "HEAD"])).stdout.trim();
+  }
+
+  /** Unstages `paths` after a failed commit, so the next commit doesn't carry them. */
+  async unstage(paths: ReadonlyArray<string>) {
+    if (paths.length === 0) return;
+    await this.run(["reset", "-q", "--", ...paths], { allowExit: [1, 128] });
   }
 
   /** Paths git sees as changed or new, store-relative (ignored files excluded). */

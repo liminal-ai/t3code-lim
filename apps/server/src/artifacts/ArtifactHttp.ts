@@ -110,6 +110,8 @@ class ArtifactHttpError extends Data.TaggedError("ArtifactHttpError")<{
   readonly message: string;
   readonly code: string;
   readonly currentRevision?: string | undefined;
+  /** The unexpected failure behind a 500, for the server log only. */
+  readonly failure?: unknown;
 }> {}
 
 const STATUS: Record<ArtifactStoreError["code"], number> = {
@@ -150,11 +152,18 @@ const call = <A>(run: () => Promise<A>) =>
         });
       }
       if (error instanceof ArtifactPathError) return httpError(400, error.code, error.message);
-      return httpError(500, "internal_error", "the artifact store failed; see the server log");
+      return new ArtifactHttpError({
+        status: 500,
+        code: "internal_error",
+        message: "the artifact store failed; see the server log",
+        failure: error,
+      });
     },
   }).pipe(
     Effect.tapError((error) =>
-      error.status === 500 ? Effect.logError("artifact store request failed") : Effect.void,
+      error.status === 500
+        ? Effect.logError("artifact store request failed", error.failure)
+        : Effect.void,
     ),
   );
 

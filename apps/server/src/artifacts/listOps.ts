@@ -8,6 +8,25 @@ const ITEM_LINE = /^([-*+]) \[([ xX])\](?: (.*))?$/;
 const ITEM_ID = /^(.*?)\s*\^([a-z0-9]{2,4})$/;
 const ID_TEXT = /^[a-z0-9]{2,4}$/;
 const INLINE_TAG = /(?:^|\s)#([\p{L}\p{N}_][\p{L}\p{N}_/-]*)/gu;
+const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+const INDENTED = /^[ \t]+\S/;
+const BLANK = /^\s*$/;
+
+/**
+ * The detail lines under an item starting at `from`: indented lines, plus blank
+ * lines between them (a blank-separated paragraph stays with its item).
+ * Returns the index after the last detail line.
+ */
+const detailsEnd = (lines: ReadonlyArray<string>, from: number) => {
+  let end = from;
+  let next = from;
+  while (next < lines.length) {
+    if (INDENTED.test(lines[next]!)) end = ++next;
+    else if (BLANK.test(lines[next]!)) next++;
+    else break;
+  }
+  return end;
+};
 
 export interface ListItem {
   readonly kind: "item";
@@ -47,17 +66,31 @@ export const parseList = (body: string): ListDocument => {
   const lines = body.split(/\r?\n/);
   if (trailingNewline) lines.pop();
   const blocks: Block[] = [];
+  // Inside a fenced code block every line is text, never an item.
+  let fence: string | null = null;
   for (let index = 0; index < lines.length; index++) {
     const line = lines[index]!;
+    const fenceMatch = FENCE.exec(line);
+    if (fence !== null) {
+      if (fenceMatch && fenceMatch[1]![0] === fence[0] && fenceMatch[1]!.length >= fence.length) {
+        fence = null;
+      }
+      blocks.push({ kind: "text", line });
+      continue;
+    }
+    if (fenceMatch) {
+      fence = fenceMatch[1]!;
+      blocks.push({ kind: "text", line });
+      continue;
+    }
     const match = ITEM_LINE.exec(line);
     if (!match) {
       blocks.push({ kind: "text", line });
       continue;
     }
-    const details: string[] = [];
-    while (index + 1 < lines.length && /^[ \t]+\S/.test(lines[index + 1]!)) {
-      details.push(lines[++index]!);
-    }
+    const end = detailsEnd(lines, index + 1);
+    const details = lines.slice(index + 1, end);
+    index = end - 1;
     const rest = match[3] ?? "";
     const idMatch = ITEM_ID.exec(rest);
     blocks.push({
