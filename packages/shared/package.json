@@ -458,6 +458,10 @@
     "./mcpApp": {
       "types": "./src/mcpApp.ts",
       "import": "./src/mcpApp.ts"
+    },
+    "./limArtifactMarkdown": {
+      "types": "./src/limArtifactMarkdown.ts",
+      "import": "./src/limArtifactMarkdown.ts"
     }
   },
   "scripts": {

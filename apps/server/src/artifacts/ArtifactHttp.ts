@@ -3,13 +3,17 @@
 // routes: reads need `orchestration:read`, writes `orchestration:operate`.
 // Deliberately not `filesystem:read`, so every paired device can open them.
 //
+//
 //   GET    /api/artifacts                        list (?thread= &tag= &folder= &kind= &q=)
-//   POST   /api/artifacts                        create a markdown artifact
+//   POST   /api/artifacts                        create from text (JSON), or upload a file
+//                                                (raw body, ?name= &title= &folder= &tags=)
 //   POST   /api/artifacts/watch                  NDJSON change stream
 //   GET    /api/artifacts/:id                    metadata, content, list items, links
 //   POST   /api/artifacts/:id/ops                list ops
 //   POST   /api/artifacts/:id/links              attach to a thread
 //   DELETE /api/artifacts/:id/links/:threadId    detach
+//   POST   /api/artifacts/:id/view-url           a signed view link (read scope; at most 7 days)
+//   GET    /a/:token                             the artifact, without a session (artifactViewPages.ts)
 import {
   AuthOrchestrationOperateScope,
   AuthOrchestrationReadScope,
@@ -19,7 +23,9 @@ import {
   LimArtifactAttachRequest,
   LimArtifactCreateRequest,
   LimArtifactKind,
+  LIM_ARTIFACT_VIEW_ROUTE_PREFIX,
   LimArtifactOpsRequest,
+  LimArtifactViewUrlRequest,
   LimArtifactWatchRequest,
   type LimArtifactActor,
   type LimArtifactStoreInfo,
@@ -39,9 +45,21 @@ import { HttpRouter, HttpServerRequest, HttpServerResponse } from "effect/http";
 import { authenticateHttpRequestScope } from "../comms/commsAuth.ts";
 import * as ServerConfig from "../config.ts";
 import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
-import { ARTIFACTS_USER_NAME, resolveArtifactsDir } from "./artifactConfig.ts";
-import { ArtifactPathError, ULID_PATTERN } from "./ArtifactFiles.ts";
+import {
+  ARTIFACTS_USER_NAME,
+  describeLimit,
+  maxArtifactBytes,
+  resolveArtifactsDir,
+} from "./artifactConfig.ts";
+import { ArtifactPathError, kindOfPath, ULID_PATTERN } from "./ArtifactFiles.ts";
 import { ArtifactStore, ArtifactStoreError } from "./ArtifactStore.ts";
+import { viewResponse } from "./artifactViewPages.ts";
+import {
+  issueViewUrl,
+  resolveViewToken,
+  viewLifetime,
+  ViewLinkLifetimeError,
+} from "./ArtifactViewTokens.ts";
 
 const HEARTBEAT = "20 seconds";
 /** A watcher this far behind gets `{resync}` instead of every change. */
@@ -229,13 +247,60 @@ const listHandler = (url: URL) =>
     return HttpServerResponse.jsonUnsafe({ store: yield* storeInfo, artifacts });
   });
 
-const createHandler = Effect.gen(function* () {
-  const session = yield* authenticateHttpRequestScope(AuthOrchestrationOperateScope);
-  const body = yield* readBody(LimArtifactCreateRequest);
-  const store = yield* openStore;
-  const created = yield* call(() => store.create(body, userActor(session.subject)));
-  return HttpServerResponse.jsonUnsafe({ store: yield* storeInfo, ...created }, { status: 201 });
-});
+/**
+ * An upload's raw body, refused past `limit` bytes (by its declared length,
+ * or once more than that has arrived).
+ */
+const readUpload = (limit: number, limitLabel: string) =>
+  Effect.gen(function* () {
+    const request = yield* HttpServerRequest.HttpServerRequest;
+    const tooLarge = httpError(413, "too_large", `this file is over the ${limitLabel} limit`);
+    const declared = request.headers["content-length"];
+    if (declared !== undefined && Number(declared) > limit) return yield* tooLarge;
+    const chunks: Uint8Array[] = [];
+    let size = 0;
+    yield* request.stream.pipe(
+      Stream.takeWhile((chunk) => {
+        size += chunk.byteLength;
+        if (size <= limit) chunks.push(chunk);
+        return size <= limit;
+      }),
+      Stream.runDrain,
+      Effect.mapError(() => httpError(400, "invalid_request", "the upload didn't arrive whole")),
+    );
+    if (size > limit) return yield* tooLarge;
+    return Buffer.concat(chunks);
+  });
+
+const splitTags = (tags: string | null) =>
+  tags === null ? undefined : tags.split(",").map((tag) => tag.trim());
+
+/**
+ * Creates from a JSON body, or, with `?name=`, from an uploaded file: the raw
+ * body, with `title`, `folder` and comma-separated `tags` as query parameters.
+ */
+const createHandler = (url: URL) =>
+  Effect.gen(function* () {
+    const session = yield* authenticateHttpRequestScope(AuthOrchestrationOperateScope);
+    const params = url.searchParams;
+    const name = params.get("name");
+    const input =
+      name === null
+        ? yield* readBody(LimArtifactCreateRequest)
+        : {
+            title: params.get("title") ?? "",
+            name,
+            folder: params.get("folder") ?? undefined,
+            tags: splitTags(params.get("tags")),
+            bytes: yield* readUpload(
+              maxArtifactBytes(kindOfPath(name)),
+              describeLimit(kindOfPath(name)),
+            ),
+          };
+    const store = yield* openStore;
+    const created = yield* call(() => store.create(input, userActor(session.subject)));
+    return HttpServerResponse.jsonUnsafe({ store: yield* storeInfo, ...created }, { status: 201 });
+  });
 
 const readHandler = (id: string) =>
   Effect.gen(function* () {
@@ -278,6 +343,31 @@ const detachHandler = (id: string, threadId: string) =>
     const store = yield* openStore;
     const artifact = yield* call(() => store.detach(id, threadId, userActor(session.subject)));
     return HttpServerResponse.jsonUnsafe({ artifact });
+  });
+
+/** A signed view link; minting one needs only the read scope, as reading does. */
+const viewUrlHandler = (id: string) =>
+  Effect.gen(function* () {
+    yield* authenticateHttpRequestScope(AuthOrchestrationReadScope);
+    const body = yield* readBody(LimArtifactViewUrlRequest);
+    const lifetime = yield* Effect.try({
+      try: () => viewLifetime(body.expiresInSeconds),
+      catch: (error) =>
+        httpError(
+          400,
+          "invalid_request",
+          error instanceof ViewLinkLifetimeError ? error.message : String(error),
+        ),
+    });
+    const store = yield* openStore;
+    yield* call(() => store.get(id));
+    const issued = yield* issueViewUrl(id, lifetime).pipe(
+      Effect.mapError(() =>
+        httpError(503, "unavailable", "the view link key couldn't be read; see the server log"),
+      ),
+      Effect.tapError(() => Effect.logError("artifact view key couldn't be read")),
+    );
+    return HttpServerResponse.jsonUnsafe(issued);
   });
 
 const watchHandler = Effect.gen(function* () {
@@ -367,7 +457,7 @@ const dispatch = (method: string, url: URL) => {
   const [first, second, third, ...rest] = segments as string[];
   if (first === undefined) {
     if (method === "GET") return listHandler(url);
-    return method === "POST" ? createHandler : methodNotAllowed("GET or POST");
+    return method === "POST" ? createHandler(url) : methodNotAllowed("GET or POST");
   }
   if (first === "watch" && second === undefined) {
     return method === "POST" ? watchHandler : methodNotAllowed("POST");
@@ -376,6 +466,9 @@ const dispatch = (method: string, url: URL) => {
   if (second === undefined) return method === "GET" ? readHandler(first) : methodNotAllowed("GET");
   if (second === "ops" && third === undefined) {
     return method === "POST" ? opsHandler(first) : methodNotAllowed("POST");
+  }
+  if (second === "view-url" && third === undefined) {
+    return method === "POST" ? viewUrlHandler(first) : methodNotAllowed("POST");
   }
   if (second === "links" && third === undefined) {
     return method === "POST" ? attachHandler(first) : methodNotAllowed("POST");
@@ -390,20 +483,87 @@ const handler = Effect.gen(function* () {
   const request = yield* HttpServerRequest.HttpServerRequest;
   const url = HttpServerRequest.toURL(request);
   if (Option.isNone(url)) return HttpServerResponse.text("Bad Request", { status: 400 });
-  return yield* dispatch(request.method, url.value).pipe(
+  // One generator over the routes, so their varied requirements unify.
+  // @effect-diagnostics-next-line unnecessaryEffectGen:off
+  const routed = Effect.gen(function* () {
+    return yield* dispatch(request.method, url.value);
+  });
+  return yield* routed.pipe(
     Effect.catchTags({ ArtifactHttpError: (error) => Effect.succeed(errorResponse(error)) }),
   );
+});
+
+/** A view link's failure page: plain text, sandboxed, never cached or sent on as a referrer. */
+const viewFailure = (status: number, message: string) =>
+  HttpServerResponse.text(message, {
+    status,
+    headers: {
+      "Cache-Control": "private, no-store",
+      "Content-Security-Policy": "sandbox; default-src 'none'",
+      "Referrer-Policy": "no-referrer",
+      "X-Content-Type-Options": "nosniff",
+    },
+  });
+
+/** `GET /a/<token>`: one artifact, without a session, for as long as its token lives. */
+const viewHandler = Effect.gen(function* () {
+  const request = yield* HttpServerRequest.HttpServerRequest;
+  const url = HttpServerRequest.toURL(request);
+  if (Option.isNone(url)) return viewFailure(400, "Bad request");
+  const token = url.value.pathname.slice(`${LIM_ARTIFACT_VIEW_ROUTE_PREFIX}/`.length);
+  if (!token || token.includes("/")) return viewFailure(404, "This link doesn't open anything.");
+  const resolved = yield* resolveViewToken(token).pipe(
+    Effect.tapError((cause) => Effect.logError("artifact view key couldn't be read", { cause })),
+    Effect.orElseSucceed(() => null),
+  );
+  if (resolved === null) return viewFailure(503, "Artifacts can't be opened right now.");
+  if ("failure" in resolved) {
+    // Only a token this server signed can say it expired.
+    return resolved.failure === "expired"
+      ? viewFailure(410, "This link has expired. Copy a new one in T3.")
+      : viewFailure(404, "This link doesn't open anything.");
+  }
+  const handle = yield* ArtifactStoreHandle;
+  const viewed = yield* handle.store.pipe(
+    Effect.flatMap((store) => call(() => store.view(resolved.artifactId))),
+    Effect.map((result) => ({ ok: true as const, result })),
+    Effect.catch((error: ArtifactStoreError | ArtifactHttpError) =>
+      Effect.succeed({
+        ok: false as const,
+        status: error instanceof ArtifactHttpError ? error.status : 503,
+      }),
+    ),
+  );
+  if (!viewed.ok) {
+    return viewed.status === 404
+      ? viewFailure(404, "This artifact no longer exists.")
+      : viewed.status === 413
+        ? viewFailure(413, "This artifact is too large to open right now.")
+        : viewFailure(503, "This artifact can't be opened right now.");
+  }
+  const { body, headers } = viewResponse(viewed.result.artifact, viewed.result.content);
+  const { "Content-Type": contentType, ...rest } = headers;
+  return typeof body === "string"
+    ? HttpServerResponse.text(body, { headers: rest, contentType })
+    : HttpServerResponse.uint8Array(body, { headers: rest, contentType });
 });
 
 /** The routes over whatever store handle is provided (tests provide a temp store). */
 export const routeLayer = Layer.unwrap(
   Effect.gen(function* () {
     const handle = yield* ArtifactStoreHandle;
-    // The wildcard route also matches the bare prefix (the list and create routes).
-    return HttpRouter.add(
-      "*",
-      `${LIM_ARTIFACTS_ROUTE_PREFIX}/*`,
-      handler.pipe(Effect.provideService(ArtifactStoreHandle, handle)),
+    return Layer.mergeAll(
+      // The wildcard route also matches the bare prefix (the list and create routes).
+      HttpRouter.add(
+        "*",
+        `${LIM_ARTIFACTS_ROUTE_PREFIX}/*`,
+        handler.pipe(Effect.provideService(ArtifactStoreHandle, handle)),
+      ),
+      HttpRouter.add(
+        "GET",
+        `${LIM_ARTIFACT_VIEW_ROUTE_PREFIX}/*`,
+        viewHandler.pipe(Effect.provideService(ArtifactStoreHandle, handle)),
+      ),
     );
   }),
 );
