@@ -64,14 +64,14 @@ export function ArtifactsPage(props: {
   // The first environment to resolve is the one a `?id=` link opens in.
   if (shownEnvironment === null && nextEnvironment !== null) setShownEnvironment(nextEnvironment);
   const switched = environmentChanged(shownEnvironment, nextEnvironment);
+  // Moved on only once the old id has left the URL, so it's never read from the new store.
+  if (switched && props.selectedId === undefined) setShownEnvironment(nextEnvironment);
   const selectedId = switched ? undefined : props.selectedId;
   const { onSelect } = props;
+  const staleId = switched && props.selectedId !== undefined;
   useEffect(() => {
-    if (!switched) return;
-    // Moved on only once the old id has left the URL, so it's never read from the new store.
-    if (props.selectedId !== undefined) onSelect(undefined);
-    else setShownEnvironment(nextEnvironment);
-  }, [nextEnvironment, onSelect, props.selectedId, switched]);
+    if (staleId) onSelect(undefined);
+  }, [onSelect, staleId]);
   // Any change may add, retitle or reorder artifacts; reads are coalesced.
   useEffect(() => watch.hub.subscribe(() => refetch()), [refetch, watch.hub]);
 
