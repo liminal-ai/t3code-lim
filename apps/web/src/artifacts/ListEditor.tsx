@@ -38,6 +38,7 @@ import { formatRelativeTimeLabel } from "~/timestampFormat";
 import { ArtifactsError, applyArtifactOps, readArtifact } from "./artifactsClient";
 import type { ArtifactsRoute } from "./artifactsRoute.logic";
 import { ArtifactLinkActions, ArtifactMarkdown, ArtifactViewer } from "./ArtifactViewer";
+import { withoutItemIds } from "./artifactViewer.logic";
 import {
   initialListEditorState,
   isTempId,
@@ -77,6 +78,8 @@ export function ArtifactDetail(props: {
   const [state, dispatch] = useReducer(listEditorReducer, initialListEditorState);
   const items = useMemo(() => visibleItems(state), [state]);
   const [adding, setAdding] = useState("");
+  // A list can also be read as the whole document (headings, prose, mermaid).
+  const [view, setView] = useState<"list" | "document">("list");
 
   useEffect(
     () =>
@@ -194,8 +197,47 @@ export function ArtifactDetail(props: {
       ) : null}
     </>
   );
-  const actions = <ArtifactLinkActions route={route} artifactId={artifact.id} />;
+  const linkActions = <ArtifactLinkActions route={route} artifactId={artifact.id} />;
   if (artifact.kind !== "md") {
+    return (
+      <DetailFrame
+        onBack={props.onBack}
+        title={artifact.title}
+        subtitle={`${artifact.path} · rev ${artifact.revision.slice(0, 7)}`}
+        actions={linkActions}
+      >
+        {header}
+        <ArtifactViewer route={route} artifact={artifact} content={state.content} />
+      </DetailFrame>
+    );
+  }
+  const showDocument = view === "document" && items.length > 0;
+  const actions = (
+    <>
+      {items.length > 0 ? (
+        <div className="flex shrink-0 items-center" role="group" aria-label="Show as">
+          {(["list", "document"] as const).map((mode) => (
+            <Button
+              key={mode}
+              size="xs"
+              variant={view === mode ? "secondary" : "ghost"}
+              aria-pressed={view === mode}
+              onClick={() => {
+                if (mode === view) return;
+                setView(mode);
+                // Op answers carry items, not the body: read it fresh for the document.
+                if (mode === "document") dispatch({ type: "resync" });
+              }}
+            >
+              {mode === "list" ? "List" : "Document"}
+            </Button>
+          ))}
+        </div>
+      ) : null}
+      {linkActions}
+    </>
+  );
+  if (showDocument) {
     return (
       <DetailFrame
         onBack={props.onBack}
@@ -204,7 +246,9 @@ export function ArtifactDetail(props: {
         actions={actions}
       >
         {header}
-        <ArtifactViewer route={route} artifact={artifact} content={state.content} />
+        <ScrollArea className="min-h-0 flex-1">
+          <ArtifactMarkdown text={withoutItemIds(state.content)} />
+        </ScrollArea>
       </DetailFrame>
     );
   }
@@ -304,7 +348,7 @@ function DetailFrame(props: {
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex items-center gap-2 px-4 pt-3 pb-2">
+      <div className="flex flex-wrap items-center gap-2 px-4 pt-3 pb-2">
         <Button
           size="icon-xs"
           variant="ghost-muted"
@@ -314,7 +358,8 @@ function DetailFrame(props: {
         >
           <ArrowLeftIcon />
         </Button>
-        <div className="min-w-0 flex-1">
+        {/* Actions wrap below the title on narrow screens. */}
+        <div className="min-w-40 flex-1">
           {props.title ? <h2 className="truncate text-sm font-medium">{props.title}</h2> : null}
           {props.subtitle ? (
             <p className="truncate font-mono text-2xs text-muted-foreground">{props.subtitle}</p>

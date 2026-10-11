@@ -84,3 +84,34 @@ export function uploadLimitError(file: { readonly name: string; readonly size: n
   if (file.size <= limit) return null;
   return `${file.name} is over the ${limit / (1024 * 1024)} MB limit for ${text ? "markdown and HTML" : "files"}.`;
 }
+
+const ITEM_WITH_ID = /^([-*+] \[[ xX]\](?: .*?)?)\s*\^[a-z0-9]{2,4}$/;
+const FENCE = /^ {0,3}(`{3,}|~{3,})/;
+const CLOSING_FENCE = /^ {0,3}(`{3,}|~{3,})[ \t]*\r?$/;
+
+/**
+ * A list as a reader sees it: each top-level item without its trailing `^id`
+ * (the server's list parser, listOps.ts, reads the same lines; fenced code is
+ * left alone).
+ */
+export function withoutItemIds(markdown: string): string {
+  let fence: string | null = null;
+  return markdown
+    .split("\n")
+    .map((line) => {
+      if (fence !== null) {
+        const closing = CLOSING_FENCE.exec(line)?.[1];
+        if (closing && closing[0] === fence[0] && closing.length >= fence.length) fence = null;
+        return line;
+      }
+      const opening = FENCE.exec(line)?.[1];
+      if (opening) {
+        fence = opening;
+        return line;
+      }
+      const carriage = line.endsWith("\r") ? "\r" : "";
+      const match = ITEM_WITH_ID.exec(carriage ? line.slice(0, -1) : line);
+      return match ? `${match[1]}${carriage}` : line;
+    })
+    .join("\n");
+}

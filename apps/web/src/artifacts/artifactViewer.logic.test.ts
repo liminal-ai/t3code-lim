@@ -7,6 +7,7 @@ import {
   uploadLimitError,
   viewerLinkStale,
   viewerNeedsLink,
+  withoutItemIds,
 } from "./artifactViewer.logic";
 
 const MB = 1024 * 1024;
@@ -61,5 +62,17 @@ describe("uploadLimitError", () => {
     expect(uploadLimitError({ name: "a.html", size: 10 * MB + 1 })).toMatch(/10 MB/);
     expect(uploadLimitError({ name: "a.png", size: 20 * MB })).toBeNull();
     expect(uploadLimitError({ name: "a.png", size: 50 * MB + 1 })).toMatch(/50 MB/);
+  });
+});
+
+describe("withoutItemIds", () => {
+  it("hides item ids from a list read as a document, but not in code", () => {
+    expect(
+      withoutItemIds(
+        "# Notes\n- [x] shipped ^l8\n- [ ] next ^6v\n  detail ^no\n```\n- [ ] code ^zz\n```\n- [ ] after ^a1",
+      ),
+    ).toBe(
+      "# Notes\n- [x] shipped\n- [ ] next\n  detail ^no\n```\n- [ ] code ^zz\n```\n- [ ] after",
+    );
   });
 });
