@@ -6,6 +6,7 @@
 // applied. When the index is new (deleted, unreadable or an old schema), the
 // scan rebuilds it: artifacts and tags from the files, links from
 // `.t3-meta/links.json`, events from the commit log.
+import * as NodeFS from "node:fs";
 import * as NodeFSP from "node:fs/promises";
 import * as NodePath from "node:path";
 
@@ -238,6 +239,14 @@ const indexMarkdown = async (
         extra: parsed.frontMatter?.extra,
         body: parsed.body,
       }),
+      // Don't overwrite a save that landed since the read: refuse, and the
+      // next access reconciles the newer file.
+      () => {
+        const now = NodeFS.statSync(absolute, { throwIfNoEntry: false });
+        if (!now || now.size !== state.size || now.mtimeMs !== state.mtime) {
+          throw new FileUnstableError(absolute);
+        }
+      },
     );
     const after = await readFileState(absolute);
     if (after !== null && after !== "too_large") current = after;
