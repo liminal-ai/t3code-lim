@@ -13,10 +13,12 @@ import {
   attachCandidates,
   initialListContent,
   initialListEditorState,
+  itemRows,
   lastChangeLabel,
   listEditorReducer,
   moveTarget,
   nextToSend,
+  plainContent,
   shouldFetch,
   visibleItems,
 } from "./listEditor.logic";
@@ -291,6 +293,100 @@ describe("re-reads and watch frames", () => {
     });
     expect(texts(next)).toEqual(["Only"]);
     expect(next.artifact?.revision).toBe("r5");
+  });
+});
+
+describe("review fixes (PR 3 round 1)", () => {
+  const withBody = (body: string, items: LimArtifactListItem[]) =>
+    run(
+      initialListEditorState,
+      { type: "fetchStarted" },
+      { type: "fetched", epoch: 0, read: { ...read("r1", items), content: body } },
+    );
+
+  it("doesn't show the old body again once the last item is removed", () => {
+    let state = withBody("- [ ] Only ^a1\n", [item("a1", "Only")]);
+    state = run(state, { type: "enqueue", op: { op: "remove", id: "a1" } });
+    // Optimistically empty, but the server hasn't answered: no plain-text fallback.
+    expect(plainContent(state)).toBeNull();
+    const key = state.pending[0]!.key;
+    state = run(
+      state,
+      { type: "sending", key },
+      { type: "settled", key, artifact: summary("r2"), items: [], itemIds: ["a1"] },
+    );
+    expect(plainContent(state)).toBeNull();
+    // Its own frame doesn't trigger a re-read, so the empty answer has to ask for one.
+    expect(shouldFetch(run(state, { type: "change", change: change("r2") }))).toBe(true);
+  });
+
+  it("shows a body without checklist items as plain text", () => {
+    expect(plainContent(withBody("Notes only\n", []))).toBe("Notes only\n");
+  });
+
+  it("ignores a read failure from before an op settled, and reads again", () => {
+    let state = run(loaded, { type: "resync" }, { type: "fetchStarted" });
+    const startedAt = state.epoch;
+    state = run(state, { type: "enqueue", op: { op: "check", id: "a1" } });
+    const key = state.pending[0]!.key;
+    state = run(
+      state,
+      { type: "sending", key },
+      { type: "settled", key, artifact: summary("r2"), items: loaded.items, itemIds: ["a1"] },
+      {
+        type: "fetchFailed",
+        epoch: startedAt,
+        failure: { status: 404, code: "not_found", message: "no such artifact" },
+      },
+    );
+    expect(state.gone).toBe(false);
+    expect(state.loadError).toBeNull();
+    expect(state.items).toEqual(loaded.items);
+    expect(shouldFetch(state)).toBe(true);
+  });
+
+  it("reports a current read failure", () => {
+    const state = run(loaded, { type: "resync" }, { type: "fetchStarted" });
+    const failed = run(state, {
+      type: "fetchFailed",
+      epoch: state.epoch,
+      failure: { status: 0, code: "network", message: "couldn't reach the T3 server" },
+    });
+    expect(failed.loadError).toBe("couldn't reach the T3 server");
+    expect(failed.fetching).toBe(false);
+  });
+
+  it("a failed 'Give them ids' leaves a running read alone", () => {
+    const state = run(loaded, { type: "resync" }, { type: "fetchStarted" });
+    const failed = run(state, {
+      type: "assignIdsFailed",
+      failure: { status: 503, code: "unavailable", message: "store down" },
+    });
+    expect(failed.fetching).toBe(true);
+    expect(failed.notice).toBe("store down");
+  });
+});
+
+describe("duplicate item ids", () => {
+  // An outside copy of a line gives two rows ^b2.
+  const items = [
+    item("a1", "A"),
+    item("b2", "B"),
+    item("b2", "B copy"),
+    item(null, "C"),
+    item("d4", "D"),
+  ];
+
+  it("disables rows that share an id, like rows without one, with unique keys", () => {
+    const rows = itemRows(items);
+    expect(rows.map((row) => row.editable)).toEqual([true, false, false, false, true]);
+    const keys = rows.map((row) => row.key);
+    expect(new Set(keys).size).toBe(keys.length);
+  });
+
+  it("never moves an item after a shared id", () => {
+    // D dropped just below "B copy" goes after A, the nearest item with its own id.
+    expect(moveTarget(items, 4, 3)).toBe("after:a1");
   });
 });
 

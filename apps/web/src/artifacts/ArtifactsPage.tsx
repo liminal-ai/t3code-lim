@@ -23,6 +23,7 @@ import { isElectron } from "~/env";
 import { cn } from "~/lib/utils";
 import { formatRelativeTimeLabel } from "~/timestampFormat";
 
+import { artifactListView } from "./artifactList.logic";
 import { artifactsRouteKey, displayStorePath } from "./artifactsRoute.logic";
 import type { ArtifactWatchStatus } from "./artifactsWatch.logic";
 import { ArtifactDetail } from "./ListEditor";
@@ -149,6 +150,8 @@ export function ArtifactsPage(props: {
       </div>
       {creating && selected ? (
         <NewListDialog
+          // A new environment's threads are different: remount, dropping the picks.
+          key={selected.id}
           open
           onOpenChange={setCreating}
           route={selected.route}
@@ -169,30 +172,30 @@ function ArtifactList(props: {
   readonly selectedId: string | undefined;
   readonly onSelect: (id: string) => void;
 }) {
-  if (props.error && !props.artifacts) {
-    return <p className="p-6 text-sm text-destructive">{props.error.message}</p>;
+  const view = artifactListView(props.artifacts, props.error);
+  if (view.kind === "error") {
+    return <p className="p-6 text-sm text-destructive">{view.message}</p>;
   }
-  if (!props.artifacts) {
+  if (view.kind === "loading") {
     return (
       <div className="flex justify-center p-10">
         <Spinner />
       </div>
     );
   }
-  if (props.artifacts.length === 0) {
-    return <p className="p-6 text-sm text-muted-foreground">No artifacts in this store yet.</p>;
-  }
-  const sorted = props.artifacts.toSorted((a, b) => b.updatedAt.localeCompare(a.updatedAt));
   return (
     <>
-      {props.error ? (
+      {view.warning ? (
         <p className="px-4 py-2 text-2xs text-warning" role="status">
-          {props.error.message}
+          {view.warning}
         </p>
+      ) : null}
+      {view.artifacts.length === 0 ? (
+        <p className="p-6 text-sm text-muted-foreground">No artifacts in this store yet.</p>
       ) : null}
       <ScrollArea className="min-h-0 flex-1">
         <ul aria-label="Artifacts">
-          {sorted.map((artifact) => {
+          {view.artifacts.map((artifact) => {
             const Icon = artifact.kind === "md" ? ListChecksIcon : FileTextIcon;
             return (
               <li key={artifact.id}>

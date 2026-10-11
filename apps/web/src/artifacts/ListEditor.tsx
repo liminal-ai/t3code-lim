@@ -38,11 +38,13 @@ import type { ArtifactsRoute } from "./artifactsRoute.logic";
 import {
   initialListEditorState,
   isTempId,
+  itemRows,
   lastChangeLabel,
   type ListEditorFailure,
   listEditorReducer,
   moveTarget,
   nextToSend,
+  plainContent,
   shouldFetch,
   visibleItems,
 } from "./listEditor.logic";
@@ -56,9 +58,6 @@ const toFailure = (error: unknown): ListEditorFailure =>
         code: "unknown",
         message: error instanceof Error ? error.message : String(error),
       };
-
-/** Drag handles need a string id; an item without one yet can't be dragged. */
-const sortId = (item: LimArtifactListItem, index: number) => item.id ?? `row:${index}`;
 
 export function ArtifactDetail(props: {
   readonly route: ArtifactsRoute;
@@ -108,13 +107,15 @@ export function ArtifactDetail(props: {
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
   );
-  const sortIds = items.map(sortId);
+  const rows = useMemo(() => itemRows(items), [items]);
+  const sortIds = rows.map((row) => row.key);
   const handleDragEnd = (event: DragEndEvent) => {
     if (event.over === null || event.active.id === event.over.id) return;
     const from = sortIds.indexOf(String(event.active.id));
     const to = moveTarget(items, from, sortIds.indexOf(String(event.over.id)));
-    const id = items[from]?.id;
-    if (to && id) dispatch({ type: "enqueue", op: { op: "move", id, to } });
+    const row = rows[from];
+    if (to && row?.editable)
+      dispatch({ type: "enqueue", op: { op: "move", id: row.item.id!, to } });
   };
 
   const add = () => {
@@ -123,15 +124,15 @@ export function ArtifactDetail(props: {
     dispatch({ type: "enqueue", op: { op: "add", text, at: "bottom" } });
     setAdding("");
   };
-  const unassigned = items.some((item) => item.id === null);
+  const unassigned = rows.some((row) => !row.editable);
   const assignIds = () => {
-    // An empty op batch is a T3 write: the server gives every item an id.
-    const { epoch } = state;
+    // An empty op batch is a T3 write: the server gives every item its own id.
     applyArtifactOps(route, artifactId, []).then(
       () => dispatch({ type: "resync" }),
-      (error: unknown) => dispatch({ type: "fetchFailed", epoch, failure: toFailure(error) }),
+      (error: unknown) => dispatch({ type: "assignIdsFailed", failure: toFailure(error) }),
     );
   };
+  const content = plainContent(state);
 
   const { artifact } = state;
   if (state.gone) {
@@ -190,7 +191,8 @@ export function ArtifactDetail(props: {
       ) : null}
       {unassigned ? (
         <div className="mx-4 mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-          Some items were written outside T3 and have no id yet, so they can't be edited here.
+          Some items were written outside T3 without an id of their own, so they can't be edited
+          here.
           <Button size="xs" variant="outline" onClick={assignIds}>
             Give them ids
           </Button>
@@ -198,10 +200,10 @@ export function ArtifactDetail(props: {
       ) : null}
       <ScrollArea className="min-h-0 flex-1">
         <div className="px-4 pb-6">
-          {items.length === 0 && state.content.trim() ? (
+          {content !== null ? (
             // v0 edits checklist items only; anything else in the file is shown as it is.
             <pre className="mb-3 font-mono text-xs whitespace-pre-wrap text-muted-foreground">
-              {state.content}
+              {content}
             </pre>
           ) : null}
           <DndContext
@@ -212,24 +214,25 @@ export function ArtifactDetail(props: {
           >
             <SortableContext items={sortIds} strategy={verticalListSortingStrategy}>
               <ul aria-label={`Items of ${artifact.title}`}>
-                {items.map((item, index) => (
+                {rows.map(({ item, key, editable }) => (
                   <ListItemRow
-                    key={sortId(item, index)}
-                    sortId={sortId(item, index)}
+                    key={key}
+                    sortId={key}
                     item={item}
+                    editable={editable}
                     onCheck={(checked) =>
-                      item.id &&
+                      editable &&
                       dispatch({
                         type: "enqueue",
-                        op: { op: checked ? "check" : "uncheck", id: item.id },
+                        op: { op: checked ? "check" : "uncheck", id: item.id! },
                       })
                     }
                     onEdit={(text) =>
-                      item.id &&
-                      dispatch({ type: "enqueue", op: { op: "edit", id: item.id, text } })
+                      editable &&
+                      dispatch({ type: "enqueue", op: { op: "edit", id: item.id!, text } })
                     }
                     onRemove={() =>
-                      item.id && dispatch({ type: "enqueue", op: { op: "remove", id: item.id } })
+                      editable && dispatch({ type: "enqueue", op: { op: "remove", id: item.id! } })
                     }
                   />
                 ))}
@@ -334,12 +337,12 @@ function LinkChips(props: {
 function ListItemRow(props: {
   readonly sortId: string;
   readonly item: LimArtifactListItem;
+  readonly editable: boolean;
   readonly onCheck: (checked: boolean) => void;
   readonly onEdit: (text: string) => void;
   readonly onRemove: () => void;
 }) {
-  const { item } = props;
-  const editable = item.id !== null;
+  const { item, editable } = props;
   const [draft, setDraft] = useState<string | null>(null);
   const {
     attributes,

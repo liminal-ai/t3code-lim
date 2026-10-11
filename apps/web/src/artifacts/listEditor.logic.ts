@@ -81,6 +81,8 @@ export type ListEditorAction =
   | { readonly type: "fetchStarted" }
   | { readonly type: "fetched"; readonly epoch: number; readonly read: LimArtifactReadResponse }
   | { readonly type: "fetchFailed"; readonly epoch: number; readonly failure: ListEditorFailure }
+  /** "Give them ids" (`ops: []`) failed; it isn't a read, so the read state is left alone. */
+  | { readonly type: "assignIdsFailed"; readonly failure: ListEditorFailure }
   | { readonly type: "change"; readonly change: LimArtifactChange }
   | { readonly type: "resync" }
   | { readonly type: "dismissNotice" };
@@ -211,8 +213,8 @@ export function listEditorReducer(
         head.tempId !== null && realId !== undefined
           ? rest.map((queued) => ({ ...queued, op: renameIn(queued.op, head.tempId!, realId) }))
           : rest;
-      // When the list just became empty, the last read's body is stale: clear it
-      // and trigger a fresh read so the fallback doesn't show ghost items.
+      // The answer has items but no body. Once the list is empty the last read's
+      // body (shown as plain text then) still has the old items: drop it and re-read.
       const base: ListEditorState = {
         ...state,
         artifact: action.artifact,
@@ -259,9 +261,10 @@ export function listEditorReducer(
       };
     }
     case "fetchFailed": {
-      // Drop a stale failure (started before an op settled or while one is queued).
+      // Like a stale read: a failure from before an op settled (say a 404 for an
+      // artifact the op answers for) mustn't replace the list; read again instead.
       if (state.pending.length > 0 || action.epoch !== state.epoch) {
-        return { ...state, fetching: false };
+        return { ...state, fetching: false, wantFetch: true };
       }
       return {
         ...state,
@@ -270,6 +273,8 @@ export function listEditorReducer(
         loadError: action.failure.message,
       };
     }
+    case "assignIdsFailed":
+      return { ...state, wantFetch: true, notice: describe(action.failure) };
     case "change": {
       const { revision } = action.change;
       // Our own op's frame, after its answer already updated the list.
@@ -298,15 +303,52 @@ export function moveTarget(
   toIndex: number,
 ): string | null {
   if (fromIndex === toIndex || !items[fromIndex] || !items[toIndex]) return null;
+  const duplicates = duplicateItemIds(items);
   const order = [...items];
   const [moved] = order.splice(fromIndex, 1);
   order.splice(toIndex, 0, moved!);
   for (let index = toIndex - 1; index >= 0; index--) {
     const id = order[index]!.id;
-    if (id !== null) return `after:${id}`;
+    if (id !== null && !duplicates.has(id)) return `after:${id}`;
   }
   return "top";
 }
+
+/** Ids on more than one item (a line copied outside T3); an op can't tell those items apart. */
+export function duplicateItemIds(items: ReadonlyArray<LimArtifactListItem>): ReadonlySet<string> {
+  const seen = new Set<string>();
+  const duplicates = new Set<string>();
+  for (const item of items) {
+    if (item.id === null) continue;
+    if (seen.has(item.id)) duplicates.add(item.id);
+    seen.add(item.id);
+  }
+  return duplicates;
+}
+
+export interface ItemRow {
+  readonly item: LimArtifactListItem;
+  /** Unique among the rows: the React key and the drag id. */
+  readonly key: string;
+  /** Ops need the item's own id; items with none, or a shared one, wait for "Give them ids". */
+  readonly editable: boolean;
+}
+
+export function itemRows(items: ReadonlyArray<LimArtifactListItem>): ReadonlyArray<ItemRow> {
+  const duplicates = duplicateItemIds(items);
+  return items.map((item, index) => {
+    const editable = item.id !== null && !duplicates.has(item.id);
+    return { item, key: editable ? item.id! : `row:${index}`, editable };
+  });
+}
+
+/**
+ * The file's body, shown as plain text when the server's list has no items
+ * (not when the shown list is empty only because a removal is still on its
+ * way: the body would bring that item back).
+ */
+export const plainContent = (state: ListEditorState): string | null =>
+  state.items.length === 0 && state.content.trim() ? state.content : null;
 
 const VERBS: Record<string, string> = {
   add: "added",
