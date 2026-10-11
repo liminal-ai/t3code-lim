@@ -442,7 +442,9 @@ export class ArtifactStore {
     return this.serializer.run(async () => {
       const { row, bytes } = await this.currentBytes(
         id,
-        (row) => row.kind !== "other" || isTextFile(row.path),
+        // Over the 1 MB inline bound a text file's bytes aren't sent, so aren't read (contentOf).
+        (row) =>
+          row.kind !== "other" || (isTextFile(row.path) && row.size <= FILE_TEXT_PREVIEW_MAX_BYTES),
       );
       const content = bytes === null ? "" : this.contentOf(row, bytes);
       return {
