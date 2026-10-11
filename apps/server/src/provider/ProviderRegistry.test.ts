@@ -2,13 +2,14 @@ import * as ServerSecretStore from "../auth/ServerSecretStore.ts";
 import * as CodexInstallation from "./CodexInstallation.ts";
 import * as ServerEnvironment from "../environment/ServerEnvironment.ts";
 import * as NodeServices from "@effect/platform-node/NodeServices";
-import { describe, it, assert, expect } from "@effect/vitest";
+import { afterAll, beforeAll, describe, it, assert, expect } from "@effect/vitest";
 import * as DateTime from "effect/DateTime";
 import * as Deferred from "effect/Deferred";
 import * as Effect from "effect/Effect";
 import * as Path from "effect/Path";
 import * as Exit from "effect/Exit";
 import * as Fiber from "effect/Fiber";
+import * as FileSystem from "effect/FileSystem";
 import * as Layer from "effect/Layer";
 import * as PubSub from "effect/PubSub";
 import * as Ref from "effect/Ref";
@@ -34,6 +35,7 @@ import {
 import * as PlatformError from "effect/PlatformError";
 import { HttpClient, HttpClientResponse } from "effect/http";
 import { ChildProcessSpawner } from "effect/process";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import { deepMerge } from "@t3tools/shared/Struct";
 import { createModelCapabilities } from "@t3tools/shared/model";
 import { applyServerSettingsPatch } from "@t3tools/shared/serverSettings";
@@ -150,6 +152,7 @@ type TestClaudeCapabilities = {
   readonly email: string | undefined;
   readonly subscriptionType: string | undefined;
   readonly tokenSource: string | undefined;
+  readonly apiKeySource?: string | undefined;
   readonly apiProvider: string | undefined;
   readonly slashCommands: ReadonlyArray<ServerProviderSlashCommand>;
 };
@@ -3082,6 +3085,26 @@ it.layer(
   // ── checkClaudeProviderStatus tests ──────────────────────────
 
   describe("checkClaudeProviderStatus", () => {
+    // Fork (lim): the probe reads the stored Claude login. Tests that pass no
+    // environment mustn't see the developer's own, and count as signed in via
+    // an env token; the stored-login test below passes its own environment.
+    const isolated = {
+      CLAUDE_CONFIG_DIR: "/nonexistent/t3-claude-status-tests",
+      CLAUDE_CODE_OAUTH_TOKEN: "test-only",
+    } as const;
+    const inherited = Object.fromEntries(
+      Object.keys(isolated).map((key) => [key, process.env[key]]),
+    );
+    beforeAll(() => {
+      Object.assign(process.env, isolated);
+    });
+    afterAll(() => {
+      for (const [key, value] of Object.entries(inherited)) {
+        if (value === undefined) delete process.env[key];
+        else process.env[key] = value;
+      }
+    });
+
     it.effect("returns ready when claude is installed and authenticated", () =>
       Effect.gen(function* () {
         const status = yield* checkClaudeProviderStatus(
@@ -3130,6 +3153,139 @@ it.layer(
           }),
         ),
       ),
+    );
+
+    // Fork (lim): the SDK reported an account while the Nucbox's stored login was empty.
+    it.effect(
+      "reports a stored login with empty tokens as unauthenticated, unless env auth, an API key or macOS applies",
+      () =>
+        Effect.gen(function* () {
+          const fileSystem = yield* FileSystem.FileSystem;
+          const path = yield* Path.Path;
+          const dir = yield* fileSystem.makeTempDirectoryScoped();
+          yield* fileSystem.writeFileString(
+            path.join(dir, ".credentials.json"),
+            JSON.stringify({
+              claudeAiOauth: {
+                accessToken: "",
+                refreshToken: "",
+                expiresAt: 0,
+                subscriptionType: "max",
+              },
+            }),
+          );
+          const signedOut = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({ subscriptionType: "max" }),
+            { CLAUDE_CONFIG_DIR: dir },
+          );
+          assert.strictEqual(signedOut.status, "error");
+          assert.strictEqual(signedOut.auth.status, "unauthenticated");
+          assert.include(signedOut.message ?? "", "no tokens");
+          assert.include(signedOut.message ?? "", dir);
+
+          const proxied = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({ subscriptionType: "max" }),
+            { CLAUDE_CONFIG_DIR: dir, ANTHROPIC_BASE_URL: "http://127.0.0.1:8317" },
+          );
+          assert.strictEqual(proxied.status, "ready");
+          assert.strictEqual(proxied.auth.status, "authenticated");
+
+          // An API key from apiKeyHelper outranks the stored login.
+          const helper = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({ subscriptionType: "max", apiKeySource: "apiKeyHelper" }),
+            { CLAUDE_CONFIG_DIR: dir },
+          );
+          assert.strictEqual(helper.auth.status, "authenticated");
+
+          // macOS keeps the login in the Keychain; the file is only a fallback there.
+          const mac = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({ subscriptionType: "max" }),
+            { CLAUDE_CONFIG_DIR: dir },
+          ).pipe(Effect.provideService(HostProcessPlatform, "darwin"));
+          assert.strictEqual(mac.auth.status, "authenticated");
+
+          // Off macOS the file is where /login keeps it: no file is no login.
+          const missing = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({ subscriptionType: "max" }),
+            { CLAUDE_CONFIG_DIR: path.join(dir, "no-login-here") },
+          );
+          assert.strictEqual(missing.auth.status, "unauthenticated");
+          assert.include(missing.message ?? "", "no stored login");
+
+          // A proxy set in the home's settings.json env counts, as on prod's claude-glm-lhc.
+          const glmHome = path.join(dir, "glm");
+          yield* fileSystem.makeDirectory(glmHome);
+          yield* fileSystem.writeFileString(
+            path.join(glmHome, "settings.json"),
+            JSON.stringify({ env: { ANTHROPIC_BASE_URL: "http://127.0.0.1:8317" } }),
+          );
+          const glm = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({}),
+            { CLAUDE_CONFIG_DIR: glmHome },
+          );
+          assert.strictEqual(glm.auth.status, "authenticated");
+
+          // ...and so does one in the workspace's project settings.
+          const workspace = path.join(dir, "workspace");
+          yield* fileSystem.makeDirectory(path.join(workspace, ".claude"), { recursive: true });
+          yield* fileSystem.writeFileString(
+            path.join(workspace, ".claude", "settings.json"),
+            JSON.stringify({ env: { ANTHROPIC_AUTH_TOKEN: "t" } }),
+          );
+          const project = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({}),
+            { CLAUDE_CONFIG_DIR: path.join(dir, "no-login-here") },
+            workspace,
+          );
+          assert.strictEqual(project.auth.status, "authenticated");
+
+          // ...and one in the git root's settings.local.json, from a nested cwd.
+          const repo = path.join(dir, "repo");
+          const nested = path.join(repo, "packages", "app");
+          yield* fileSystem.makeDirectory(path.join(repo, ".git"), { recursive: true });
+          yield* fileSystem.makeDirectory(path.join(repo, ".claude"), { recursive: true });
+          yield* fileSystem.makeDirectory(nested, { recursive: true });
+          yield* fileSystem.writeFileString(
+            path.join(repo, ".claude", "settings.local.json"),
+            JSON.stringify({ env: { ANTHROPIC_BASE_URL: "http://127.0.0.1:8317" } }),
+          );
+          const rootLocal = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({}),
+            { CLAUDE_CONFIG_DIR: path.join(dir, "no-login-here") },
+            nested,
+          );
+          assert.strictEqual(rootLocal.auth.status, "authenticated");
+
+          // A later file clearing it wins: the workspace's local settings unset the project's token.
+          yield* fileSystem.writeFileString(
+            path.join(workspace, ".claude", "settings.local.json"),
+            JSON.stringify({ env: { ANTHROPIC_AUTH_TOKEN: "" } }),
+          );
+          const cleared = yield* checkClaudeProviderStatus(
+            defaultClaudeSettings,
+            claudeCapabilities({}),
+            { CLAUDE_CONFIG_DIR: path.join(dir, "no-login-here") },
+            workspace,
+          );
+          assert.strictEqual(cleared.auth.status, "unauthenticated");
+        }).pipe(
+          Effect.provideService(HostProcessPlatform, "linux"),
+          Effect.scoped,
+          Effect.provide(
+            layerMockSpawner((args) => {
+              if (args.join(" ") === "--version") return { stdout: "1.0.0\n", stderr: "", code: 0 };
+              throw new Error(`Unexpected args: ${args.join(" ")}`);
+            }),
+          ),
+        ),
     );
 
     it.effect("returns a display label for claude subscription types", () =>

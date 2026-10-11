@@ -14,6 +14,7 @@ import * as Ref from "effect/Ref";
 import * as Result from "effect/Result";
 import { ChildProcess, ChildProcessSpawner } from "effect/process";
 import { createModelCapabilities } from "@t3tools/shared/model";
+import { HostProcessPlatform } from "@t3tools/shared/hostProcess";
 import { resolveSpawnCommand } from "@t3tools/shared/shell";
 import {
   query as claudeQuery,
@@ -35,8 +36,18 @@ import {
   type ServerProviderDraft,
 } from "./providerSnapshot.ts";
 import { resolveClaudeSdkExecutablePath } from "./Drivers/ClaudeExecutable.ts";
-import { makeClaudeEnvironment } from "./Drivers/ClaudeHome.ts";
-import { discoverClaudeSkills } from "./Drivers/ClaudeSkills.ts";
+import {
+  claudeSignedOutMessage,
+  makeClaudeEnvironment,
+  resolveClaudeHomePath,
+} from "./Drivers/ClaudeHome.ts";
+// Fork seam (lim): stored-login check
+import { readClaudeStoredLogin, usesStoredSubscriptionLogin } from "./Drivers/ClaudeStoredLogin.ts";
+import {
+  discoverClaudeSkills,
+  findRepositoryRoot,
+  skillOverrideSettingsPaths,
+} from "./Drivers/ClaudeSkills.ts";
 import type { ProviderWorkspaceSnapshot } from "./ProviderDriver.ts";
 import { makeUnavailableUsageLimits } from "./providerUsageLimits.ts";
 import {
@@ -231,6 +242,8 @@ type ClaudeCapabilitiesProbe = {
   readonly email: string | undefined;
   readonly subscriptionType: string | undefined;
   readonly tokenSource: string | undefined;
+  /** Fork (lim): the SDK's `AccountInfo.apiKeySource`; anything but `"none"` means an API key is active. */
+  readonly apiKeySource?: string | undefined;
   /**
    * Active API backend reported by the SDK's `AccountInfo`. Anthropic OAuth
    * login only applies when `"firstParty"`; for Amazon Bedrock (`"bedrock"`)
@@ -386,6 +399,7 @@ const probeClaudeCapabilities = (
               readonly email?: string;
               readonly subscriptionType?: string;
               readonly tokenSource?: string;
+              readonly apiKeySource?: string;
               readonly apiProvider?: string;
             }
           | undefined;
@@ -393,6 +407,7 @@ const probeClaudeCapabilities = (
           email: account?.email,
           subscriptionType: account?.subscriptionType,
           tokenSource: account?.tokenSource,
+          ...(account?.apiKeySource !== undefined ? { apiKeySource: account.apiKeySource } : {}),
           apiProvider: account?.apiProvider,
           slashCommands: parseClaudeInitializationCommands(init.commands),
           ...(usage ? { usage } : {}),
@@ -585,6 +600,59 @@ export const checkClaudeProviderStatus = Effect.fn("checkClaudeProviderStatus")(
         message: "Could not verify Claude authentication status from initialization result.",
       },
     });
+  }
+
+  // Fork seam (lim): a first-party subscription login is checked against the
+  // stored tokens, which the SDK's account info doesn't (Drivers/ClaudeStoredLogin.ts).
+  const platform = yield* HostProcessPlatform;
+  if (
+    usesStoredSubscriptionLogin({
+      apiProvider: capabilities.apiProvider,
+      apiKeySource: capabilities.apiKeySource,
+      platform,
+    }) &&
+    normalizeClaudeAuthMethod(capabilities.tokenSource) !== "apiKey"
+  ) {
+    const configDir = yield* resolveClaudeHomePath(claudeSettings, resolvedEnvironment);
+    const login = yield* readClaudeStoredLogin(
+      configDir,
+      skillOverrideSettingsPaths(
+        yield* Path.Path,
+        configDir,
+        cwd,
+        platform,
+        resolvedEnvironment,
+        cwd === undefined ? undefined : yield* findRepositoryRoot(cwd),
+      ),
+      resolvedEnvironment,
+      DateTime.toEpochMillis(yield* DateTime.now),
+    );
+    if (login === "missing" || login === "empty" || login === "expired") {
+      return buildServerProvider({
+        presentation: CLAUDE_PRESENTATION,
+        enabled: claudeSettings.enabled,
+        checkedAt,
+        models,
+        slashCommands: dedupedSlashCommands,
+        skills,
+        probe: {
+          installed: true,
+          version: parsedVersion,
+          status: "error",
+          auth: { status: "unauthenticated" },
+          message: `${login === "missing" ? "Claude has no stored login" : `Claude's stored login has ${login === "empty" ? "no tokens" : "only expired tokens"}`}. ${claudeSignedOutMessage(
+            {
+              // A custom home (settings or inherited env) must be named, or the hint logs in to the default one.
+              configDir:
+                claudeSettings.homePath.trim() || resolvedEnvironment.CLAUDE_CONFIG_DIR?.trim()
+                  ? configDir
+                  : undefined,
+              cwd: cwd ?? process.cwd(),
+            },
+          )}`,
+        },
+      });
+    }
   }
 
   const authMetadata =
