@@ -41,6 +41,7 @@ import {
 } from "./ArtifactIndex.ts";
 import {
   checkArtifact,
+  FileUnstableError,
   LINKS_FILE,
   scanStore,
   writeLinksFile,
@@ -315,12 +316,25 @@ export class ArtifactStore {
     });
   }
 
+  /** The per-access check; a file that keeps changing while read answers 503. */
+  private check(row: ArtifactRow) {
+    return checkArtifact(this.ctx, row).catch((error: unknown) => {
+      if (error instanceof FileUnstableError) {
+        throw new ArtifactStoreError(
+          "unavailable",
+          `${row.path} keeps changing outside T3; try again`,
+        );
+      }
+      throw error;
+    });
+  }
+
   /** The artifact's row after the per-access check; fails when it no longer exists. */
   private async current(id: string): Promise<ArtifactRow> {
     if (!ULID_PATTERN.test(id)) throw new ArtifactStoreError("not_found", `no artifact ${id}`);
     const row = this.index.get(id);
     if (!row) throw new ArtifactStoreError("not_found", `no artifact ${id}`);
-    if ((await checkArtifact(this.ctx, row)) === "too_large") {
+    if ((await this.check(row)) === "too_large") {
       throw new ArtifactStoreError(
         "too_large",
         `${row.path} grew past 10 MB outside T3; it's kept, with its links, but not served until it shrinks`,
@@ -352,7 +366,7 @@ export class ArtifactStore {
       for (const { id } of this.index.all()) {
         // An earlier check may have rescanned (a move or removal): use the row as it is now.
         const row = this.index.get(id);
-        if (row && (await checkArtifact(this.ctx, row)) === "too_large") oversized.add(id);
+        if (row && (await this.check(row)) === "too_large") oversized.add(id);
       }
       return this.index
         .list(filter)

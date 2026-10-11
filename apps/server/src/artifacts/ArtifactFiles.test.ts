@@ -4,6 +4,8 @@ import * as NodeOS from "node:os";
 import * as NodePath from "node:path";
 import { afterEach, describe, expect, it } from "vite-plus/test";
 
+import { FileUnstableError, readFileState } from "./ArtifactReconcile.ts";
+
 import { resolveArtifactsDir } from "./artifactConfig.ts";
 import {
   ArtifactPathError,
@@ -141,5 +143,41 @@ describe("store location", () => {
         { T3_ARTIFACTS_DIR: "/tmp/qa" },
       ),
     ).toBe("/tmp/qa");
+  });
+});
+
+describe("readFileState", () => {
+  /** A file whose contents change while it is read, `versions` times. */
+  const changingFile = (versions: ReadonlyArray<string>) => {
+    let version = 0;
+    let reads = 0;
+    const statOf = () => ({
+      size: Buffer.byteLength(versions[version]!),
+      mtimeMs: version,
+      isFile: () => true,
+    });
+    const handle = {
+      stat: async () => statOf(),
+      read: async (buffer: Buffer, offset: number, length: number, position: number) => {
+        const bytes = Buffer.from(versions[version]!);
+        const bytesRead = bytes.copy(buffer, offset, position, position + length);
+        // An in-place write lands during each read, until the last version.
+        if (++reads && version < versions.length - 1) version++;
+        return { bytesRead, buffer };
+      },
+      close: async () => undefined,
+    };
+    return { lstat: async () => statOf(), open: async () => handle } as never;
+  };
+
+  it("rereads the whole file from the start when an in-place write lands mid-read", async () => {
+    const state = await readFileState("/x.md", changingFile(["one\n", "two\n"]));
+    expect(state).toEqual({ text: "two\n", size: 4, mtime: 1 });
+  });
+
+  it("refuses a file that keeps changing on every read", async () => {
+    await expect(
+      readFileState("/x.md", changingFile(["a", "bb", "ccc", "dddd", "eeeee"])),
+    ).rejects.toBeInstanceOf(FileUnstableError);
   });
 });

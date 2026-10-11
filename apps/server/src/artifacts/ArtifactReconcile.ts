@@ -158,7 +158,10 @@ const headFrontMatter = async (absolute: string) => {
   }
 };
 
-interface FileState {
+/** A file kept changing while it was read. */
+export class FileUnstableError extends Error {}
+
+export interface FileState {
   readonly text: string;
   readonly size: number;
   readonly mtime: number;
@@ -170,11 +173,14 @@ interface FileState {
  * with the new file's metadata (the next check then sees the new file). An
  * in-place write during the read is retried.
  */
-const readFileState = async (absolute: string): Promise<FileState | "too_large" | null> => {
-  const stat = await NodeFSP.lstat(absolute).catch(() => null);
+export const readFileState = async (
+  absolute: string,
+  fs: Pick<typeof NodeFSP, "lstat" | "open"> = NodeFSP,
+): Promise<FileState | "too_large" | null> => {
+  const stat = await fs.lstat(absolute).catch(() => null);
   if (!stat || !stat.isFile()) return null;
   if (stat.size > MAX_TEXT_ARTIFACT_BYTES) return "too_large";
-  const handle = await NodeFSP.open(absolute, "r").catch(() => null);
+  const handle = await fs.open(absolute, "r").catch(() => null);
   if (!handle) return null;
   try {
     for (let attempt = 1; ; attempt++) {
@@ -191,9 +197,11 @@ const readFileState = async (absolute: string): Promise<FileState | "too_large" 
       }
       const text = buffer.subarray(0, length).toString("utf8");
       const after = await handle.stat();
-      if ((after.size === opened.size && after.mtimeMs === opened.mtimeMs) || attempt >= 3) {
+      if (after.size === opened.size && after.mtimeMs === opened.mtimeMs) {
         return { text, size: after.size, mtime: after.mtimeMs };
       }
+      // Never index a read that may be torn: refuse, and the caller retries later.
+      if (attempt >= 3) throw new FileUnstableError(absolute);
     }
   } finally {
     await handle.close();
