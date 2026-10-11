@@ -6,7 +6,8 @@
 // - HTML: the document with the app theme bootstrap (as html_render pages
 //   get), under `sandbox allow-scripts allow-popups`.
 // - Markdown: rendered here to a standalone page in the T3 theme, light or
-//   dark with the reader's system; sanitized as chat markdown is, no scripts.
+//   dark with the reader's system; sanitized as chat markdown is, no scripts,
+//   and list items without their `^id` markers.
 // - Other files: their own content type, sandboxed too (an SVG or XML file
 //   can't script); a PDF only isn't, since the browser's PDF viewer needs an
 //   unsandboxed page and a PDF runs no scripts there.
@@ -19,6 +20,8 @@ import {
 import * as Option from "effect/Option";
 import * as Mime from "effect/http/Mime";
 import { toHtml } from "hast-util-to-html";
+
+import { withoutItemIds } from "./listOps.ts";
 
 export const VIEW_HTML_CSP = "sandbox allow-scripts allow-popups";
 /** Markdown pages run nothing and load only images. */
@@ -114,7 +117,7 @@ export const viewResponse = (
   }
   if (artifact.kind === "md") {
     return {
-      body: markdownPage(artifact.title, String(content)),
+      body: markdownPage(artifact.title, withoutItemIds(String(content))),
       headers: {
         ...COMMON_HEADERS,
         "Content-Type": "text/html; charset=utf-8",

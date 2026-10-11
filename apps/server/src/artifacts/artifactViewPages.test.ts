@@ -66,8 +66,15 @@ describe("viewResponse", () => {
     expect(String(body)).toContain("<script>1</script>");
   });
 
-  it("serves markdown as a page that runs nothing", () => {
-    const { headers } = viewResponse(artifact("md", "a.md"), "# x");
+  it("serves markdown as a page that runs nothing, without list item ids", () => {
+    const { body, headers } = viewResponse(
+      artifact("md", "a.md"),
+      "# x\n\n- [x] shipped ^l8\n- [ ] next ^6v\n\n```\n- [ ] in code ^zz\n```\n",
+    );
+    expect(String(body)).toContain("shipped</li>");
+    expect(String(body)).not.toContain("^l8");
+    expect(String(body)).not.toContain("^6v");
+    expect(String(body)).toContain("- [ ] in code ^zz");
     expect(headers["Content-Security-Policy"]).toBe(VIEW_MARKDOWN_CSP);
     expect(VIEW_MARKDOWN_CSP).toMatch(/^sandbox;/);
     expect(VIEW_MARKDOWN_CSP).not.toContain("allow-scripts");
